@@ -1,16 +1,14 @@
 // @vitest-environment happy-dom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
 import { getZylemBridge, type SceneOperationPayload } from '@zylem/bridge';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
 	classifyHistoryShortcut,
 	installHistoryShortcuts,
 	isEditableTarget,
 } from '../../src/components/history/history-shortcuts';
-import {
-	clearHistory,
-	pushOperation,
-} from '../../src/components/history/history-store';
+import { clearHistory, pushOperation } from '../../src/components/history/history-store';
 
 function operation(opId: string): SceneOperationPayload {
 	return {
@@ -33,12 +31,9 @@ beforeEach(() => {
 	getZylemBridge().channel.reset();
 	clearHistory();
 	applied = [];
-	stopCapture = getZylemBridge().channel.on(
-		'scene:operation:apply',
-		({ op, direction }) => {
-			applied.push({ opId: op.opId, direction });
-		},
-	);
+	stopCapture = getZylemBridge().channel.on('scene:operation:apply', ({ op, direction }) => {
+		applied.push({ opId: op.opId, direction });
+	});
 });
 
 afterEach(() => {
@@ -58,15 +53,15 @@ describe('classifyHistoryShortcut', () => {
 	});
 
 	it('recognises the redo chord', () => {
-		expect(
-			classifyHistoryShortcut(keydown({ key: 'z', metaKey: true, shiftKey: true })),
-		).toBe('redo');
+		expect(classifyHistoryShortcut(keydown({ key: 'z', metaKey: true, shiftKey: true }))).toBe(
+			'redo'
+		);
 	});
 
 	it('accepts the shifted key as reported by the browser', () => {
-		expect(
-			classifyHistoryShortcut(keydown({ key: 'Z', metaKey: true, shiftKey: true })),
-		).toBe('redo');
+		expect(classifyHistoryShortcut(keydown({ key: 'Z', metaKey: true, shiftKey: true }))).toBe(
+			'redo'
+		);
 	});
 
 	it('ignores the bare key', () => {
@@ -80,9 +75,7 @@ describe('classifyHistoryShortcut', () => {
 	it('ignores the chord when alt is also held', () => {
 		// Alt is the free-transform modifier during a drag, so alt+cmd+z is not
 		// an undo the user meant.
-		expect(
-			classifyHistoryShortcut(keydown({ key: 'z', metaKey: true, altKey: true })),
-		).toBeNull();
+		expect(classifyHistoryShortcut(keydown({ key: 'z', metaKey: true, altKey: true }))).toBeNull();
 	});
 });
 

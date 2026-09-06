@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import type { EntityTypeDescriptor } from '@zylem/bridge';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
 	buttonDescriptor,
@@ -11,7 +11,7 @@ import {
 
 function descriptor(
 	id: string,
-	overrides: Partial<EntityTypeDescriptor> = {},
+	overrides: Partial<EntityTypeDescriptor> = {}
 ): EntityTypeDescriptor {
 	return {
 		id,

@@ -19,7 +19,7 @@
 export function resolveTransformTarget(
 	selectedIds: readonly string[],
 	lastTouchedId: string | null,
-	existingUuids: readonly string[],
+	existingUuids: readonly string[]
 ): string | null {
 	const selected = selectedIds[0];
 	if (selected) return selected;

@@ -1,20 +1,14 @@
 // @vitest-environment happy-dom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { getZylemBridge } from '@zylem/bridge';
 
-import {
-	disarmTools,
-	installToolShortcuts,
-} from '../../src/components/toolbar/tool-shortcuts';
+import { getZylemBridge } from '@zylem/bridge';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { getDebugTool, setDebugTool } from '../../src/components/entities/entities-state';
 import {
 	catalogState,
 	setArmedType,
 	setEntityCatalog,
 } from '../../src/components/toolbar/catalog-state';
-import {
-	getDebugTool,
-	setDebugTool,
-} from '../../src/components/entities/entities-state';
+import { disarmTools, installToolShortcuts } from '../../src/components/toolbar/tool-shortcuts';
 
 function escapeKey(): KeyboardEvent {
 	return new KeyboardEvent('keydown', {
@@ -132,7 +126,7 @@ describe('installToolShortcuts', () => {
 		setDebugTool('add');
 
 		window.dispatchEvent(
-			new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+			new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
 		);
 
 		expect(getDebugTool()).toBe('add');

@@ -1,13 +1,8 @@
+import { ToolbarButton } from '@zylem/ui/components';
 import Grid3x3 from 'lucide-solid/icons/grid-3x3';
 import Magnet from 'lucide-solid/icons/magnet';
 import type { Component } from 'solid-js';
-
-import {
-	setGridVisible,
-	setSnapEnabled,
-	transformStore,
-} from '../transform/transform-state';
-import { ToolbarButton } from '@zylem/ui/components';
+import { setGridVisible, setSnapEnabled, transformStore } from '../transform/transform-state';
 
 /** Show or hide the game's construction-plane grid. */
 export const GridButton: Component = () => (

@@ -3,6 +3,7 @@ import {
 	clampThickness,
 	computeDockLayout,
 	createEmptyDockRegistry,
+	type DockRegistry,
 	dockSlotIndex,
 	findDockedSide,
 	innerEdgeFor,
@@ -12,14 +13,13 @@ import {
 	previewDockRect,
 	removeFromZones,
 	resolveThickness,
-	type DockRegistry,
 	type Viewport,
 } from '../../src/components/common/dock-layout';
 
 const viewport: Viewport = { width: 1000, height: 800 };
 
 const registryOf = (
-	entries: Array<[side: 'left' | 'right' | 'top' | 'bottom', panels: string[], thickness?: number]>,
+	entries: Array<[side: 'left' | 'right' | 'top' | 'bottom', panels: string[], thickness?: number]>
 ): DockRegistry => {
 	let registry = createEmptyDockRegistry();
 	for (const [side, panels, thickness] of entries) {
@@ -60,7 +60,10 @@ describe('zone membership', () => {
 
 describe('thickness', () => {
 	it('falls back to a viewport quarter until the user sizes a zone', () => {
-		const registry = registryOf([['left', ['main']], ['bottom', ['console']]]);
+		const registry = registryOf([
+			['left', ['main']],
+			['bottom', ['console']],
+		]);
 		expect(resolveThickness(registry, 'left', viewport)).toBe(250);
 		expect(resolveThickness(registry, 'bottom', viewport)).toBe(200);
 	});
@@ -80,9 +83,12 @@ describe('thickness', () => {
 	});
 
 	it('leaves free space beside an opposing dock', () => {
-		const registry = registryOf([['left', ['main']], ['right', ['console'], 250]]);
+		const registry = registryOf([
+			['left', ['main']],
+			['right', ['console'], 250],
+		]);
 		expect(clampThickness(registry, 'left', 900, viewport, 300)).toBe(
-			viewport.width - 250 - MIN_FREE_SPACE,
+			viewport.width - 250 - MIN_FREE_SPACE
 		);
 	});
 });
@@ -104,7 +110,10 @@ describe('computeDockLayout', () => {
 	});
 
 	it('insets a bottom dock to the right of a left dock', () => {
-		const registry = registryOf([['left', ['main']], ['bottom', ['console']]]);
+		const registry = registryOf([
+			['left', ['main']],
+			['bottom', ['console']],
+		]);
 		const layout = computeDockLayout(registry, viewport);
 		expect(layout.main).toEqual({ x: 0, y: 0, width: 250, height: 800 });
 		// Starts where the left dock ends rather than running under it.
@@ -159,7 +168,9 @@ describe('dockSlotIndex', () => {
 	]);
 
 	it('returns 0 for an empty zone', () => {
-		expect(dockSlotIndex(createEmptyDockRegistry(), 'bottom', { x: 500, y: 700 }, viewport)).toBe(0);
+		expect(dockSlotIndex(createEmptyDockRegistry(), 'bottom', { x: 500, y: 700 }, viewport)).toBe(
+			0
+		);
 	});
 
 	it('picks a slot from the pointer position along the zone', () => {

@@ -1,9 +1,8 @@
+import { ToolbarButton } from '@zylem/ui/components';
 import Redo2 from 'lucide-solid/icons/redo-2';
 import Undo2 from 'lucide-solid/icons/undo-2';
 import type { Component } from 'solid-js';
-
 import { historyStore, redo, undo } from '../history/history-store';
-import { ToolbarButton } from '@zylem/ui/components';
 
 const lastLabel = (stack: { label: string }[]): string | null =>
 	stack[stack.length - 1]?.label ?? null;

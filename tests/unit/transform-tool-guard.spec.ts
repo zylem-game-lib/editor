@@ -1,16 +1,16 @@
 // @vitest-environment happy-dom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { getZylemBridge } from '@zylem/bridge';
 
-import {
-	installTransformToolGuard,
-	releaseOrphanedTransformTool,
-} from '../../src/components/toolbar/transform-tool-guard';
+import { getZylemBridge } from '@zylem/bridge';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
 	getDebugTool,
 	setDebugTool,
 	setSelectedEntityId,
 } from '../../src/components/entities/entities-state';
+import {
+	installTransformToolGuard,
+	releaseOrphanedTransformTool,
+} from '../../src/components/toolbar/transform-tool-guard';
 
 let toolMessages: string[];
 let stopCapture: Array<() => void> = [];

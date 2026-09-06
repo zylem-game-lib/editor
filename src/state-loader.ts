@@ -27,4 +27,3 @@ async function loadEditorModule(): Promise<void> {
 if (debugStore.debug && !editorModuleLoaded) {
 	loadEditorModule();
 }
-

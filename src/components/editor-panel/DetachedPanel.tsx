@@ -1,6 +1,6 @@
 /**
  * DetachedPanel - A floating panel for sections that have been detached from the accordion.
- * 
+ *
  * Features:
  * - Draggable title bar
  * - Resizable from edges and corners
@@ -9,22 +9,22 @@
  * - Close button reattaches to accordion
  */
 
-import { createSignal, onCleanup, onMount, type Component, type JSX } from 'solid-js';
 import { useLayer, WindowControls } from '@zylem/ui/components';
-import {
-    reattachPanel,
-    updateDetachedPanelPosition,
-    updateDetachedPanelSize,
-    debugStore,
-    setDraggingPanel,
-    setDropTargetIndex,
-    clearDragState,
-    bringPanelToFront,
-} from '../editor-store';
-import { getPanelTitle, renderPanelContent } from './panel-config';
-import { createPanelDocking, DockPreviewOverlay, type ResizeMode } from '../common/panel-docking';
+import { type Component, createSignal, type JSX, onCleanup, onMount } from 'solid-js';
 import { isHorizontalSide } from '../common/dock-layout';
 import { PANEL_RANK } from '../common/layer-ranks';
+import { createPanelDocking, DockPreviewOverlay, type ResizeMode } from '../common/panel-docking';
+import {
+	bringPanelToFront,
+	clearDragState,
+	debugStore,
+	reattachPanel,
+	setDraggingPanel,
+	setDropTargetIndex,
+	updateDetachedPanelPosition,
+	updateDetachedPanelSize,
+} from '../editor-store';
+import { getPanelTitle, renderPanelContent } from './panel-config';
 
 // Minimum drag threshold to distinguish from clicks
 const DRAG_THRESHOLD = 3;
@@ -34,373 +34,413 @@ const MIN_HEIGHT = 150;
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw' | null;
 
 export interface DetachedPanelProps {
-    panelId: string;
+	panelId: string;
 }
 
 export const DetachedPanel: Component<DetachedPanelProps> = (props) => {
-    const panelState = () => debugStore.detachedPanels[props.panelId];
-    // Position in `panelZOrder` becomes the rank, so clicking a panel raises it
-    // above its siblings without leaving the panel tier.
-    const rank = () =>
-        PANEL_RANK.detachedBase + debugStore.panelZOrder.indexOf(props.panelId);
-    const layer = useLayer('panel', rank);
-    const initialPanelSize = panelState()?.size ?? { width: 350, height: 300 };
+	const panelState = () => debugStore.detachedPanels[props.panelId];
+	// Position in `panelZOrder` becomes the rank, so clicking a panel raises it
+	// above its siblings without leaving the panel tier.
+	const rank = () => PANEL_RANK.detachedBase + debugStore.panelZOrder.indexOf(props.panelId);
+	const layer = useLayer('panel', rank);
+	const initialPanelSize = panelState()?.size ?? { width: 350, height: 300 };
 
-    const [position, setPosition] = createSignal(
-        panelState()?.position ?? { x: 100, y: 100 }
-    );
-    const [size, setSize] = createSignal(
-        initialPanelSize
-    );
+	const [position, setPosition] = createSignal(panelState()?.position ?? { x: 100, y: 100 });
+	const [size, setSize] = createSignal(initialPanelSize);
 
-    let isDragging = false;
-    let isResizing = false;
-    let resizeMode: ResizeMode = 'free';
-    let resizeDirection: ResizeDirection = null;
-    let dragStartPos = { x: 0, y: 0 };
-    let panelStartPos = { x: 0, y: 0 };
-    let panelStartSize = { width: 0, height: 0 };
-    let startThickness = 0;
-    let hasMoved = false;
-    let panelRef: HTMLDivElement | undefined;
+	let isDragging = false;
+	let isResizing = false;
+	let resizeMode: ResizeMode = 'free';
+	let resizeDirection: ResizeDirection = null;
+	let dragStartPos = { x: 0, y: 0 };
+	let panelStartPos = { x: 0, y: 0 };
+	let panelStartSize = { width: 0, height: 0 };
+	let startThickness = 0;
+	let hasMoved = false;
+	let panelRef: HTMLDivElement | undefined;
 
-    const {
-        dockedSide,
-        isAutoHeight,
-        showDockPreview,
-        hideDockPreview,
-        rememberUndockedSize,
-        getLiveSize,
-        getDockPreviewRect,
-        detectDockSide,
-        detectDockIndex,
-        beginDragGhost,
-        endDragGhost,
-        isMoving,
-        clampSizeToViewport,
-        beginResize,
-        resizeDockThickness,
-        applyDockPreview,
-    } = createPanelDocking({
-        panelId: props.panelId,
-        initialSize: initialPanelSize,
-        minSize: { width: MIN_WIDTH, height: MIN_HEIGHT },
-        position,
-        setPosition,
-        size,
-        setSize,
-        panelRef: () => panelRef,
-        onPositionCommit: (nextPosition) => updateDetachedPanelPosition(props.panelId, nextPosition),
-        onSizeCommit: (nextSize) => updateDetachedPanelSize(props.panelId, nextSize),
-    });
+	const {
+		dockedSide,
+		isAutoHeight,
+		showDockPreview,
+		hideDockPreview,
+		rememberUndockedSize,
+		getLiveSize,
+		getDockPreviewRect,
+		detectDockSide,
+		detectDockIndex,
+		beginDragGhost,
+		endDragGhost,
+		isMoving,
+		clampSizeToViewport,
+		beginResize,
+		resizeDockThickness,
+		applyDockPreview,
+	} = createPanelDocking({
+		panelId: props.panelId,
+		initialSize: initialPanelSize,
+		minSize: { width: MIN_WIDTH, height: MIN_HEIGHT },
+		position,
+		setPosition,
+		size,
+		setSize,
+		panelRef: () => panelRef,
+		onPositionCommit: (nextPosition) => updateDetachedPanelPosition(props.panelId, nextPosition),
+		onSizeCommit: (nextSize) => updateDetachedPanelSize(props.panelId, nextSize),
+	});
 
-    const handlePanelPointerDown = () => {
-        // Bring to front on any click/touch
-        bringPanelToFront(props.panelId);
-    };
+	const handlePanelPointerDown = () => {
+		// Bring to front on any click/touch
+		bringPanelToFront(props.panelId);
+	};
 
-    const handleTitleBarPointerDown = (e: PointerEvent) => {
-        isDragging = true;
-        hasMoved = false;
-        hideDockPreview();
-        dragStartPos = { x: e.clientX, y: e.clientY };
-        panelStartPos = { ...position() };
-        bringPanelToFront(props.panelId);
-        
-        // Prevent default on mouse to avoid selection, but allow touch actions if needed
-        // though touch-action: none handles the scrolling prevention
-        if (e.pointerType === 'mouse') {
-            e.preventDefault();
-        }
-    };
+	const handleTitleBarPointerDown = (e: PointerEvent) => {
+		isDragging = true;
+		hasMoved = false;
+		hideDockPreview();
+		dragStartPos = { x: e.clientX, y: e.clientY };
+		panelStartPos = { ...position() };
+		bringPanelToFront(props.panelId);
 
-    const handleResizePointerDown = (direction: ResizeDirection) => (e: PointerEvent) => {
-        isResizing = true;
-        resizeDirection = direction;
-        const side = dockedSide();
-        const { size: currentSize, mode } = beginResize(direction);
-        resizeMode = mode;
-        // A thickness resize measures from the zone's current extent, not the
-        // panel box, since every panel in the zone shares it.
-        startThickness = side && isHorizontalSide(side) ? currentSize.width : currentSize.height;
-        dragStartPos = { x: e.clientX, y: e.clientY };
-        panelStartPos = { ...position() };
-        panelStartSize = { ...currentSize };
-        bringPanelToFront(props.panelId);
-        
-        if (e.pointerType === 'mouse') {
-            e.preventDefault();
-        }
-        e.stopPropagation();
-    };
+		// Prevent default on mouse to avoid selection, but allow touch actions if needed
+		// though touch-action: none handles the scrolling prevention
+		if (e.pointerType === 'mouse') {
+			e.preventDefault();
+		}
+	};
 
-    const handlePointerMove = (e: PointerEvent) => {
-        if (isDragging) {
-            let deltaX = e.clientX - dragStartPos.x;
-            let deltaY = e.clientY - dragStartPos.y;
+	const handleResizePointerDown = (direction: ResizeDirection) => (e: PointerEvent) => {
+		isResizing = true;
+		resizeDirection = direction;
+		const side = dockedSide();
+		const { size: currentSize, mode } = beginResize(direction);
+		resizeMode = mode;
+		// A thickness resize measures from the zone's current extent, not the
+		// panel box, since every panel in the zone shares it.
+		startThickness = side && isHorizontalSide(side) ? currentSize.width : currentSize.height;
+		dragStartPos = { x: e.clientX, y: e.clientY };
+		panelStartPos = { ...position() };
+		panelStartSize = { ...currentSize };
+		bringPanelToFront(props.panelId);
 
-            if (Math.abs(deltaX) > DRAG_THRESHOLD || Math.abs(deltaY) > DRAG_THRESHOLD) {
-                if (!hasMoved) {
-                    hasMoved = true;
-                    setDraggingPanel(props.panelId);
-                    // Every move happens through the small ghost, docked or not.
-                    const fitted = beginDragGhost(e.clientX, e.clientY);
-                    dragStartPos = { x: e.clientX, y: e.clientY };
-                    panelStartPos = { ...fitted.position };
-                    panelStartSize = { ...fitted.size };
-                    deltaX = 0;
-                    deltaY = 0;
-                }
-            }
+		if (e.pointerType === 'mouse') {
+			e.preventDefault();
+		}
+		e.stopPropagation();
+	};
 
-            if (hasMoved) {
-                const proposedX = panelStartPos.x + deltaX;
-                const proposedY = panelStartPos.y + deltaY;
-                const currentSize = getLiveSize();
-                const dockSide = detectDockSide(
-                    proposedX,
-                    proposedY,
-                    currentSize.width,
-                    currentSize.height,
-                );
+	const handlePointerMove = (e: PointerEvent) => {
+		if (isDragging) {
+			let deltaX = e.clientX - dragStartPos.x;
+			let deltaY = e.clientY - dragStartPos.y;
 
-                if (dockSide) {
-                    showDockPreview(dockSide, detectDockIndex(dockSide, e.clientX, e.clientY));
-                    setDropTargetIndex(null);
-                } else {
-                    hideDockPreview();
-                }
+			if (Math.abs(deltaX) > DRAG_THRESHOLD || Math.abs(deltaY) > DRAG_THRESHOLD) {
+				if (!hasMoved) {
+					hasMoved = true;
+					setDraggingPanel(props.panelId);
+					// Every move happens through the small ghost, docked or not.
+					const fitted = beginDragGhost(e.clientX, e.clientY);
+					dragStartPos = { x: e.clientX, y: e.clientY };
+					panelStartPos = { ...fitted.position };
+					panelStartSize = { ...fitted.size };
+					deltaX = 0;
+					deltaY = 0;
+				}
+			}
 
-                const newPos = {
-                    x: Math.max(0, Math.min(proposedX, window.innerWidth - 100)),
-                    y: Math.max(0, Math.min(proposedY, window.innerHeight - 50)),
-                };
-                setPosition(newPos);
+			if (hasMoved) {
+				const proposedX = panelStartPos.x + deltaX;
+				const proposedY = panelStartPos.y + deltaY;
+				const currentSize = getLiveSize();
+				const dockSide = detectDockSide(
+					proposedX,
+					proposedY,
+					currentSize.width,
+					currentSize.height
+				);
 
-                // Check if over the main editor panel and determine drop index
-                if (!dockSide) {
-                    const editorPanel = document.querySelector('.zylem-accordion');
-                    if (editorPanel) {
-                        const panelRect = editorPanel.getBoundingClientRect();
-                        const isOverPanel =
-                            e.clientX >= panelRect.left &&
-                            e.clientX <= panelRect.right &&
-                            e.clientY >= panelRect.top &&
-                            e.clientY <= panelRect.bottom;
+				if (dockSide) {
+					showDockPreview(dockSide, detectDockIndex(dockSide, e.clientX, e.clientY));
+					setDropTargetIndex(null);
+				} else {
+					hideDockPreview();
+				}
 
-                        if (isOverPanel) {
-                            const accordionItems = editorPanel.querySelectorAll('.accordion-item');
-                            let dropIndex = 0;
+				const newPos = {
+					x: Math.max(0, Math.min(proposedX, window.innerWidth - 100)),
+					y: Math.max(0, Math.min(proposedY, window.innerHeight - 50)),
+				};
+				setPosition(newPos);
 
-                            for (let i = 0; i < accordionItems.length; i++) {
-                                const item = accordionItems[i];
-                                if (!item) continue;
-                                const itemRect = item.getBoundingClientRect();
-                                const itemMiddle = itemRect.top + itemRect.height / 2;
-                                if (e.clientY > itemMiddle) {
-                                    dropIndex = i + 1;
-                                }
-                            }
-                            setDropTargetIndex(dropIndex);
-                        } else {
-                            setDropTargetIndex(null);
-                        }
-                    }
-                }
-            }
-        } else if (isResizing && resizeDirection) {
-            const deltaX = e.clientX - dragStartPos.x;
-            const deltaY = e.clientY - dragStartPos.y;
+				// Check if over the main editor panel and determine drop index
+				if (!dockSide) {
+					const editorPanel = document.querySelector('.zylem-accordion');
+					if (editorPanel) {
+						const panelRect = editorPanel.getBoundingClientRect();
+						const isOverPanel =
+							e.clientX >= panelRect.left &&
+							e.clientX <= panelRect.right &&
+							e.clientY >= panelRect.top &&
+							e.clientY <= panelRect.bottom;
 
-            // While docked, the only free dimension is the zone's thickness;
-            // position and cross-axis extent come from the dock layout.
-            if (resizeMode === 'thickness') {
-                resizeDockThickness(startThickness, deltaX, deltaY);
-                return;
-            }
+						if (isOverPanel) {
+							const accordionItems = editorPanel.querySelectorAll('.accordion-item');
+							let dropIndex = 0;
 
-            let newWidth = panelStartSize.width;
-            let newHeight = panelStartSize.height;
-            let newX = panelStartPos.x;
-            let newY = panelStartPos.y;
+							for (let i = 0; i < accordionItems.length; i++) {
+								const item = accordionItems[i];
+								if (!item) continue;
+								const itemRect = item.getBoundingClientRect();
+								const itemMiddle = itemRect.top + itemRect.height / 2;
+								if (e.clientY > itemMiddle) {
+									dropIndex = i + 1;
+								}
+							}
+							setDropTargetIndex(dropIndex);
+						} else {
+							setDropTargetIndex(null);
+						}
+					}
+				}
+			}
+		} else if (isResizing && resizeDirection) {
+			const deltaX = e.clientX - dragStartPos.x;
+			const deltaY = e.clientY - dragStartPos.y;
 
-            // Handle horizontal resizing
-            if (resizeDirection.includes('e')) {
-                newWidth = Math.max(MIN_WIDTH, panelStartSize.width + deltaX);
-            } else if (resizeDirection.includes('w')) {
-                const proposedWidth = panelStartSize.width - deltaX;
-                if (proposedWidth >= MIN_WIDTH) {
-                    newWidth = proposedWidth;
-                    newX = panelStartPos.x + deltaX;
-                }
-            }
+			// While docked, the only free dimension is the zone's thickness;
+			// position and cross-axis extent come from the dock layout.
+			if (resizeMode === 'thickness') {
+				resizeDockThickness(startThickness, deltaX, deltaY);
+				return;
+			}
 
-            // Handle vertical resizing
-            if (resizeDirection.includes('s')) {
-                newHeight = Math.max(MIN_HEIGHT, panelStartSize.height + deltaY);
-            } else if (resizeDirection.includes('n')) {
-                const proposedHeight = panelStartSize.height - deltaY;
-                if (proposedHeight >= MIN_HEIGHT) {
-                    newHeight = proposedHeight;
-                    newY = panelStartPos.y + deltaY;
-                }
-            }
+			let newWidth = panelStartSize.width;
+			let newHeight = panelStartSize.height;
+			let newX = panelStartPos.x;
+			let newY = panelStartPos.y;
 
-            const clampedSize = clampSizeToViewport(newWidth, newHeight);
-            const maxX = Math.max(0, window.innerWidth - clampedSize.width);
-            const maxY = Math.max(0, window.innerHeight - clampedSize.height);
-            setSize(clampedSize);
-            setPosition({
-                x: Math.max(0, Math.min(newX, maxX)),
-                y: Math.max(0, Math.min(newY, maxY)),
-            });
-        }
-    };
+			// Handle horizontal resizing
+			if (resizeDirection.includes('e')) {
+				newWidth = Math.max(MIN_WIDTH, panelStartSize.width + deltaX);
+			} else if (resizeDirection.includes('w')) {
+				const proposedWidth = panelStartSize.width - deltaX;
+				if (proposedWidth >= MIN_WIDTH) {
+					newWidth = proposedWidth;
+					newX = panelStartPos.x + deltaX;
+				}
+			}
 
-    const handlePointerUp = () => {
-        if (isDragging && hasMoved) {
-            if (applyDockPreview()) {
-                // Docking state and store updates are handled by the shared controller.
-            } else {
-                const dropIndex = debugStore.dropTargetIndex;
-                if (dropIndex !== null) {
-                    // The panel unmounts when it reattaches to the accordion.
-                    reattachPanel(props.panelId, dropIndex);
-                } else {
-                    // Drop the ghost: restores the pre-drag size and commits
-                    // position/size through the controller callbacks.
-                    endDragGhost();
-                }
-            }
-        }
+			// Handle vertical resizing
+			if (resizeDirection.includes('s')) {
+				newHeight = Math.max(MIN_HEIGHT, panelStartSize.height + deltaY);
+			} else if (resizeDirection.includes('n')) {
+				const proposedHeight = panelStartSize.height - deltaY;
+				if (proposedHeight >= MIN_HEIGHT) {
+					newHeight = proposedHeight;
+					newY = panelStartPos.y + deltaY;
+				}
+			}
 
-        // A thickness resize keeps the panel docked; its extent already lives in
-        // the registry, so only a free resize reports a floating size.
-        if (isResizing && resizeMode === 'free') {
-            rememberUndockedSize(size());
-            updateDetachedPanelSize(props.panelId, size());
-            updateDetachedPanelPosition(props.panelId, position());
-        }
+			const clampedSize = clampSizeToViewport(newWidth, newHeight);
+			const maxX = Math.max(0, window.innerWidth - clampedSize.width);
+			const maxY = Math.max(0, window.innerHeight - clampedSize.height);
+			setSize(clampedSize);
+			setPosition({
+				x: Math.max(0, Math.min(newX, maxX)),
+				y: Math.max(0, Math.min(newY, maxY)),
+			});
+		}
+	};
 
-        isDragging = false;
-        isResizing = false;
-        resizeMode = 'free';
-        resizeDirection = null;
-        hasMoved = false;
-        hideDockPreview();
-        clearDragState();
-    };
+	const handlePointerUp = () => {
+		if (isDragging && hasMoved) {
+			if (applyDockPreview()) {
+				// Docking state and store updates are handled by the shared controller.
+			} else {
+				const dropIndex = debugStore.dropTargetIndex;
+				if (dropIndex !== null) {
+					// The panel unmounts when it reattaches to the accordion.
+					reattachPanel(props.panelId, dropIndex);
+				} else {
+					// Drop the ghost: restores the pre-drag size and commits
+					// position/size through the controller callbacks.
+					endDragGhost();
+				}
+			}
+		}
 
-    const handleClose = () => {
-        reattachPanel(props.panelId);
-    };
+		// A thickness resize keeps the panel docked; its extent already lives in
+		// the registry, so only a free resize reports a floating size.
+		if (isResizing && resizeMode === 'free') {
+			rememberUndockedSize(size());
+			updateDetachedPanelSize(props.panelId, size());
+			updateDetachedPanelPosition(props.panelId, position());
+		}
 
-    onMount(() => {
-        window.addEventListener('pointermove', handlePointerMove);
-        window.addEventListener('pointerup', handlePointerUp);
-    });
+		isDragging = false;
+		isResizing = false;
+		resizeMode = 'free';
+		resizeDirection = null;
+		hasMoved = false;
+		hideDockPreview();
+		clearDragState();
+	};
 
-    onCleanup(() => {
-        window.removeEventListener('pointermove', handlePointerMove);
-        window.removeEventListener('pointerup', handlePointerUp);
-    });
+	const handleClose = () => {
+		reattachPanel(props.panelId);
+	};
 
-    const resizeHandleStyle = (cursor: string): JSX.CSSProperties => ({
-        position: 'absolute',
-        'z-index': 10,
-        cursor,
-        'touch-action': 'none',
-    });
+	onMount(() => {
+		window.addEventListener('pointermove', handlePointerMove);
+		window.addEventListener('pointerup', handlePointerUp);
+	});
 
-    return (
-        <div
-            class="detached-panel floating-panel"
-            ref={panelRef}
-            onPointerDown={handlePanelPointerDown}
-            style={{
-                left: `${position().x}px`,
-                top: `${position().y}px`,
-                width: `${size().width}px`,
-                height: isAutoHeight() ? 'auto' : `${size().height}px`,
-                'z-index': layer.zIndex(),
-                'border-radius': dockedSide() ? '0' : undefined,
-                // The editor overlay root is pointer-events: none; re-enable
-                // interaction for the panel itself.
-                'pointer-events': 'auto',
-                // While being moved the panel is just a transparent outline.
-                ...(isMoving()
-                    ? {
-                        background: 'transparent',
-                        'backdrop-filter': 'none',
-                        '-webkit-backdrop-filter': 'none',
-                        'box-shadow': 'none',
-                        border: '2px solid var(--zylem-color-primary, #61a6e8)',
-                    }
-                    : {}),
-            }}
-        >
-            <DockPreviewOverlay
-                rect={getDockPreviewRect()}
-                rank={() => rank() + 1}
-            />
+	onCleanup(() => {
+		window.removeEventListener('pointermove', handlePointerMove);
+		window.removeEventListener('pointerup', handlePointerUp);
+	});
 
-            {/* Title bar */}
-            <div
-                class="detached-panel-titlebar floating-panel-titlebar"
-                onPointerDown={handleTitleBarPointerDown}
-                style={{
-                    "touch-action": "none",
-                    'border-radius': dockedSide() ? '0' : undefined,
-                    visibility: isMoving() ? 'hidden' : undefined,
-                }}
-            >
-                <span class="floating-panel-title">{getPanelTitle(props.panelId)}</span>
-                <WindowControls onClose={handleClose} closeLabel="Dock back to panel" />
-            </div>
+	const resizeHandleStyle = (cursor: string): JSX.CSSProperties => ({
+		position: 'absolute',
+		'z-index': 10,
+		cursor,
+		'touch-action': 'none',
+	});
 
-            {/* Content area */}
-            <div
-                class="detached-panel-content floating-panel-content"
-                style={{ visibility: isMoving() ? 'hidden' : undefined }}
-            >
-                {renderPanelContent(props.panelId)}
-            </div>
+	return (
+		<div
+			class="detached-panel floating-panel"
+			ref={panelRef}
+			onPointerDown={handlePanelPointerDown}
+			style={{
+				left: `${position().x}px`,
+				top: `${position().y}px`,
+				width: `${size().width}px`,
+				height: isAutoHeight() ? 'auto' : `${size().height}px`,
+				'z-index': layer.zIndex(),
+				'border-radius': dockedSide() ? '0' : undefined,
+				// The editor overlay root is pointer-events: none; re-enable
+				// interaction for the panel itself.
+				'pointer-events': 'auto',
+				// While being moved the panel is just a transparent outline.
+				...(isMoving()
+					? {
+							background: 'transparent',
+							'backdrop-filter': 'none',
+							'-webkit-backdrop-filter': 'none',
+							'box-shadow': 'none',
+							border: '2px solid var(--zylem-color-primary, #61a6e8)',
+						}
+					: {}),
+			}}
+		>
+			<DockPreviewOverlay rect={getDockPreviewRect()} rank={() => rank() + 1} />
 
-            {/* Resize handles - edges */}
-            <div
-                style={{ ...resizeHandleStyle('ns-resize'), top: 0, left: '10px', right: '10px', height: '6px' }}
-                onPointerDown={handleResizePointerDown('n')}
-            />
-            <div
-                style={{ ...resizeHandleStyle('ns-resize'), bottom: 0, left: '10px', right: '10px', height: '6px' }}
-                onPointerDown={handleResizePointerDown('s')}
-            />
-            <div
-                style={{ ...resizeHandleStyle('ew-resize'), left: 0, top: '10px', bottom: '10px', width: '6px' }}
-                onPointerDown={handleResizePointerDown('w')}
-            />
-            <div
-                style={{ ...resizeHandleStyle('ew-resize'), right: 0, top: '10px', bottom: '10px', width: '6px' }}
-                onPointerDown={handleResizePointerDown('e')}
-            />
+			{/* Title bar */}
+			<div
+				class="detached-panel-titlebar floating-panel-titlebar"
+				onPointerDown={handleTitleBarPointerDown}
+				style={{
+					'touch-action': 'none',
+					'border-radius': dockedSide() ? '0' : undefined,
+					visibility: isMoving() ? 'hidden' : undefined,
+				}}
+			>
+				<span class="floating-panel-title">{getPanelTitle(props.panelId)}</span>
+				<WindowControls onClose={handleClose} closeLabel="Dock back to panel" />
+			</div>
 
-            {/* Resize handles - corners */}
-            <div
-                style={{ ...resizeHandleStyle('nwse-resize'), top: 0, left: 0, width: '10px', height: '10px' }}
-                onPointerDown={handleResizePointerDown('nw')}
-            />
-            <div
-                style={{ ...resizeHandleStyle('nesw-resize'), top: 0, right: 0, width: '10px', height: '10px' }}
-                onPointerDown={handleResizePointerDown('ne')}
-            />
-            <div
-                style={{ ...resizeHandleStyle('nesw-resize'), bottom: 0, left: 0, width: '10px', height: '10px' }}
-                onPointerDown={handleResizePointerDown('sw')}
-            />
-            <div
-                style={{ ...resizeHandleStyle('nwse-resize'), bottom: 0, right: 0, width: '10px', height: '10px' }}
-                onPointerDown={handleResizePointerDown('se')}
-            />
-        </div>
-    );
+			{/* Content area */}
+			<div
+				class="detached-panel-content floating-panel-content"
+				style={{ visibility: isMoving() ? 'hidden' : undefined }}
+			>
+				{renderPanelContent(props.panelId)}
+			</div>
+
+			{/* Resize handles - edges */}
+			<div
+				style={{
+					...resizeHandleStyle('ns-resize'),
+					top: 0,
+					left: '10px',
+					right: '10px',
+					height: '6px',
+				}}
+				onPointerDown={handleResizePointerDown('n')}
+			/>
+			<div
+				style={{
+					...resizeHandleStyle('ns-resize'),
+					bottom: 0,
+					left: '10px',
+					right: '10px',
+					height: '6px',
+				}}
+				onPointerDown={handleResizePointerDown('s')}
+			/>
+			<div
+				style={{
+					...resizeHandleStyle('ew-resize'),
+					left: 0,
+					top: '10px',
+					bottom: '10px',
+					width: '6px',
+				}}
+				onPointerDown={handleResizePointerDown('w')}
+			/>
+			<div
+				style={{
+					...resizeHandleStyle('ew-resize'),
+					right: 0,
+					top: '10px',
+					bottom: '10px',
+					width: '6px',
+				}}
+				onPointerDown={handleResizePointerDown('e')}
+			/>
+
+			{/* Resize handles - corners */}
+			<div
+				style={{
+					...resizeHandleStyle('nwse-resize'),
+					top: 0,
+					left: 0,
+					width: '10px',
+					height: '10px',
+				}}
+				onPointerDown={handleResizePointerDown('nw')}
+			/>
+			<div
+				style={{
+					...resizeHandleStyle('nesw-resize'),
+					top: 0,
+					right: 0,
+					width: '10px',
+					height: '10px',
+				}}
+				onPointerDown={handleResizePointerDown('ne')}
+			/>
+			<div
+				style={{
+					...resizeHandleStyle('nesw-resize'),
+					bottom: 0,
+					left: 0,
+					width: '10px',
+					height: '10px',
+				}}
+				onPointerDown={handleResizePointerDown('sw')}
+			/>
+			<div
+				style={{
+					...resizeHandleStyle('nwse-resize'),
+					bottom: 0,
+					right: 0,
+					width: '10px',
+					height: '10px',
+				}}
+				onPointerDown={handleResizePointerDown('se')}
+			/>
+		</div>
+	);
 };

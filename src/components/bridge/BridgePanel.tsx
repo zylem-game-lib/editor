@@ -1,16 +1,16 @@
 import { Button } from '@zylem/ui/components';
-import { For, Show, createSignal, onCleanup, onMount, type Component } from 'solid-js';
+import { type Component, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { subscribe } from 'valtio/vanilla';
 import {
 	BRIDGE_RATE_WARNING,
+	type BridgeLogEntry,
+	type BridgeStatsRow,
 	bridgePanelState,
 	clearBridgeLog,
 	formatBytes,
 	setBridgeCapturePaused,
 	startBridgeCapture,
 	stopBridgeCapture,
-	type BridgeLogEntry,
-	type BridgeStatsRow,
 } from './bridge-panel-state';
 
 /**
@@ -40,8 +40,7 @@ export const BridgePanel: Component = () => {
 
 	const togglePaused = () => setBridgeCapturePaused(!bridgePanelState.paused);
 
-	const totalRate = () =>
-		stats().reduce((sum, row) => sum + row.rate, 0);
+	const totalRate = () => stats().reduce((sum, row) => sum + row.rate, 0);
 
 	return (
 		<div class="panel-content">
@@ -52,18 +51,12 @@ export const BridgePanel: Component = () => {
 				<Button size="sm" onClick={clearBridgeLog}>
 					Clear
 				</Button>
-				<span class="zylem-property-value">
-					{totalRate().toFixed(0)} msg/s
-				</span>
+				<span class="zylem-property-value">{totalRate().toFixed(0)} msg/s</span>
 			</section>
 
 			<Show
 				when={stats().length > 0}
-				fallback={
-					<p class="zylem-property-value">
-						No bridge traffic recorded yet.
-					</p>
-				}
+				fallback={<p class="zylem-property-value">No bridge traffic recorded yet.</p>}
 			>
 				<section class="zylem-section">
 					<h4 class="zylem-section-title">Message types</h4>
@@ -74,11 +67,11 @@ export const BridgePanel: Component = () => {
 									class="zylem-property-row"
 									classList={{ 'bridge-row--hot': row.rate > BRIDGE_RATE_WARNING }}
 									title={
-										`sent ${row.sent} · queued ${row.queued} · `
-										+ `delivered ${row.delivered} · `
-										+ `coalesced ${(row.coalesced * 100).toFixed(0)}% · `
-										+ `${row.listeners} listener(s) · `
-										+ `${row.retained} retained`
+										`sent ${row.sent} · queued ${row.queued} · ` +
+										`delivered ${row.delivered} · ` +
+										`coalesced ${(row.coalesced * 100).toFixed(0)}% · ` +
+										`${row.listeners} listener(s) · ` +
+										`${row.retained} retained`
 									}
 								>
 									<span class="zylem-property-label">{row.type}</span>
@@ -108,9 +101,7 @@ export const BridgePanel: Component = () => {
 					>
 						{(entry) => (
 							<div class="bridge-log-row">
-								<span class={`bridge-log-kind bridge-log-kind--${entry.kind}`}>
-									{entry.kind}
-								</span>
+								<span class={`bridge-log-kind bridge-log-kind--${entry.kind}`}>{entry.kind}</span>
 								<span class="bridge-log-type">{entry.type}</span>
 								<span class="bridge-log-meta">{formatBytes(entry.bytes)}</span>
 								<span class="bridge-log-summary">{entry.summary}</span>

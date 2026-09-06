@@ -12,8 +12,8 @@
  * are gone too, so the uuids every entry refers to would be dangling.
  */
 
-import { proxy } from 'valtio/vanilla';
 import type { SceneOperationPayload } from '@zylem/bridge';
+import { proxy } from 'valtio/vanilla';
 
 import { bridgeChannel } from '../../bridge/editor-bridge';
 import { mirrorProxy } from '../common/proxy-mirror';

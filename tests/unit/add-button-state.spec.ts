@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import type { EntityTypeDescriptor } from '@zylem/bridge';
+import { describe, expect, it } from 'vitest';
 
 import {
 	isAddArmed,

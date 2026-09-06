@@ -7,8 +7,8 @@
  * pressing Rotate straight after placing a box would have nothing to turn.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getZylemBridge, type SceneOperationPayload } from '@zylem/bridge';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { connectEditorBridge } from '../../src/bridge/editor-bridge';
 import {
@@ -31,10 +31,7 @@ afterEach(() => {
 	release = null;
 });
 
-function operation(
-	kind: SceneOperationPayload['kind'],
-	uuids: string[],
-): SceneOperationPayload {
+function operation(kind: SceneOperationPayload['kind'], uuids: string[]): SceneOperationPayload {
 	return {
 		opId: `op-${kind}`,
 		kind,
@@ -87,10 +84,7 @@ describe('recording from scene operations', () => {
 	it('takes the last of a multi-entity create', () => {
 		release = connectEditorBridge();
 
-		getZylemBridge().channel.send(
-			'scene:operation',
-			operation('create', ['box-1', 'box-2']),
-		);
+		getZylemBridge().channel.send('scene:operation', operation('create', ['box-1', 'box-2']));
 
 		expect(getLastTouchedEntityId()).toBe('box-2');
 	});

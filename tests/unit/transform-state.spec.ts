@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getZylemBridge, type SnapSettingsPayload } from '@zylem/bridge';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
 	connectTransformState,

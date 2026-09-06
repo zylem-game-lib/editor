@@ -8,8 +8,8 @@
  * editor and its hosts do not share an icon library.
  */
 
-import { proxy } from 'valtio/vanilla';
 import type { EntityTypeDescriptor } from '@zylem/bridge';
+import { proxy } from 'valtio/vanilla';
 
 import { mirrorProxy } from '../common/proxy-mirror';
 
@@ -60,8 +60,7 @@ export function setArmedType(typeId: string | null): void {
 /** The descriptor shown on the Add button: armed type, else the last chosen. */
 export function buttonDescriptor(): EntityTypeDescriptor | null {
 	return (
-		getEntityDescriptor(catalogState.armedTypeId)
-		?? getEntityDescriptor(catalogState.lastTypeId)
+		getEntityDescriptor(catalogState.armedTypeId) ?? getEntityDescriptor(catalogState.lastTypeId)
 	);
 }
 

@@ -1,12 +1,12 @@
 /**
  * Editor Event Bus
- * 
+ *
  * Wraps the shared zylemEventBus to provide backward-compatible API
  * for the editor package. This allows external code to dispatch state
  * updates to the editor using the familiar editorEvents API.
  */
 
-import { zylemEventBus, type ZylemEvents } from '@zylem/game-lib/events';
+import { type ZylemEvents, zylemEventBus } from '@zylem/game-lib/events';
 
 export type EditorEventType = 'debug' | 'game' | 'stage' | 'entities';
 
@@ -62,7 +62,7 @@ class EditorEventBusWrapper {
 			this.legacyListeners.set(type, new Set());
 		}
 		this.legacyListeners.get(type)!.add(handler as EventHandler);
-		
+
 		return () => {
 			this.legacyListeners.get(type)?.delete(handler as EventHandler);
 		};
@@ -78,13 +78,13 @@ class EditorEventBusWrapper {
 
 /**
  * Global editor event bus instance.
- * 
+ *
  * Usage from game-lib:
  * ```ts
  * import { editorEvents } from '@zylem/editor';
  * editorEvents.emit({ type: 'debug', payload: { enabled: true } });
  * ```
- * 
+ *
  * Usage from editor components:
  * ```ts
  * editorEvents.on('debug', (e) => setDebugState(e.payload));

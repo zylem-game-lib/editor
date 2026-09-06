@@ -8,14 +8,14 @@
  * would recreate the very growth problem the panel exists to surface.
  */
 
-import { proxy } from 'valtio/vanilla';
 import {
-	bridgeDebug,
-	getZylemBridge,
 	type BridgeMessageType,
 	type BridgeTraceEvent,
 	type BridgeTypeStats,
+	bridgeDebug,
+	getZylemBridge,
 } from '@zylem/bridge';
+import { proxy } from 'valtio/vanilla';
 
 /** Maximum trace rows retained for display. */
 export const MAX_BRIDGE_LOG_ENTRIES = 200;

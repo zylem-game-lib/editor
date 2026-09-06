@@ -6,8 +6,8 @@
  * drag target.
  */
 
-import { proxy, subscribe } from 'valtio/vanilla';
 import type { SnapSettingsPayload } from '@zylem/bridge';
+import { proxy, subscribe } from 'valtio/vanilla';
 
 import { sendGridVisible, sendSnapSettings } from '../../bridge/editor-bridge';
 import { mirrorProxy } from '../common/proxy-mirror';
@@ -45,7 +45,7 @@ export function setSnapEnabled(enabled: boolean): void {
 }
 
 export function setSnapIncrements(
-	increments: Partial<Pick<TransformState, 'translate' | 'rotate' | 'scale'>>,
+	increments: Partial<Pick<TransformState, 'translate' | 'rotate' | 'scale'>>
 ): void {
 	// A zero or negative increment would snap every value onto 0.
 	for (const [key, value] of Object.entries(increments)) {

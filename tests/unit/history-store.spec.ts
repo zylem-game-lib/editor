@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getZylemBridge, type SceneOperationPayload } from '@zylem/bridge';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
 	canRedo,
@@ -16,7 +16,7 @@ import {
 
 function operation(
 	opId: string,
-	overrides: Partial<SceneOperationPayload> = {},
+	overrides: Partial<SceneOperationPayload> = {}
 ): SceneOperationPayload {
 	return {
 		opId,
@@ -42,12 +42,9 @@ beforeEach(() => {
 
 	// Applications the editor sends back over the bridge for the game to invert.
 	applied = [];
-	stopCapture = getZylemBridge().channel.on(
-		'scene:operation:apply',
-		({ op, direction }) => {
-			applied.push({ opId: op.opId, direction });
-		},
-	);
+	stopCapture = getZylemBridge().channel.on('scene:operation:apply', ({ op, direction }) => {
+		applied.push({ opId: op.opId, direction });
+	});
 });
 
 afterEach(() => {
@@ -179,9 +176,7 @@ describe('history depth', () => {
 
 		expect(historyState.undoStack).toHaveLength(MAX_HISTORY_DEPTH);
 		expect(historyState.undoStack[0]!.opId).toBe('op-5');
-		expect(historyState.undoStack.at(-1)!.opId).toBe(
-			`op-${MAX_HISTORY_DEPTH + 4}`,
-		);
+		expect(historyState.undoStack.at(-1)!.opId).toBe(`op-${MAX_HISTORY_DEPTH + 4}`);
 	});
 
 	it('stays within the game-side recycle bin window', () => {

@@ -46,8 +46,7 @@ export const DOCK_SIDES: readonly DockSide[] = ['left', 'right', 'top', 'bottom'
 export const MIN_FREE_SPACE = 80;
 
 /** Left and right zones are sized along x; top and bottom along y. */
-export const isHorizontalSide = (side: DockSide): boolean =>
-	side === 'left' || side === 'right';
+export const isHorizontalSide = (side: DockSide): boolean => side === 'left' || side === 'right';
 
 /**
  * The edge a docked panel exposes to the rest of the viewport. Dragging it
@@ -103,10 +102,7 @@ export const normalizeDockRegistry = (value: unknown): DockRegistry => {
 	return registry;
 };
 
-export const findDockedSide = (
-	registry: DockRegistry,
-	panelId: DockPanelId,
-): DockSide | null =>
+export const findDockedSide = (registry: DockRegistry, panelId: DockPanelId): DockSide | null =>
 	DOCK_SIDES.find((side) => registry[side].panels.includes(panelId)) ?? null;
 
 export const isDocked = (registry: DockRegistry, panelId: DockPanelId): boolean =>
@@ -123,10 +119,7 @@ const cloneRegistry = (registry: DockRegistry): DockRegistry => {
 	return next;
 };
 
-export const removeFromZones = (
-	registry: DockRegistry,
-	panelId: DockPanelId,
-): DockRegistry => {
+export const removeFromZones = (registry: DockRegistry, panelId: DockPanelId): DockRegistry => {
 	const next = cloneRegistry(registry);
 	for (const side of DOCK_SIDES) {
 		next[side].panels = next[side].panels.filter((id) => id !== panelId);
@@ -142,7 +135,7 @@ export const insertIntoZone = (
 	registry: DockRegistry,
 	panelId: DockPanelId,
 	side: DockSide,
-	index?: number,
+	index?: number
 ): DockRegistry => {
 	const next = removeFromZones(registry, panelId);
 	const panels = next[side].panels;
@@ -161,7 +154,7 @@ const zoneViewportExtent = (side: DockSide, viewport: Viewport): number =>
 export const resolveThickness = (
 	registry: DockRegistry,
 	side: DockSide,
-	viewport: Viewport,
+	viewport: Viewport
 ): number => {
 	if (registry[side].panels.length === 0) return 0;
 	const extent = zoneViewportExtent(side, viewport);
@@ -179,10 +172,11 @@ export const clampThickness = (
 	side: DockSide,
 	thickness: number,
 	viewport: Viewport,
-	minThickness: number,
+	minThickness: number
 ): number => {
 	const extent = zoneViewportExtent(side, viewport);
-	const opposite = side === 'left' ? 'right' : side === 'right' ? 'left' : side === 'top' ? 'bottom' : 'top';
+	const opposite =
+		side === 'left' ? 'right' : side === 'right' ? 'left' : side === 'top' ? 'bottom' : 'top';
 	const opposingThickness = resolveThickness(registry, opposite, viewport);
 	const max = Math.max(1, extent - opposingThickness - MIN_FREE_SPACE);
 	const min = Math.max(1, Math.min(minThickness, max));
@@ -215,7 +209,7 @@ export interface DockLayoutOptions {
 export const computeDockLayout = (
 	registry: DockRegistry,
 	viewport: Viewport,
-	options: DockLayoutOptions = {},
+	options: DockLayoutOptions = {}
 ): Record<DockPanelId, DockRect> => {
 	const minSlot = options.minSlotExtent ?? 0;
 	const layout: Record<DockPanelId, DockRect> = {};
@@ -268,7 +262,7 @@ export const dockSlotIndex = (
 	side: DockSide,
 	pointer: { x: number; y: number },
 	viewport: Viewport,
-	panelId?: DockPanelId,
+	panelId?: DockPanelId
 ): number => {
 	// Ignore the dragged panel's own slot so hovering its current spot is a no-op.
 	const withoutPanel = panelId ? removeFromZones(registry, panelId) : registry;
@@ -295,7 +289,7 @@ export const previewDockRect = (
 	side: DockSide,
 	index: number,
 	viewport: Viewport,
-	options?: DockLayoutOptions,
+	options?: DockLayoutOptions
 ): DockRect | null => {
 	const next = insertIntoZone(registry, panelId, side, index);
 	return computeDockLayout(next, viewport, options)[panelId] ?? null;

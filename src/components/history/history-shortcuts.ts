@@ -32,9 +32,7 @@ export function isEditableTarget(event: Event): boolean {
 }
 
 /** Whether a keydown is the undo or redo chord, and which. */
-export function classifyHistoryShortcut(
-	event: KeyboardEvent,
-): 'undo' | 'redo' | null {
+export function classifyHistoryShortcut(event: KeyboardEvent): 'undo' | 'redo' | null {
 	// `metaKey` on macOS, `ctrlKey` elsewhere. Accepting either means a user on
 	// an external keyboard with the other convention still gets the shortcut.
 	if (!event.metaKey && !event.ctrlKey) return null;
@@ -59,13 +57,10 @@ export interface HistoryShortcutOptions {
  *
  * @returns An uninstall function.
  */
-export function installHistoryShortcuts(
-	options: HistoryShortcutOptions = {},
-): () => void {
+export function installHistoryShortcuts(options: HistoryShortcutOptions = {}): () => void {
 	if (options.enabled === false) return () => {};
 
-	const target = options.target
-		?? (typeof window !== 'undefined' ? window : undefined);
+	const target = options.target ?? (typeof window !== 'undefined' ? window : undefined);
 	if (!target) return () => {};
 
 	const onKeyDown = (event: KeyboardEvent) => {

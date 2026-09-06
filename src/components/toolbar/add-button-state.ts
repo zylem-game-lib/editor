@@ -4,8 +4,8 @@
  * bridge calls.
  */
 
-import type { PickerItem } from '@zylem/ui/components';
 import type { EntityTypeDescriptor } from '@zylem/bridge';
+import type { PickerItem } from '@zylem/ui/components';
 
 import type { DebugTools } from '../entities/entities-state';
 
@@ -35,10 +35,10 @@ export function isAddArmed(tool: DebugTools, armedTypeId: string | null): boolea
 export function resolvePlacementTarget(
 	entities: EntityTypeDescriptor[],
 	armedTypeId: string | null,
-	lastTypeId: string | null,
+	lastTypeId: string | null
 ): EntityTypeDescriptor | null {
 	const byId = (id: string | null) =>
-		id ? entities.find((entity) => entity.id === id) ?? null : null;
+		id ? (entities.find((entity) => entity.id === id) ?? null) : null;
 
 	return byId(armedTypeId) ?? byId(lastTypeId) ?? entities[0] ?? null;
 }

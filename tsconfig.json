@@ -1,29 +1,29 @@
 {
-  "compilerOptions": {
-    "target": "ESNext",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "jsx": "preserve",
-    "jsxImportSource": "solid-js",
-    "types": ["vite/client"],
-    "strict": true,
-    "skipLibCheck": true,
-    // `@zylem/ui/components` ships TSX source (compiled by this package's
-    // bundler), so tsc type-checks it under these options. The ui components
-    // pass optional props through as `T | undefined` and index arrays without
-    // guards, which these two flags reject. Re-enable both once @zylem/ui is
-    // clean under them; the editor's own sources already are.
-    "noUncheckedIndexedAccess": false,
-    "exactOptionalPropertyTypes": false,
-    "noFallthroughCasesInSwitch": true,
-    "forceConsistentCasingInFileNames": true,
-    "allowSyntheticDefaultImports": true,
-    "isolatedModules": true,
-    "resolveJsonModule": true,
-    "declaration": true,
-    "sourceMap": true
-  },
-  "include": ["src/**/*", "tests/**/*", "vite.config.ts", "vitest.config.ts", "tsup.config.ts"],
-  "exclude": ["node_modules", "dist"]
+	"compilerOptions": {
+		"target": "ESNext",
+		"lib": ["ES2023", "DOM", "DOM.Iterable"],
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"jsx": "preserve",
+		"jsxImportSource": "solid-js",
+		"types": ["vite/client"],
+		"strict": true,
+		"skipLibCheck": true,
+		// `@zylem/ui/components` ships TSX source (compiled by this package's
+		// bundler), so tsc type-checks it under these options. The ui components
+		// pass optional props through as `T | undefined` and index arrays without
+		// guards, which these two flags reject. Re-enable both once @zylem/ui is
+		// clean under them; the editor's own sources already are.
+		"noUncheckedIndexedAccess": false,
+		"exactOptionalPropertyTypes": false,
+		"noFallthroughCasesInSwitch": true,
+		"forceConsistentCasingInFileNames": true,
+		"allowSyntheticDefaultImports": true,
+		"isolatedModules": true,
+		"resolveJsonModule": true,
+		"declaration": true,
+		"sourceMap": true
+	},
+	"include": ["src/**/*", "tests/**/*", "vite.config.ts", "vitest.config.ts", "tsup.config.ts"],
+	"exclude": ["node_modules", "dist"]
 }

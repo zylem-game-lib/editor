@@ -6,8 +6,8 @@
  * "find the button you pressed and press it again". Escape is that way out.
  */
 
-import { getDebugTool, setDebugTool } from '../entities/entities-state';
 import { sendAddType, sendTool } from '../../bridge/editor-bridge';
+import { getDebugTool, setDebugTool } from '../entities/entities-state';
 import { isEditableTarget } from '../history/history-shortcuts';
 import { catalogState, setArmedType } from './catalog-state';
 
@@ -42,8 +42,7 @@ export function disarmTools(): boolean {
 export function installToolShortcuts(options: ToolShortcutOptions = {}): () => void {
 	if (options.enabled === false) return () => {};
 
-	const target = options.target
-		?? (typeof window !== 'undefined' ? window : undefined);
+	const target = options.target ?? (typeof window !== 'undefined' ? window : undefined);
 	if (!target) return () => {};
 
 	const onKeyDown = (event: KeyboardEvent) => {

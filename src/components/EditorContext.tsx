@@ -1,16 +1,16 @@
 /**
  * EditorContext - SolidJS context for editor state
- * 
+ *
  * Provides access to debug, game, and stage state throughout the editor component tree.
  */
 
-import { createContext, useContext, onCleanup, type JSX } from 'solid-js';
+import { createContext, type JSX, onCleanup, useContext } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
 import { subscribe } from 'valtio/vanilla';
-import { debugState, type DebugState } from './entities/entities-state';
-import { gameState, type GameState } from './game/game-state';
-import { stageState } from './stages/stage-state';
 import type { StageStateInterface } from '../types';
+import { type DebugState, debugState } from './entities/entities-state';
+import { type GameState, gameState } from './game/game-state';
+import { stageState } from './stages/stage-state';
 
 export interface EditorContextValue {
 	debug: DebugState;
@@ -50,8 +50,8 @@ export function EditorProvider(props: EditorProviderProps) {
 		// Sets are mutated in place, so compare contents and copy only when changed.
 		const nextFlags = debugState.flags;
 		if (
-			debug.flags.size !== nextFlags.size
-			|| [...debug.flags].some((flag) => !nextFlags.has(flag))
+			debug.flags.size !== nextFlags.size ||
+			[...debug.flags].some((flag) => !nextFlags.has(flag))
 		) {
 			setDebug('flags', new Set(nextFlags));
 		}
@@ -109,11 +109,7 @@ export function EditorProvider(props: EditorProviderProps) {
 		stage,
 	};
 
-	return (
-		<EditorContext.Provider value={value}>
-			{props.children}
-		</EditorContext.Provider>
-	);
+	return <EditorContext.Provider value={value}>{props.children}</EditorContext.Provider>;
 }
 
 /**

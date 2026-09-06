@@ -1,7 +1,6 @@
-import { createMemo, For, Show, type Component } from 'solid-js';
-
-import { useEditor } from '../EditorContext';
+import { type Component, createMemo, For, Show } from 'solid-js';
 import { sendEntityTransform } from '../../bridge/editor-bridge';
+import { useEditor } from '../EditorContext';
 import { setGridVisible, setSnapEnabled, transformStore } from './transform-state';
 
 /** Snap increments are world units, so 3 decimals is more than enough. */
@@ -72,9 +71,7 @@ export const TransformSection: Component = () => {
 			return;
 		}
 
-		const increment = channel === 'scale'
-			? transformStore.scale
-			: transformStore.translate;
+		const increment = channel === 'scale' ? transformStore.scale : transformStore.translate;
 		const value = snap(parsed, increment);
 
 		if (channel === 'scale') {
@@ -124,11 +121,7 @@ export const TransformSection: Component = () => {
 		<div class="panel-content">
 			<Show
 				when={selected()}
-				fallback={
-					<p class="zylem-transform-empty">
-						Select an entity to edit its transform.
-					</p>
-				}
+				fallback={<p class="zylem-transform-empty">Select an entity to edit its transform.</p>}
 			>
 				<section>
 					{row('position', 'Position')}

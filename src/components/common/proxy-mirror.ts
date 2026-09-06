@@ -28,7 +28,7 @@ function copy<T>(value: T): T {
 	}
 	if (value instanceof Map) {
 		return new Map(
-			[...value].map(([entryKey, entryValue]) => [entryKey, copy(entryValue)]),
+			[...value].map(([entryKey, entryValue]) => [entryKey, copy(entryValue)])
 		) as unknown as T;
 	}
 	// Class instances are passed through by reference: the editor's state holds
@@ -62,7 +62,7 @@ export interface ProxyMirrorOptions {
  */
 export function mirrorProxy<T extends object>(
 	source: T,
-	options: ProxyMirrorOptions = {},
+	options: ProxyMirrorOptions = {}
 ): Store<T> {
 	const key = options.key ?? 'id';
 	const [store, setStore] = createStore<T>(copy(source));

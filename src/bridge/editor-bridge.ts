@@ -13,7 +13,6 @@
  */
 
 import {
-	getZylemBridge,
 	type BridgeDebugTool,
 	type BridgePose,
 	type BridgeQuat,
@@ -22,29 +21,29 @@ import {
 	type EntitySummaryPayload,
 	type EntityThumbnailPayload,
 	type EntityTypeDescriptor,
-	type SceneOperationPayload,
-	type SnapSettingsPayload,
-	type StageSnapshotPayload,
 	type GameConfigPayload,
 	type GameNoticePayload,
 	type GameVariablePayload,
+	getZylemBridge,
+	type SceneOperationPayload,
+	type SnapSettingsPayload,
+	type StageSnapshotPayload,
 } from '@zylem/bridge';
-
-import { gameState } from '../components/game/game-state';
-import { stageState } from '../components/stages/stage-state';
+import { printToConsole } from '../components/console/console-state';
+import { setDebugStore } from '../components/editor-store';
 import {
 	debugState as editorDebugState,
 	noteTouchedEntity,
 } from '../components/entities/entities-state';
-import { setDebugStore } from '../components/editor-store';
-import { printToConsole } from '../components/console/console-state';
 import {
 	clearEntityThumbnails,
 	removeEntityThumbnails,
 	setEntityThumbnails,
 } from '../components/entities/thumbnail-store';
-import { setEntityCatalog } from '../components/toolbar/catalog-state';
+import { gameState } from '../components/game/game-state';
 import { clearHistory, pushOperation } from '../components/history/history-store';
+import { stageState } from '../components/stages/stage-state';
+import { setEntityCatalog } from '../components/toolbar/catalog-state';
 import { notifySceneOperation } from '../host/scene-operation-hook';
 import type { BaseEntityInterface } from '../types';
 
@@ -78,7 +77,7 @@ function toEntityInterface(payload: EntitySummaryPayload): BaseEntityInterface {
 /** Copy changed fields onto an existing entity, leaving untouched ones alone. */
 function updateEntityInPlace(
 	target: Partial<BaseEntityInterface>,
-	payload: EntitySummaryPayload,
+	payload: EntitySummaryPayload
 ): void {
 	if (target.name !== payload.name) target.name = payload.name;
 	if (target.type !== payload.type) target.type = payload.type;
@@ -98,7 +97,7 @@ function updateEntityInPlace(
 
 function isSameVec3(
 	a: { x: number; y: number; z: number } | undefined,
-	b: { x: number; y: number; z: number } | undefined,
+	b: { x: number; y: number; z: number } | undefined
 ): boolean {
 	if (a === b) return true;
 	if (!a || !b) return false;
@@ -107,7 +106,7 @@ function isSameVec3(
 
 function isSameBounds(
 	a: { width: number; height: number; depth: number } | undefined,
-	b: { width: number; height: number; depth: number } | undefined,
+	b: { width: number; height: number; depth: number } | undefined
 ): boolean {
 	if (a === b) return true;
 	if (!a || !b) return false;
@@ -152,10 +151,10 @@ function applyGameConfig(config: GameConfigPayload): void {
 	const nextResolution = config.internalResolution;
 	const currentResolution = current.internalResolution;
 	const resolutionChanged =
-		(!nextResolution || !currentResolution)
+		!nextResolution || !currentResolution
 			? nextResolution !== currentResolution
-			: nextResolution.width !== currentResolution.width
-			|| nextResolution.height !== currentResolution.height;
+			: nextResolution.width !== currentResolution.width ||
+				nextResolution.height !== currentResolution.height;
 	if (resolutionChanged) {
 		current.internalResolution = nextResolution;
 	}
@@ -282,8 +281,7 @@ function applyEntitySelection(selection: EntitySelectionPayload): void {
 	editorDebugState.selectedEntityId = selection.selectedUuid;
 	editorDebugState.hoveredEntityId = selection.hoveredUuid;
 	editorDebugState.selectedEntityIds =
-		selection.selectedUuids
-		?? (selection.selectedUuid ? [selection.selectedUuid] : []);
+		selection.selectedUuids ?? (selection.selectedUuid ? [selection.selectedUuid] : []);
 	// Written field by field rather than through `setSelectedEntityId`, so the
 	// in-scene Select tool's picks have to be recorded here too.
 	noteTouchedEntity(selection.selectedUuid);
@@ -429,23 +427,20 @@ export function sendEntityTransform(
 		rotation?: BridgeVec3;
 		quaternion?: BridgeQuat;
 		scale?: BridgeVec3;
-	},
+	}
 ): void {
 	channel.send('entity:transform', { uuid, ...transform });
 }
 
 /** Arm the game's add tool with a catalog type, or `null` to disarm it. */
-export function sendAddType(
-	typeId: string | null,
-	props?: Record<string, unknown>,
-): void {
+export function sendAddType(typeId: string | null, props?: Record<string, unknown>): void {
 	channel.send('add:type:set', props ? { typeId, props } : { typeId });
 }
 
 /** Spawn a catalog entity without a placement click. */
 export function sendEntityCreate(
 	typeId: string,
-	options?: { props?: Record<string, unknown>; pose?: BridgePose },
+	options?: { props?: Record<string, unknown>; pose?: BridgePose }
 ): void {
 	channel.send('entity:create', {
 		typeId,

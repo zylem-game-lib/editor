@@ -1,13 +1,13 @@
-import type { Component } from 'solid-js';
 import Box from 'lucide-solid/icons/box';
-import Type from 'lucide-solid/icons/type';
-import Square from 'lucide-solid/icons/square';
-import Grid3x3 from 'lucide-solid/icons/grid-3x3';
-import Torus from 'lucide-solid/icons/torus';
-import PersonStanding from 'lucide-solid/icons/person-standing';
 import GhostIcon from 'lucide-solid/icons/ghost';
-import SquareDashed from 'lucide-solid/icons/square-dashed';
 import Globe from 'lucide-solid/icons/globe';
+import Grid3x3 from 'lucide-solid/icons/grid-3x3';
+import PersonStanding from 'lucide-solid/icons/person-standing';
+import Square from 'lucide-solid/icons/square';
+import SquareDashed from 'lucide-solid/icons/square-dashed';
+import Torus from 'lucide-solid/icons/torus';
+import Type from 'lucide-solid/icons/type';
+import type { Component } from 'solid-js';
 
 /**
  * Map entity type strings to lucide-solid icons.

@@ -9,9 +9,8 @@
  */
 
 import { subscribe } from 'valtio/vanilla';
-
-import { debugState, setDebugTool, type DebugTools } from '../entities/entities-state';
 import { sendTool } from '../../bridge/editor-bridge';
+import { type DebugTools, debugState, setDebugTool } from '../entities/entities-state';
 
 const TRANSFORM_TOOLS = new Set<DebugTools>(['translate', 'rotate', 'scale']);
 
@@ -44,9 +43,7 @@ export interface TransformToolGuardOptions {
  *
  * @returns An uninstall function.
  */
-export function installTransformToolGuard(
-	options: TransformToolGuardOptions = {},
-): () => void {
+export function installTransformToolGuard(options: TransformToolGuardOptions = {}): () => void {
 	if (options.enabled === false) return () => {};
 
 	releaseOrphanedTransformTool();

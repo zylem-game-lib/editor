@@ -9,21 +9,14 @@
  * editor UI.
  */
 
-import { getZylemBridge, type BridgeDebugTool } from '@zylem/bridge';
-import {
-	sendDebugEnabled,
-	sendPlayback,
-	sendTool,
-} from '../bridge/editor-bridge';
-import { debugState as editorDebugState } from '../components/entities/entities-state';
-import { setDebugStore } from '../components/editor-store';
-import {
-	registerZylemEditor,
-	type ZylemEditorElement,
-} from '../web-components/zylem-editor';
+import { type BridgeDebugTool, getZylemBridge } from '@zylem/bridge';
 import type { EditorLauncherMode } from '../App';
-import type { EditorDockDefaults } from '../components/editor-store';
+import { sendDebugEnabled, sendPlayback, sendTool } from '../bridge/editor-bridge';
 import type { DockPanelId, DockSide } from '../components/common/dock-layout';
+import type { EditorDockDefaults } from '../components/editor-store';
+import { setDebugStore } from '../components/editor-store';
+import { debugState as editorDebugState } from '../components/entities/entities-state';
+import { registerZylemEditor, type ZylemEditorElement } from '../web-components/zylem-editor';
 
 /**
  * Nested state payload used by host-facing helpers.
@@ -95,9 +88,7 @@ export function dispatchToEditor(payload: EditorUpdatePayload): void {
  * // later: bridge.dispatchToEditor({ gameState: { debugFlag: false } });
  * ```
  */
-export function attachEditorStateBridge(
-	options: EditorStateBridgeOptions = {},
-): EditorStateBridge {
+export function attachEditorStateBridge(options: EditorStateBridgeOptions = {}): EditorStateBridge {
 	const { channel } = getZylemBridge();
 	const unsubscribes = [
 		channel.on('debug:set', ({ enabled }) => {
@@ -178,9 +169,7 @@ export interface MountedZylemEditor extends EditorStateBridge {
  * mountZylemEditor({ launcherMode: 'floating' });
  * ```
  */
-export function mountZylemEditor(
-	options: MountZylemEditorOptions = {},
-): MountedZylemEditor {
+export function mountZylemEditor(options: MountZylemEditorOptions = {}): MountedZylemEditor {
 	registerZylemEditor();
 
 	const element = document.createElement('zylem-editor') as ZylemEditorElement;

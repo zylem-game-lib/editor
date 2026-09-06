@@ -23,10 +23,7 @@ export const printToConsole = (message: string) => {
 	const formattedMessage = `[${timestamp}] ${message}`;
 	consoleState.messages.push(formattedMessage);
 	if (consoleState.messages.length > MAX_CONSOLE_MESSAGES) {
-		consoleState.messages.splice(
-			0,
-			consoleState.messages.length - MAX_CONSOLE_MESSAGES,
-		);
+		consoleState.messages.splice(0, consoleState.messages.length - MAX_CONSOLE_MESSAGES);
 	}
 };
 
@@ -42,4 +39,4 @@ export const clearConsole = () => {
  */
 export const getConsoleContent = () => {
 	return consoleState.messages.join('\n');
-}; 
+};

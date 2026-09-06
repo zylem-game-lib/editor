@@ -1,9 +1,5 @@
 import type { Component } from 'solid-js';
-import {
-	Editor,
-	type EditorController,
-	type EditorLauncherMode,
-} from './components/Editor';
+import { Editor, type EditorController, type EditorLauncherMode } from './components/Editor';
 import type { EditorDockDefaults } from './components/editor-store';
 
 export interface AppProps {

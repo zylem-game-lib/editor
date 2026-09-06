@@ -2,90 +2,91 @@
  * Store exports for the editor package.
  */
 
-// Event bus for external state sync
-export { editorEvents, type EditorEvent, type EditorEventType } from './events';
-
-// State modules - re-exported from UI section directories
-export {
-	debugState,
-	type DebugState,
-	type DebugTools,
-	resetHoveredEntity,
-	getHoveredEntityId,
-	setHoveredEntityId,
-	getSelectedEntityId,
-	setSelectedEntityId,
-	getDebugTool,
-	setDebugTool,
-	isPaused,
-	setPaused,
-} from './entities/entities-state';
-export { gameState, state, getGlobalState, getGlobal, setGlobal } from './game/game-state';
-export { stageState, stageStateToString } from './stages/stage-state';
-
 // Types
 export type { BaseEntityInterface, StageStateInterface, Vector3Like } from '../types';
-
-// SolidJS integration
+// Bridge debug panel
 export {
-	debugStore,
-	setDebugStore,
-	setPanelPosition,
-	setPanelSize,
-	setToggleButtonPosition,
-	detachPanel,
-	reattachPanel,
-	updateDetachedPanelPosition,
-	updateDetachedPanelSize,
-	reorderPanels,
-	setOpenSections,
-	isPanelDetached,
-	setDraggingPanel,
-	setDropTargetIndex,
-	clearDragState,
-	bringPanelToFront,
-	dockPanelToSide,
-	undockPanelFromSides,
-	setDockThickness,
-	getDockedSide,
-	applyDefaultDocks,
-	MAIN_PANEL_ID,
-	type DetachedPanelState,
-	type EditorDockDefaults,
-} from './editor-store';
-
+	type BridgeLogEntry,
+	type BridgePanelState,
+	type BridgeStatsRow,
+	bridgePanelState,
+	clearBridgeLog,
+	MAX_BRIDGE_LOG_ENTRIES,
+	setBridgeCapturePaused,
+	startBridgeCapture,
+	stopBridgeCapture,
+} from './bridge/bridge-panel-state';
 // Dock layout geometry
 export {
-	computeDockLayout,
-	findDockedSide,
-	innerEdgeFor,
-	isHorizontalSide,
-	previewDockRect,
-	dockSlotIndex,
 	clampThickness,
-	resolveThickness,
+	computeDockLayout,
 	DOCK_SIDES,
 	type DockPanelId,
 	type DockRect,
 	type DockRegistry,
 	type DockSide,
 	type DockZoneState,
+	dockSlotIndex,
+	findDockedSide,
+	innerEdgeFor,
+	isHorizontalSide,
+	previewDockRect,
+	resolveThickness,
 	type Viewport,
 } from './common/dock-layout';
-export { EditorProvider, useEditor, type EditorContextValue } from './EditorContext';
-
 // Console
-export { consoleState, printToConsole, clearConsole, getConsoleContent, MAX_CONSOLE_MESSAGES } from './console/console-state';
-
-// Bridge debug panel
 export {
-	bridgePanelState,
-	startBridgeCapture,
-	stopBridgeCapture,
-	setBridgeCapturePaused,
-	clearBridgeLog,
-	MAX_BRIDGE_LOG_ENTRIES,
-	type BridgeLogEntry,
-	type BridgePanelState,
-	type BridgeStatsRow,
-} from './bridge/bridge-panel-state';
+	clearConsole,
+	consoleState,
+	getConsoleContent,
+	MAX_CONSOLE_MESSAGES,
+	printToConsole,
+} from './console/console-state';
+export { type EditorContextValue, EditorProvider, useEditor } from './EditorContext';
+
+// SolidJS integration
+export {
+	applyDefaultDocks,
+	bringPanelToFront,
+	clearDragState,
+	type DetachedPanelState,
+	debugStore,
+	detachPanel,
+	dockPanelToSide,
+	type EditorDockDefaults,
+	getDockedSide,
+	isPanelDetached,
+	MAIN_PANEL_ID,
+	reattachPanel,
+	reorderPanels,
+	setDebugStore,
+	setDockThickness,
+	setDraggingPanel,
+	setDropTargetIndex,
+	setOpenSections,
+	setPanelPosition,
+	setPanelSize,
+	setToggleButtonPosition,
+	undockPanelFromSides,
+	updateDetachedPanelPosition,
+	updateDetachedPanelSize,
+} from './editor-store';
+// State modules - re-exported from UI section directories
+export {
+	type DebugState,
+	type DebugTools,
+	debugState,
+	getDebugTool,
+	getHoveredEntityId,
+	getSelectedEntityId,
+	isPaused,
+	resetHoveredEntity,
+	setDebugTool,
+	setHoveredEntityId,
+	setPaused,
+	setSelectedEntityId,
+} from './entities/entities-state';
+// Event bus for external state sync
+export { type EditorEvent, type EditorEventType, editorEvents } from './events';
+export { gameState, getGlobal, getGlobalState, setGlobal, state } from './game/game-state';
+export { stageState, stageStateToString } from './stages/stage-state';

@@ -15,14 +15,10 @@ export interface EntityThumbnailEntry {
 	bounds?: { width: number; height: number; depth: number };
 }
 
-const [thumbnails, setThumbnails] = createStore<
-	Record<string, EntityThumbnailEntry>
->({});
+const [thumbnails, setThumbnails] = createStore<Record<string, EntityThumbnailEntry>>({});
 
 /** Reactive thumbnail lookup for an entity, or undefined when none exists. */
-export function getEntityThumbnail(
-	uuid: string | undefined,
-): EntityThumbnailEntry | undefined {
+export function getEntityThumbnail(uuid: string | undefined): EntityThumbnailEntry | undefined {
 	return uuid ? thumbnails[uuid] : undefined;
 }
 
@@ -31,7 +27,7 @@ export function getEntityThumbnail(
  * release the underlying image.
  */
 export function setEntityThumbnails(
-	entries: { uuid: string; url: string; bounds?: EntityThumbnailEntry['bounds'] }[],
+	entries: { uuid: string; url: string; bounds?: EntityThumbnailEntry['bounds'] }[]
 ): void {
 	setThumbnails(
 		produce((draft) => {
@@ -44,7 +40,7 @@ export function setEntityThumbnails(
 					? { url: entry.url, bounds: entry.bounds }
 					: { url: entry.url };
 			}
-		}),
+		})
 	);
 }
 
@@ -58,7 +54,7 @@ export function removeEntityThumbnails(uuids: string[]): void {
 				revokeIfBlobUrl(previous.url);
 				delete draft[uuid];
 			}
-		}),
+		})
 	);
 }
 
@@ -70,7 +66,7 @@ export function clearEntityThumbnails(): void {
 				revokeIfBlobUrl(draft[uuid]!.url);
 				delete draft[uuid];
 			}
-		}),
+		})
 	);
 }
 

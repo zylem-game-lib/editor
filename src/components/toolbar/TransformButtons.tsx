@@ -1,13 +1,13 @@
+import { ToolbarButton } from '@zylem/ui/components';
 import Move3d from 'lucide-solid/icons/move-3d';
 import Rotate3d from 'lucide-solid/icons/rotate-3d';
 import Scale3d from 'lucide-solid/icons/scale-3d';
-import { createMemo, type Component, type JSX } from 'solid-js';
-import { setDebugTool, debugStore, setSelectedEntityId, type DebugTools } from '..';
+import { type Component, createMemo, type JSX } from 'solid-js';
 import { sendAddType, sendEntitySelect, sendTool } from '../../bridge/editor-bridge';
+import { type DebugTools, debugStore, setDebugTool, setSelectedEntityId } from '..';
 import { useEditor } from '../EditorContext';
 import { setArmedType } from './catalog-state';
 import { resolveTransformTarget } from './transform-button-state';
-import { ToolbarButton } from '@zylem/ui/components';
 
 interface TransformToolButtonProps {
 	tool: Extract<DebugTools, 'translate' | 'rotate' | 'scale'>;
@@ -31,10 +31,8 @@ const TransformToolButton: Component<TransformToolButtonProps> = (props) => {
 		resolveTransformTarget(
 			debugStore.selected,
 			debugStore.lastTouched,
-			stage.entities
-				.map((entity) => entity.uuid)
-				.filter((uuid): uuid is string => Boolean(uuid)),
-		),
+			stage.entities.map((entity) => entity.uuid).filter((uuid): uuid is string => Boolean(uuid))
+		)
 	);
 
 	const handleClick = () => {

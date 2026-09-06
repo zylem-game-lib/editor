@@ -6,17 +6,17 @@
 
 import { createStore } from 'solid-js/store';
 import { subscribe } from 'valtio/vanilla';
-import { debugState, type DebugTools } from './entities/entities-state';
 import {
 	createEmptyDockRegistry,
+	type DockPanelId,
+	type DockRegistry,
+	type DockSide,
 	findDockedSide,
 	insertIntoZone,
 	normalizeDockRegistry,
 	removeFromZones,
-	type DockPanelId,
-	type DockRegistry,
-	type DockSide,
 } from './common/dock-layout';
+import { type DebugTools, debugState } from './entities/entities-state';
 
 // localStorage key for persisted state
 const STORAGE_KEY = 'zylem-editor-state';
@@ -99,7 +99,7 @@ export const [debugStore, setDebugStore] = createStore({
 	toggleButtonPosition: persisted.toggleButtonPosition ?? { x: 0, y: 0 },
 	// Detachable panel state
 	panelOrder: withNewPanels(persisted.panelOrder),
-	detachedPanels: persisted.detachedPanels ?? {} as Record<string, DetachedPanelState>,
+	detachedPanels: persisted.detachedPanels ?? ({} as Record<string, DetachedPanelState>),
 	openSections: persisted.openSections ?? ['console'],
 	// Z-index ordering (last item = on top)
 	panelZOrder: persisted.panelZOrder ?? [],
@@ -159,7 +159,10 @@ export const reattachPanel = (panelId: string, insertIndex?: number) => {
 	// Remove from detached panels
 	setDebugStore('detachedPanels', panelId, undefined!);
 	// Remove from z-order
-	setDebugStore('panelZOrder', debugStore.panelZOrder.filter((id) => id !== panelId));
+	setDebugStore(
+		'panelZOrder',
+		debugStore.panelZOrder.filter((id) => id !== panelId)
+	);
 	// A panel living back in the accordion can't also hold a dock slot.
 	setDebugStore('docks', removeFromZones(debugStore.docks, panelId));
 
@@ -167,7 +170,11 @@ export const reattachPanel = (panelId: string, insertIndex?: number) => {
 	const currentOrder = debugStore.panelOrder;
 	if (!currentOrder.includes(panelId)) {
 		if (insertIndex !== undefined) {
-			setDebugStore('panelOrder', [...currentOrder.slice(0, insertIndex), panelId, ...currentOrder.slice(insertIndex)]);
+			setDebugStore('panelOrder', [
+				...currentOrder.slice(0, insertIndex),
+				panelId,
+				...currentOrder.slice(insertIndex),
+			]);
 		} else {
 			setDebugStore('panelOrder', [...currentOrder, panelId]);
 		}
@@ -181,12 +188,18 @@ export const bringPanelToFront = (panelId: string) => {
 	persistState();
 };
 
-export const updateDetachedPanelPosition = (panelId: string, position: { x: number; y: number }) => {
+export const updateDetachedPanelPosition = (
+	panelId: string,
+	position: { x: number; y: number }
+) => {
 	setDebugStore('detachedPanels', panelId, 'position', position);
 	persistState();
 };
 
-export const updateDetachedPanelSize = (panelId: string, size: { width: number; height: number }) => {
+export const updateDetachedPanelSize = (
+	panelId: string,
+	size: { width: number; height: number }
+) => {
 	setDebugStore('detachedPanels', panelId, 'size', size);
 	persistState();
 };
@@ -207,11 +220,7 @@ export const isPanelDetached = (panelId: string): boolean => {
 
 // Dock registry actions. Rects are derived from this by `computeDockLayout`,
 // so moving a panel between zones relayouts every other docked panel too.
-export const dockPanelToSide = (
-	panelId: DockPanelId,
-	side: DockSide,
-	index?: number,
-) => {
+export const dockPanelToSide = (panelId: DockPanelId, side: DockSide, index?: number) => {
 	setDebugStore('docks', insertIntoZone(debugStore.docks, panelId, side, index));
 	persistState();
 };
@@ -290,4 +299,3 @@ subscribe(debugState, () => {
 	setDebugStore('selected', debugState.selectedEntityId ? [debugState.selectedEntityId] : []);
 	setDebugStore('lastTouched', debugState.lastTouchedEntityId);
 });
-

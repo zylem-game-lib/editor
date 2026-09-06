@@ -75,7 +75,7 @@ function createHarnessStage() {
 		platform,
 		crate,
 		tallCrate,
-		ball,
+		ball
 	);
 }
 
@@ -114,7 +114,7 @@ export function bootstrapHarnessGame(element: HTMLElement): ReturnType<typeof cr
 			// without a trip to the toolbar.
 			debug: true,
 		},
-		createHarnessStage(),
+		createHarnessStage()
 	);
 
 	(element as HTMLElement & { game: unknown }).game = game;

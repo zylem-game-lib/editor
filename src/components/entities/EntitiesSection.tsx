@@ -1,13 +1,13 @@
 import type { Component } from 'solid-js';
 import { For } from 'solid-js';
-import { useEditor } from '../EditorContext';
-import { EntityThumbnail } from './EntityThumbnail';
 import { sendEntityFocus, sendEntitySelect } from '../../bridge/editor-bridge';
+import type { BaseEntityInterface } from '../../types';
+import { printToConsole } from '..';
+import { useEditor } from '../EditorContext';
 import { setDebugStore } from '../editor-store';
+import { EntityThumbnail } from './EntityThumbnail';
 import { setSelectedEntityId } from './entities-state';
 import { getEntityThumbnail } from './thumbnail-store';
-import { printToConsole } from '..';
-import type { BaseEntityInterface } from '../../types';
 
 /**
  * Handle entity button click — log entity info to the editor console, select
@@ -38,9 +38,7 @@ export const EntitiesSection: Component = () => {
 							<button
 								class="entity-grid-item"
 								type="button"
-								title={
-									entity.name ? `${entity.name} (${entity.uuid})` : entity.uuid
-								}
+								title={entity.name ? `${entity.name} (${entity.uuid})` : entity.uuid}
 								onClick={() => handleEntityClick(entity)}
 							>
 								<EntityThumbnail

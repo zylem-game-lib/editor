@@ -4,17 +4,17 @@
  */
 
 import type { Component, JSX } from 'solid-js';
+import { BridgePanel } from '../bridge/BridgePanel';
+import { Console } from '../console/Console';
+import { EntitiesSection } from '../entities/EntitiesSection';
 import { GameSection } from '../game/GameSection';
 import { StageSection } from '../stages/StageSection';
-import { EntitiesSection } from '../entities/EntitiesSection';
 import { TransformSection } from '../transform/TransformSection';
-import { Console } from '../console/Console';
-import { BridgePanel } from '../bridge/BridgePanel';
 
 export interface PanelConfig {
-    id: string;
-    title: string;
-    component: Component;
+	id: string;
+	title: string;
+	component: Component;
 }
 
 /**
@@ -22,34 +22,34 @@ export interface PanelConfig {
  * Order here is the default order.
  */
 export const PANEL_CONFIGS: PanelConfig[] = [
-    { id: 'game-config', title: 'Game', component: GameSection },
-    { id: 'stage-config', title: 'Stage', component: StageSection },
-    { id: 'entities', title: 'Entities', component: EntitiesSection },
-    { id: 'transform', title: 'Transform', component: TransformSection },
-    { id: 'console', title: 'Console', component: Console },
-    { id: 'bridge', title: 'Bridge', component: BridgePanel },
+	{ id: 'game-config', title: 'Game', component: GameSection },
+	{ id: 'stage-config', title: 'Stage', component: StageSection },
+	{ id: 'entities', title: 'Entities', component: EntitiesSection },
+	{ id: 'transform', title: 'Transform', component: TransformSection },
+	{ id: 'console', title: 'Console', component: Console },
+	{ id: 'bridge', title: 'Bridge', component: BridgePanel },
 ];
 
 /**
  * Get panel config by ID.
  */
 export const getPanelConfig = (id: string): PanelConfig | undefined => {
-    return PANEL_CONFIGS.find((p) => p.id === id);
+	return PANEL_CONFIGS.find((p) => p.id === id);
 };
 
 /**
  * Get panel title by ID.
  */
 export const getPanelTitle = (id: string): string => {
-    return getPanelConfig(id)?.title ?? id;
+	return getPanelConfig(id)?.title ?? id;
 };
 
 /**
  * Render a panel's content by ID.
  */
 export const renderPanelContent = (id: string): JSX.Element | null => {
-    const config = getPanelConfig(id);
-    if (!config) return null;
-    const PanelComponent = config.component;
-    return <PanelComponent />;
+	const config = getPanelConfig(id);
+	if (!config) return null;
+	const PanelComponent = config.component;
+	return <PanelComponent />;
 };

@@ -1,5 +1,5 @@
-export { Toolbar } from './Toolbar';
-export { DeleteButton } from './DeleteButton';
 export { AddButton } from './AddButton';
-export { SelectButton } from './SelectButton';
+export { DeleteButton } from './DeleteButton';
 export { PlayPauseButton } from './PlayPauseButton';
+export { SelectButton } from './SelectButton';
+export { Toolbar } from './Toolbar';
