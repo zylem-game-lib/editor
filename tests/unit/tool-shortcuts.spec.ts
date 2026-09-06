@@ -16,7 +16,7 @@ import {
 	setDebugTool,
 } from '../../src/components/entities/entities-state';
 
-function escape(): KeyboardEvent {
+function escapeKey(): KeyboardEvent {
 	return new KeyboardEvent('keydown', {
 		key: 'Escape',
 		bubbles: true,
@@ -96,7 +96,7 @@ describe('installToolShortcuts', () => {
 		setDebugTool('add');
 		setArmedType('box');
 
-		window.dispatchEvent(escape());
+		window.dispatchEvent(escapeKey());
 
 		expect(getDebugTool()).toBe('none');
 		expect(catalogState.armedTypeId).toBeNull();
@@ -105,13 +105,13 @@ describe('installToolShortcuts', () => {
 	it('claims Escape only when a tool was active', () => {
 		uninstall = installToolShortcuts();
 
-		const idle = escape();
+		const idle = escapeKey();
 		window.dispatchEvent(idle);
 		// Escape still has to close popovers and dialogs the rest of the time.
 		expect(idle.defaultPrevented).toBe(false);
 
 		setDebugTool('add');
-		const active = escape();
+		const active = escapeKey();
 		window.dispatchEvent(active);
 		expect(active.defaultPrevented).toBe(true);
 	});
@@ -122,7 +122,7 @@ describe('installToolShortcuts', () => {
 
 		const input = document.createElement('input');
 		document.body.append(input);
-		input.dispatchEvent(escape());
+		input.dispatchEvent(escapeKey());
 
 		expect(getDebugTool()).toBe('add');
 	});
@@ -142,7 +142,7 @@ describe('installToolShortcuts', () => {
 		uninstall = installToolShortcuts({ enabled: false });
 		setDebugTool('add');
 
-		window.dispatchEvent(escape());
+		window.dispatchEvent(escapeKey());
 
 		expect(getDebugTool()).toBe('add');
 	});
@@ -152,7 +152,7 @@ describe('installToolShortcuts', () => {
 		setDebugTool('add');
 		stop();
 
-		window.dispatchEvent(escape());
+		window.dispatchEvent(escapeKey());
 
 		expect(getDebugTool()).toBe('add');
 	});

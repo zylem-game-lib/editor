@@ -1,0 +1,25 @@
+# Dependencies / build output
+node_modules
+dist
+dist-ssr
+.vite
+*.tsbuildinfo
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Environment
+.env
+*.local
+
+# Test artifacts
+coverage
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store

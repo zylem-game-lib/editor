@@ -1,5 +1,5 @@
 /**
- * Dev harness for `pnpm --filter @zylem/editor dev`.
+ * Dev harness for `pnpm dev`.
  *
  * Boots a real game — WebGL, wasm physics, and the game-side bridge adapter —
  * rather than publishing canned payloads. The transform tools are only
@@ -100,7 +100,7 @@ export function createHarnessGameElement(): HTMLElement {
  *
  * @returns The running game.
  */
-export function bootstrapHarnessGame(element: HTMLElement) {
+export function bootstrapHarnessGame(element: HTMLElement): ReturnType<typeof createGame> {
 	attachEditorStateBridge({
 		onStateDispatch(payload) {
 			console.debug('[editor harness] editor command', payload);

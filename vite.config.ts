@@ -11,7 +11,8 @@ const devPort = 3332;
 // here — Vite, Rollup, and esbuild all honor the subpath export.
 //
 // Publish builds use `tsup` (`pnpm build`); this config is for `vite` serve
-// (the dev harness, which boots a real game) and `vite preview` only.
+// (the dev harness, which boots a real game against `@zylem/game-lib`) and
+// `vite preview` only.
 export default defineConfig({
 	plugins: [solid()],
 	build: {
@@ -42,16 +43,19 @@ export default defineConfig({
 	server: {
 		port: devPort,
 		fs: {
-			// The monorepo root plus sibling polyrepo dirs when zw-linked. A
-			// published `@zylem/runtime` serves its wasm from
-			// `zylem/node_modules/.pnpm/@zylem+runtime@*/dist`, but a linked one
-			// resolves through the symlink to `runtime/dist`, which is outside
-			// this repo and would otherwise be refused with a 403.
+			// This repo plus the sibling polyrepo checkouts when `zw link dev` has
+			// swapped a dependency for a `link:` override. A published
+			// `@zylem/runtime` serves its wasm from
+			// `node_modules/.pnpm/@zylem+runtime@*/dist`, but a linked one resolves
+			// through the symlink to `../runtime/dist`, which is outside this repo
+			// and would otherwise be refused with a 403. `zylem` covers linked
+			// `@zylem/game-lib` and `@zylem/bridge` (`zylem/packages/*`).
 			allow: [
-				path.resolve(__dirname, '../..'),
-				path.resolve(__dirname, '../../../zylem-ui'),
-				path.resolve(__dirname, '../../../behaviors'),
-				path.resolve(__dirname, '../../../runtime'),
+				path.resolve(__dirname),
+				path.resolve(__dirname, '../zylem'),
+				path.resolve(__dirname, '../zylem-ui'),
+				path.resolve(__dirname, '../behaviors'),
+				path.resolve(__dirname, '../runtime'),
 			],
 		},
 	},
