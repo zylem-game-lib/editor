@@ -36,6 +36,10 @@ export default defineConfig({
 			'@zylem/ui',
 			// Prebundling rewrites the runtime into a flat chunk, which moves the
 			// module away from its `.wasm` sibling and breaks the URL above.
+			// game-lib itself stays prebundled (it has CJS deps that need the
+			// optimizer), so its rewritten `@zylem/behaviors/*` imports resolve
+			// from this package root -- hence `@zylem/behaviors` is a devDependency
+			// here even though only game-lib uses it.
 			'@zylem/behaviors',
 			'@zylem/runtime',
 		],

@@ -43,6 +43,9 @@ importers:
       '@typescript/native':
         specifier: npm:typescript@7.0.2
         version: typescript@7.0.2
+      '@zylem/behaviors':
+        specifier: ^0.5.11
+        version: 0.5.11(three@0.185.1)
       '@zylem/game-lib':
         specifier: ^0.8.7
         version: 0.8.7(howler@2.2.4)(nanoid@3.3.18)(three@0.185.1)(valtio@2.3.2)
