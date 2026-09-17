@@ -53,13 +53,15 @@ const rawPlugin: Plugin = {
 	},
 };
 
-export default defineConfig({
+export default defineConfig((options) => ({
 	entry: { 'zylem-editor': 'src/index.ts' },
 	format: ['esm'],
 	// `ignoreDeprecations` works around tsup injecting `baseUrl: '.'` into the
 	// dts compiler options, which classic TypeScript 6 rejects (TS5101).
 	dts: { compilerOptions: { ignoreDeprecations: '6.0' } },
-	clean: true,
+	// In watch mode tsup would empty `dist` on every rebuild, and a consumer's
+	// Vite sees a delete-then-add instead of a change (`zw dev` watch loop).
+	clean: !options.watch,
 	sourcemap,
 	outDir: 'dist',
 	minify: isProd,
@@ -79,4 +81,4 @@ export default defineConfig({
 	// consumer has no `?raw` loader. Keep the package bundled; the
 	// `rawPlugin` then handles the `?raw` subpath resolution.
 	noExternal: [/^@zylem\/ui(\/.*)?$/],
-});
+}));

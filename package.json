@@ -45,6 +45,7 @@
 	"scripts": {
 		"dev": "vite --host",
 		"build": "tsup",
+		"build:watch": "tsup --watch",
 		"build:production": "cross-env NODE_ENV=production tsup",
 		"preview": "vite preview",
 		"typecheck": "tsc --noEmit",
