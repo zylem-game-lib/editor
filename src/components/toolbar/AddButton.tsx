@@ -1,12 +1,11 @@
-import type { EntityTypeDescriptor } from '@zylem/bridge';
 import { ItemPicker, MenuButton } from '@zylem/ui/components';
 import Plus from 'lucide-solid/icons/plus';
-import { type Component, createMemo, Show } from 'solid-js';
-import { unwrap } from 'solid-js/store';
-import { sendAddType, sendTool } from '../../bridge/editor-bridge';
-import { debugStore, setDebugTool } from '..';
+import { type Component, createMemo, createSignal, onCleanup, Show } from 'solid-js';
+import { debugStore } from '..';
 import { isAddArmed, resolvePlacementTarget, toPickerItems } from './add-button-state';
-import { catalogStore, setArmedType } from './catalog-state';
+import { catalogStore } from './catalog-state';
+import { armAddTool, armAddType, registerAddPaletteOpener } from './toolbar-actions';
+import { withShortcut } from './toolbar-shortcuts';
 
 /**
  * The Add tool: a palette of entity types plus an armed placement mode.
@@ -17,15 +16,10 @@ import { catalogStore, setArmedType } from './catalog-state';
  * clicks rather than ten trips through the menu.
  *
  * The palette's entries are game-owned — they arrive as `catalog:snapshot` — so a
- * host that registers its own entity types gets them here for free.
+ * host that registers its own entity types game-side gets them here for free.
  */
 export const AddButton: Component = () => {
 	const isArmed = () => isAddArmed(debugStore.tool, catalogStore.armedTypeId);
-
-	const find = (id: string | null): EntityTypeDescriptor | null => {
-		if (!id) return null;
-		return catalogStore.entities.find((entity) => entity.id === id) ?? null;
-	};
 
 	/** What the face shows and what a press places. */
 	const target = createMemo(() =>
@@ -34,32 +28,36 @@ export const AddButton: Component = () => {
 
 	const items = createMemo(() => toPickerItems(catalogStore.entities));
 
-	const arm = (descriptor: EntityTypeDescriptor) => {
-		setArmedType(descriptor.id);
-		// Unwrapped: the props cross the bridge into the game, which should not
-		// receive a live handle on the editor's store.
-		sendAddType(descriptor.id, unwrap(descriptor.defaultProps));
-		setDebugTool('add');
-		sendTool('add');
+	const faceLabel = () => {
+		const descriptor = target();
+		return descriptor ? `Place ${descriptor.label}` : 'Add';
 	};
 
-	/** Arm placement, or re-arm it — pressing an armed Add leaves it armed. */
-	const armTarget = () => {
-		const descriptor = target();
-		if (descriptor) arm(descriptor);
-	};
+	// Controlled, so the Shift+A shortcut can open it while this button is
+	// mounted. Declines when the button is disabled, to match a click.
+	const [paletteOpen, setPaletteOpen] = createSignal(false);
+	onCleanup(
+		registerAddPaletteOpener(() => {
+			if (catalogStore.entities.length === 0) return false;
+			setPaletteOpen(true);
+			return true;
+		})
+	);
 
 	return (
 		<div class="zylem-add-tool">
 			<MenuButton
-				label={target() ? `Place ${target()!.label}` : 'Add'}
+				label={faceLabel()}
+				tooltip={`${withShortcut(faceLabel(), 'add')} · ${withShortcut('Palette', 'addPalette')}`}
 				selected={isArmed()}
 				// An empty catalog is the one case with nothing to arm. Disabled
 				// rather than silently inert, so a press that cannot work looks
 				// like one; the game publishes its catalog on connect, so this is
 				// only ever the no-game state.
 				disabled={catalogStore.entities.length === 0}
-				onAction={armTarget}
+				onAction={armAddTool}
+				open={paletteOpen()}
+				onOpenChange={setPaletteOpen}
 				menu={(close) => (
 					<ItemPicker
 						items={items()}
@@ -67,8 +65,7 @@ export const AddButton: Component = () => {
 						searchPlaceholder="Search entities…"
 						emptyMessage="No entity types published. Is a game running?"
 						onSelect={(item) => {
-							const descriptor = find(item.id);
-							if (descriptor) arm(descriptor);
+							armAddType(item.id);
 							close();
 						}}
 					/>

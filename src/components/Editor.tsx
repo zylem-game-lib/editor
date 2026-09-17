@@ -36,6 +36,8 @@ export interface EditorController {
 	openPanel: () => void;
 	closePanel: () => void;
 	togglePanel: () => void;
+	/** Whether the main panel is showing; collapsed still counts, closed does not. */
+	isPanelOpen: () => boolean;
 	/**
 	 * Dock a panel to a viewport edge, or pass `null` to float it.
 	 * Defaults to the main editor panel; any other id is a section, which is
@@ -189,6 +191,7 @@ export const Editor: Component<EditorProps> = (props) => {
 		openPanel: openMenu,
 		closePanel: closeMenu,
 		togglePanel: toggleMenu,
+		isPanelOpen: isOpen,
 		dockPanel: (side, panelId = MAIN_PANEL_ID) => {
 			if (panelId === MAIN_PANEL_ID) {
 				// The panel owns the undock/restore path, so route through it.

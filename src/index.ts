@@ -67,6 +67,33 @@ export {
 	setEntityCatalog,
 } from './components/toolbar/catalog-state';
 export { disarmTools } from './components/toolbar/tool-shortcuts';
+// The toolbar's presses. Exported so a host that turns off
+// `enableToolbarShortcuts` can bind its own keys to the same actions.
+export {
+	armAddTool,
+	armAddType,
+	type ClickTool,
+	openAddPalette,
+	selectTool,
+	selectTransformTool,
+	type TransformTool,
+	toggleDebug,
+	toggleGrid,
+	togglePlayback,
+	toggleSnap,
+	toggleTool,
+	toggleTransformTool,
+} from './components/toolbar/toolbar-actions';
+export {
+	formatShortcut,
+	installToolbarShortcuts,
+	runToolbarAction,
+	type ShortcutChord,
+	TOOLBAR_SHORTCUTS,
+	type ToolbarAction,
+	type ToolbarShortcutId,
+	type ToolbarShortcutOptions,
+} from './components/toolbar/toolbar-shortcuts';
 export {
 	installTransformToolGuard,
 	releaseOrphanedTransformTool,
