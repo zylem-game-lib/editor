@@ -79,12 +79,14 @@ export {
 	getDebugTool,
 	getHoveredEntityId,
 	getSelectedEntityId,
+	getSelectedEntityIds,
 	isPaused,
 	resetHoveredEntity,
 	setDebugTool,
 	setHoveredEntityId,
 	setPaused,
 	setSelectedEntityId,
+	setSelectedEntityIds,
 } from './entities/entities-state';
 // Event bus for external state sync
 export { type EditorEvent, type EditorEventType, editorEvents } from './events';

@@ -44,8 +44,20 @@ export function EditorProvider(props: EditorProviderProps) {
 		if (debug.selectedEntityId !== debugState.selectedEntityId) {
 			setDebug('selectedEntityId', debugState.selectedEntityId);
 		}
+		// Compared by contents: the list is replaced wholesale on every selection
+		// write, so identity alone would re-render on each unchanged publish.
+		const nextSelected = debugState.selectedEntityIds;
+		if (
+			debug.selectedEntityIds.length !== nextSelected.length ||
+			debug.selectedEntityIds.some((id, index) => id !== nextSelected[index])
+		) {
+			setDebug('selectedEntityIds', [...nextSelected]);
+		}
 		if (debug.hoveredEntityId !== debugState.hoveredEntityId) {
 			setDebug('hoveredEntityId', debugState.hoveredEntityId);
+		}
+		if (debug.lastTouchedEntityId !== debugState.lastTouchedEntityId) {
+			setDebug('lastTouchedEntityId', debugState.lastTouchedEntityId);
 		}
 		// Sets are mutated in place, so compare contents and copy only when changed.
 		const nextFlags = debugState.flags;

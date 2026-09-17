@@ -296,6 +296,6 @@ subscribe(debugState, () => {
 	setDebugStore('tool', debugState.tool);
 	setDebugStore('paused', debugState.paused);
 	setDebugStore('hovered', debugState.hoveredEntityId);
-	setDebugStore('selected', debugState.selectedEntityId ? [debugState.selectedEntityId] : []);
+	setDebugStore('selected', [...debugState.selectedEntityIds]);
 	setDebugStore('lastTouched', debugState.lastTouchedEntityId);
 });

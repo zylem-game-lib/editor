@@ -93,6 +93,17 @@ export function getSelectedEntityIds(): string[] {
 }
 
 /**
+ * Replace the selection with several entities. `selectedEntityId` follows the
+ * first entry, as it does game-side, so single-select consumers keep working.
+ */
+export function setSelectedEntityIds(ids: string[]): void {
+	const next = [...new Set(ids)];
+	debugState.selectedEntityIds = next;
+	debugState.selectedEntityId = next[0] ?? null;
+	if (next[0]) debugState.lastTouchedEntityId = next[0];
+}
+
+/**
  * Record an entity as the one most recently worked on.
  *
  * Separate from selection because creating an entity counts too: placing a box

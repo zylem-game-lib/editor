@@ -7,6 +7,7 @@ export {
 	sendEntityCreate,
 	sendEntityFocus,
 	sendEntitySelect,
+	sendEntitySelectMany,
 	sendEntityTransform,
 	sendGridVisible,
 	sendPlayback,

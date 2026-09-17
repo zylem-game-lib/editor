@@ -15,7 +15,7 @@
 import type { SceneOperationPayload } from '@zylem/bridge';
 import { proxy } from 'valtio/vanilla';
 
-import { bridgeChannel } from '../../bridge/editor-bridge';
+import { bridgeChannel } from '../../bridge/channel';
 import { mirrorProxy } from '../common/proxy-mirror';
 
 /**
