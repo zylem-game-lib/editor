@@ -2,6 +2,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { defineConfig } from 'vite';
 import solid from 'vite-plugin-solid';
+import { zylemVersionsPlugin } from '@zylem/ui/vite';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const devPort = 3332;
@@ -14,7 +15,7 @@ const devPort = 3332;
 // (the dev harness, which boots a real game against `@zylem/game-lib`) and
 // `vite preview` only.
 export default defineConfig({
-	plugins: [solid()],
+	plugins: [zylemVersionsPlugin(__dirname), solid()],
 	build: {
 		target: 'esnext',
 	},
