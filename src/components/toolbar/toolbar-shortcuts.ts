@@ -22,12 +22,12 @@ import { isEditableTarget } from '../history/history-shortcuts';
 import {
 	armAddTool,
 	openAddPalette,
-	toggleTool,
 	selectTransformTool,
 	toggleDebug,
 	toggleGrid,
 	togglePlayback,
 	toggleSnap,
+	toggleTool,
 } from './toolbar-actions';
 
 export interface ShortcutChord {
@@ -194,10 +194,10 @@ export interface ToolbarShortcutOptions {
  * @returns An uninstall function.
  */
 export function installToolbarShortcuts(options: ToolbarShortcutOptions = {}): () => void {
-	if (options.enabled === false) return () => { };
+	if (options.enabled === false) return () => {};
 
 	const target = options.target ?? (typeof window !== 'undefined' ? window : undefined);
-	if (!target) return () => { };
+	if (!target) return () => {};
 
 	const isActive = options.isActive ?? (() => true);
 

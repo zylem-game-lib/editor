@@ -281,14 +281,15 @@ describe('installToolbarShortcuts', () => {
 		expect(seen).toEqual(['q', 'Enter']);
 	});
 
-	it('selects rather than toggles, so a second press keeps the tool', () => {
+	it('toggles like the button, so a second press returns to the neutral tool', () => {
 		uninstall = installToolbarShortcuts();
 
 		press({ key: 'q' });
+		expect(getDebugTool()).toBe('select');
+
 		// Still claimed: the key did what it says, and must not fall through.
 		expect(press({ key: 'q' })).toBe(true);
-
-		expect(getDebugTool()).toBe('select');
+		expect(getDebugTool()).toBe('none');
 	});
 
 	it('enters a gizmo mode on the last entity worked on', () => {

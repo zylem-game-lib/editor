@@ -1,8 +1,8 @@
+import { zylemVersionsPlugin } from '@zylem/ui/vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { defineConfig } from 'vite';
 import solid from 'vite-plugin-solid';
-import { zylemVersionsPlugin } from '@zylem/ui/vite';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const devPort = 3332;

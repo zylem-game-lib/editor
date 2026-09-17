@@ -1,6 +1,6 @@
 import '@zylem/ui/styles.css';
-import { mountBuildLabel } from '@zylem/ui/build-label';
 import { ZYLEM_PACKAGE_VERSIONS } from 'virtual:zylem-versions';
+import { mountBuildLabel } from '@zylem/ui/build-label';
 import './web-components/zylem-editor';
 import { bootstrapHarnessGame, createHarnessGameElement } from './dev/harness-game';
 
