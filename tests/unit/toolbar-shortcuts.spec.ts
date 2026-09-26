@@ -134,6 +134,7 @@ describe('classifyToolbarShortcut', () => {
 		expect(classifyToolbarShortcut(keydown({ key: 'A', shiftKey: true }))).toBe('addPalette');
 		expect(classifyToolbarShortcut(keydown({ key: 'x' }))).toBe('delete');
 		expect(classifyToolbarShortcut(keydown({ key: 'd' }))).toBe('debug');
+		expect(classifyToolbarShortcut(keydown({ key: 'b' }))).toBe('build');
 		expect(classifyToolbarShortcut(keydown({ key: 's' }))).toBe('snap');
 		expect(classifyToolbarShortcut(keydown({ key: 'g' }))).toBe('grid');
 	});

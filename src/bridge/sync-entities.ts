@@ -11,6 +11,11 @@ import {
 	removeEntityThumbnails,
 	setEntityThumbnails,
 } from '../components/entities/thumbnail-store';
+import {
+	recordLevelRemoved,
+	recordLevelReplaced,
+	recordLevelUpsert,
+} from '../components/level/level-state';
 import { stageState } from '../components/stages/stage-state';
 import type { BaseEntityInterface } from '../types';
 
@@ -86,6 +91,7 @@ export function rebuildEntityIndex(): void {
 export function replaceEntities(entities: EntitySummaryPayload[]): void {
 	stageState.entities = entities.map(toEntityInterface);
 	rebuildEntityIndex();
+	recordLevelReplaced(entities);
 }
 
 /**
@@ -122,6 +128,7 @@ export function applyEntityUpsert(entities: EntitySummaryPayload[]): void {
 		}
 	}
 	adoptInlineThumbnails(entities);
+	recordLevelUpsert(entities);
 }
 
 export function applyEntityRemoved(uuids: string[]): void {
@@ -144,6 +151,7 @@ export function applyEntityRemoved(uuids: string[]): void {
 
 	current.length = write;
 	rebuildEntityIndex();
+	recordLevelRemoved(uuids);
 }
 
 export function applyThumbnails(thumbnails: EntityThumbnailPayload[]): void {

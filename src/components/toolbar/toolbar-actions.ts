@@ -28,6 +28,7 @@ import {
 	setPaused,
 	setSelectedEntityId,
 } from '../entities/entities-state';
+import { toggleLevelEditor as toggleLevelMode } from '../level/level-state';
 import { stageState } from '../stages/stage-state';
 import { setGridVisible, setSnapEnabled, transformState } from '../transform/transform-state';
 import { resolvePlacementTarget } from './add-button-state';
@@ -183,6 +184,17 @@ export function toggleSnap(): void {
 
 export function toggleGrid(): void {
 	setGridVisible(!transformState.gridVisible);
+}
+
+/**
+ * Enter or leave level-editor mode.
+ *
+ * Entering reseeds the level buffer from the stage. Leaving freezes it. This
+ * does not stream the buffer back into the stage — the entities are already
+ * there, and a replay would duplicate them.
+ */
+export function toggleLevelEditor(): void {
+	toggleLevelMode();
 }
 
 /** Pause or resume the simulation, in the editor and the game. */

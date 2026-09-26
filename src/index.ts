@@ -10,6 +10,7 @@ export {
 	sendEntitySelectMany,
 	sendEntityTransform,
 	sendGridVisible,
+	sendLevelLoad,
 	sendPlayback,
 	sendSnapSettings,
 	sendStageVariable,
@@ -53,6 +54,11 @@ export {
 	undo,
 	undoLabel,
 } from './components/history/history-store';
+export {
+	type LevelSnapshot,
+	levelState,
+	snapshotLevelBuffer,
+} from './components/level/level-state';
 export {
 	buildStageExport,
 	copyStageExport,

@@ -2,9 +2,9 @@
  * Keyboard shortcuts for the toolbar.
  *
  * The tool row follows the Godot/Unreal layout — Q select, W move, E rotate,
- * R scale — with mnemonics for the rest: A add, X delete, D debug, S snap,
- * G grid. Every key sits under the left hand on a QWERTY board, so the right
- * hand can stay on the mouse.
+ * R scale — with mnemonics for the rest: A add, B build, X delete, D debug,
+ * S snap, G grid. Every key sits under the left hand on a QWERTY board, so
+ * the right hand can stay on the mouse.
  *
  * The keys are live whenever the editor panel is open, playing or paused: the
  * panel being up is the signal that the keyboard is addressing the editor. The
@@ -25,6 +25,7 @@ import {
 	selectTransformTool,
 	toggleDebug,
 	toggleGrid,
+	toggleLevelEditor,
 	togglePlayback,
 	toggleSnap,
 	toggleTool,
@@ -41,6 +42,7 @@ export interface ShortcutChord {
 /** Every toolbar action's chord, keyed by the button it belongs to. */
 export const TOOLBAR_SHORTCUTS = {
 	debug: { key: 'd' },
+	build: { key: 'b' },
 	select: { key: 'q' },
 	translate: { key: 'w' },
 	rotate: { key: 'e' },
@@ -60,6 +62,7 @@ export type ToolbarShortcutId = keyof typeof TOOLBAR_SHORTCUTS;
 /** The shortcuts this module runs; undo and redo are `history-shortcuts`'. */
 const TOOLBAR_ACTIONS = [
 	'debug',
+	'build',
 	'select',
 	'translate',
 	'rotate',
@@ -151,6 +154,9 @@ export function runToolbarAction(action: ToolbarAction): boolean {
 	switch (action) {
 		case 'debug':
 			toggleDebug();
+			return true;
+		case 'build':
+			toggleLevelEditor();
 			return true;
 		case 'select':
 		case 'delete':

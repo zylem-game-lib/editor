@@ -12,6 +12,7 @@ import type {
 	BridgeQuat,
 	BridgeVec3,
 	EntitySelectMode,
+	LevelBuffer,
 	SnapSettingsPayload,
 } from '@zylem/bridge';
 import { channel } from './channel';
@@ -76,6 +77,11 @@ export function sendEntityTransform(
 /** Arm the game's add tool with a catalog type, or `null` to disarm it. */
 export function sendAddType(typeId: string | null, props?: Record<string, unknown>): void {
 	channel.send('add:type:set', props ? { typeId, props } : { typeId });
+}
+
+/** Stream a recorded level into the running stage. */
+export function sendLevelLoad(buffer: LevelBuffer): void {
+	channel.send('level:load', { buffer });
 }
 
 /** Spawn a catalog entity without a placement click. */

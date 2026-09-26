@@ -27,6 +27,7 @@ export {
 	sendEntitySelectMany,
 	sendEntityTransform,
 	sendGridVisible,
+	sendLevelLoad,
 	sendPlayback,
 	sendSnapSettings,
 	sendStageVariable,

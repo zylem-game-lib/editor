@@ -1,5 +1,6 @@
 import type { Component } from 'solid-js';
 import { AddButton } from './AddButton';
+import { BuildButton } from './BuildButton';
 import { DebugButton } from './DebugButton';
 import { DeleteButton } from './DeleteButton';
 import { GridButton, SnapButton } from './GridButton';
@@ -13,6 +14,7 @@ export const Toolbar: Component = () => {
 		<div class="zylem-toolbar">
 			<div class="zylem-toolbar-group">
 				<DebugButton />
+				<BuildButton />
 				<SelectButton />
 				{/*
 				 * Always mounted, disabling themselves when there is nothing to
