@@ -1,5 +1,5 @@
 import { ToolbarButton } from '@zylem/ui/components';
-import Trash2 from 'lucide-solid/icons/trash-2';
+import Trash from 'lucide-solid/icons/trash';
 import type { Component } from 'solid-js';
 import { debugStore } from '..';
 import { toggleTool } from './toolbar-actions';
@@ -11,6 +11,6 @@ export const DeleteButton: Component = () => (
 		selected={debugStore.tool === 'delete'}
 		onClick={() => toggleTool('delete')}
 	>
-		<Trash2 class="zylem-icon" />
+		<Trash class="zylem-icon" />
 	</ToolbarButton>
 );

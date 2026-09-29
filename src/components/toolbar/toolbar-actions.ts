@@ -28,7 +28,11 @@ import {
 	setPaused,
 	setSelectedEntityId,
 } from '../entities/entities-state';
-import { toggleLevelEditor as toggleLevelMode } from '../level/level-state';
+import {
+	type LevelRole,
+	setPlacementRole,
+	toggleLevelEditor as toggleLevelMode,
+} from '../level/level-state';
 import { stageState } from '../stages/stage-state';
 import { setGridVisible, setSnapEnabled, transformState } from '../transform/transform-state';
 import { resolvePlacementTarget } from './add-button-state';
@@ -45,10 +49,16 @@ export function toggleDebug(): void {
 	sendDebugEnabled(enabled);
 }
 
-/** Make a tool the active one, in the editor and the game. */
+/**
+ * Make a tool the active one, in the editor and the game.
+ *
+ * Leaving Add clears the placement role so the next stage update is not tagged
+ * as whatever was being placed.
+ */
 function activateTool(tool: DebugTools): void {
 	setDebugTool(tool);
 	sendTool(tool);
+	if (tool !== 'add') setPlacementRole(null);
 }
 
 /**
@@ -121,18 +131,21 @@ export function toggleTransformTool(tool: TransformTool): boolean {
 }
 
 /**
- * Arm placement with a catalog type. Arming an armed tool leaves it armed —
- * Escape is the way out — so placing ten of something is one arm and ten clicks.
+ * Arm placement with a catalog type and the role those new entries are tagged
+ * with. Arming an armed tool leaves it armed — Escape is the way out — so
+ * placing ten of something is one arm and ten clicks.
  *
  * @returns `false` when the catalog has no such type.
  */
-export function armAddType(typeId: string): boolean {
+export function armAddType(typeId: string, role: LevelRole = 'doodad'): boolean {
 	const descriptor = getEntityDescriptor(typeId);
 	if (!descriptor) return false;
 
+	setPlacementRole(role);
 	setArmedType(descriptor.id);
 	// Snapshotted: the props cross the bridge into the game, which should not
-	// receive a live handle on the editor's store.
+	// receive a live handle on the editor's store. Later actor-field edits stay
+	// on the buffer entry and are not sent again.
 	sendAddType(descriptor.id, descriptor.defaultProps && snapshot(descriptor.defaultProps));
 	setDebugTool('add');
 	sendTool('add');
@@ -144,13 +157,13 @@ export function armAddType(typeId: string): boolean {
  *
  * @returns `false` on an empty catalog, the one state with nothing to arm.
  */
-export function armAddTool(): boolean {
+export function armAddTool(role: LevelRole = 'doodad'): boolean {
 	const descriptor = resolvePlacementTarget(
 		catalogState.entities,
 		catalogState.armedTypeId,
 		catalogState.lastTypeId
 	);
-	return descriptor ? armAddType(descriptor.id) : false;
+	return descriptor ? armAddType(descriptor.id, role) : false;
 }
 
 /*

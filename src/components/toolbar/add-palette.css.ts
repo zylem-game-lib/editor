@@ -7,11 +7,17 @@
  */
 export const addPaletteCSS = `
 /*
- * The toolbar carries three tool groups now, which overflows a narrow docked
- * panel; wrapping keeps every button reachable instead of clipping the tail.
+ * The toolbar is its own window: one row on a top or bottom dock, one column
+ * on a side dock. Wrapping would break that strip.
  */
 .zylem-toolbar {
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
+	width: max-content;
+	max-width: 100%;
+}
+
+.zylem-toolbar--vertical .zylem-toolbar-group {
+	flex-direction: column;
 }
 
 .zylem-toolbar-divider {
@@ -19,6 +25,36 @@ export const addPaletteCSS = `
 	align-self: stretch;
 	margin: 0 2px;
 	background: rgba(255, 255, 255, 0.18);
+}
+
+.zylem-toolbar--vertical .zylem-toolbar-divider {
+	width: auto;
+	height: 1px;
+	margin: 2px 0;
+}
+
+/* The toolbar window's controls share this row (or column) with the buttons. */
+.zylem-chrome-inline {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	box-sizing: border-box;
+	width: 100%;
+	padding: 4px;
+	cursor: grab;
+	user-select: none;
+	touch-action: none;
+	/* Keep the measured strip at its content size instead of shrinking into
+	   the dock slot, so the zone thickness can grow to match the buttons. */
+	flex-shrink: 0;
+}
+
+.zylem-chrome-inline--column {
+	flex-direction: column;
+	justify-content: flex-start;
+	align-self: flex-start;
+	width: max-content;
 }
 
 /* Keeps a group's buttons together when the toolbar wraps. */
@@ -117,5 +153,54 @@ export const addPaletteCSS = `
 	font-size: 10px;
 	line-height: 1.4;
 	opacity: 0.5;
+}
+
+.zylem-level-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.zylem-level-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 10px;
+	align-items: baseline;
+	font-size: 11px;
+}
+
+.zylem-level-row.is-selected .zylem-level-row__type {
+	color: #9ecbff;
+}
+
+.zylem-level-row__role {
+	opacity: 0.65;
+}
+
+.zylem-level-props {
+	flex-basis: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.zylem-level-props__row {
+	display: grid;
+	grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr) auto;
+	gap: 5px;
+	align-items: center;
+}
+
+.zylem-level-props__add {
+	padding: 3px 8px;
+	font-size: 11px;
+	color: inherit;
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 4px;
+	cursor: pointer;
 }
 `;

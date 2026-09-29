@@ -15,6 +15,8 @@ import {
 	insertIntoZone,
 	normalizeDockRegistry,
 	removeFromZones,
+	TOOLBAR_PANEL_ID,
+	TOOLBAR_STRIP_THICKNESS,
 } from './common/dock-layout';
 import { type DebugTools, debugState } from './entities/entities-state';
 
@@ -24,8 +26,18 @@ const STORAGE_KEY = 'zylem-editor-state';
 /** Registry id of the main editor panel; detached sections use their panel id. */
 export const MAIN_PANEL_ID = 'main';
 
+export { TOOLBAR_PANEL_ID };
+
 // Default panel order
-const DEFAULT_PANEL_ORDER = ['game-config', 'stage-config', 'entities', 'console', 'bridge'];
+const DEFAULT_PANEL_ORDER = [
+	'game-config',
+	'stage-config',
+	'entities',
+	'transform',
+	'level',
+	'console',
+	'bridge',
+];
 
 /**
  * Merge panels added since a user's layout was persisted. Without this, an
@@ -56,6 +68,10 @@ interface PersistedState {
 	panelZOrder: string[];
 	docks: DockRegistry;
 	dockDefaultsApplied: boolean;
+	/** Set once the toolbar has been given a dock, so a later undock sticks. */
+	toolbarSeeded: boolean;
+	toolbarCollapsed: boolean;
+	mainCollapsed: boolean;
 }
 
 // Load persisted state from localStorage
@@ -106,6 +122,9 @@ export const [debugStore, setDebugStore] = createStore({
 	// Which panels are docked to which viewport edge, and how thick each edge is
 	docks: normalizeDockRegistry(persisted.docks),
 	dockDefaultsApplied: persisted.dockDefaultsApplied ?? false,
+	toolbarSeeded: persisted.toolbarSeeded ?? false,
+	toolbarCollapsed: persisted.toolbarCollapsed ?? false,
+	mainCollapsed: persisted.mainCollapsed ?? false,
 	// Drag-to-reattach state (not persisted)
 	draggingPanelId: null as string | null,
 	dropTargetIndex: null as number | null,
@@ -123,6 +142,9 @@ const persistState = () => {
 		panelZOrder: debugStore.panelZOrder,
 		docks: debugStore.docks,
 		dockDefaultsApplied: debugStore.dockDefaultsApplied,
+		toolbarSeeded: debugStore.toolbarSeeded,
+		toolbarCollapsed: debugStore.toolbarCollapsed,
+		mainCollapsed: debugStore.mainCollapsed,
 	});
 };
 
@@ -214,6 +236,16 @@ export const setOpenSections = (sections: string[]) => {
 	persistState();
 };
 
+export const setToolbarCollapsed = (collapsed: boolean) => {
+	setDebugStore('toolbarCollapsed', collapsed);
+	persistState();
+};
+
+export const setMainCollapsed = (collapsed: boolean) => {
+	setDebugStore('mainCollapsed', collapsed);
+	persistState();
+};
+
 export const isPanelDetached = (panelId: string): boolean => {
 	return panelId in debugStore.detachedPanels;
 };
@@ -239,22 +271,65 @@ export const setDockThickness = (side: DockSide, thickness: number) => {
 export const getDockedSide = (panelId: DockPanelId): DockSide | null =>
 	findDockedSide(debugStore.docks, panelId);
 
+/** First-run layout when a host does not request one. */
+const BUILTIN_DOCK_DEFAULTS: EditorDockDefaults = {
+	top: [TOOLBAR_PANEL_ID],
+	left: [MAIN_PANEL_ID],
+};
+
+/** Host docks keep their edges. A missing toolbar is added on top. */
+const withToolbarDock = (defaults: EditorDockDefaults): EditorDockDefaults => {
+	const placed = (['left', 'right', 'top', 'bottom'] as const).some((side) =>
+		defaults[side]?.includes(TOOLBAR_PANEL_ID)
+	);
+	if (placed) return defaults;
+	return { ...defaults, top: [TOOLBAR_PANEL_ID, ...(defaults.top ?? [])] };
+};
+
+/** A lone toolbar with no stored thickness starts at the button-strip size. */
+const withToolbarStripThickness = (docks: DockRegistry): DockRegistry => {
+	const side = findDockedSide(docks, TOOLBAR_PANEL_ID);
+	if (!side || docks[side].panels.length !== 1 || docks[side].thickness > 0) return docks;
+	return {
+		...docks,
+		[side]: { panels: docks[side].panels, thickness: TOOLBAR_STRIP_THICKNESS },
+	};
+};
+
 /**
  * Seed a host's preferred dock layout the first time the editor runs.
  *
  * Sections named here are pulled out of the accordion first, since only a
  * detached section can hold a dock slot. Guarded by `dockDefaultsApplied` so a
- * returning user's own layout is never overwritten.
+ * returning user's own layout is never overwritten. The toolbar is always
+ * included: a host that omits it gets the toolbar on top.
  */
-export const applyDefaultDocks = (defaults: EditorDockDefaults | undefined) => {
-	if (!defaults || debugStore.dockDefaultsApplied) return;
+const hasSavedLayout = (): boolean => {
+	if (debugStore.panelPosition) return true;
+	if (Object.keys(debugStore.detachedPanels).length > 0) return true;
+	return (['left', 'right', 'top', 'bottom'] as const).some(
+		(side) => debugStore.docks[side].panels.length > 0
+	);
+};
 
+export const applyDefaultDocks = (defaults: EditorDockDefaults | undefined) => {
+	if (debugStore.dockDefaultsApplied) return;
+
+	// A host that never passed defaults left `dockDefaultsApplied` false even
+	// after the user arranged windows. Replacing that registry would throw
+	// their layout away. The toolbar seed still runs afterwards.
+	if (!defaults && hasSavedLayout()) {
+		setDebugStore('dockDefaultsApplied', true);
+		persistState();
+		return;
+	}
+
+	const resolved = withToolbarDock(defaults ?? BUILTIN_DOCK_DEFAULTS);
 	let docks = createEmptyDockRegistry();
-	let seeded = false;
 
 	for (const side of ['left', 'right', 'top', 'bottom'] as const) {
-		for (const panelId of defaults[side] ?? []) {
-			if (panelId !== MAIN_PANEL_ID && !isPanelDetached(panelId)) {
+		for (const panelId of resolved[side] ?? []) {
+			if (panelId !== MAIN_PANEL_ID && panelId !== TOOLBAR_PANEL_ID && !isPanelDetached(panelId)) {
 				setDebugStore('detachedPanels', panelId, {
 					position: { x: 100, y: 100 },
 					size: { width: 350, height: 300 },
@@ -266,14 +341,32 @@ export const applyDefaultDocks = (defaults: EditorDockDefaults | undefined) => {
 				]);
 			}
 			docks = insertIntoZone(docks, panelId, side);
-			seeded = true;
 		}
 	}
 
-	if (seeded) {
+	setDebugStore('docks', withToolbarStripThickness(docks));
+	setDebugStore('dockDefaultsApplied', true);
+	setDebugStore('toolbarSeeded', true);
+	persistState();
+};
+
+/**
+ * Give a saved layout a top toolbar once.
+ *
+ * Returning users predate the toolbar window, so their registry has no slot
+ * for it. Docking it here does not move their other panels. The flag stops a
+ * later undock from being put back on the next load.
+ */
+export const seedToolbarDock = () => {
+	if (debugStore.toolbarSeeded) return;
+
+	if (!findDockedSide(debugStore.docks, TOOLBAR_PANEL_ID)) {
+		const docks = withToolbarStripThickness(
+			insertIntoZone(debugStore.docks, TOOLBAR_PANEL_ID, 'top', 0)
+		);
 		setDebugStore('docks', docks);
 	}
-	setDebugStore('dockDefaultsApplied', true);
+	setDebugStore('toolbarSeeded', true);
 	persistState();
 };
 

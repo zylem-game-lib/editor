@@ -3,6 +3,7 @@ import { type Component, Index, Show } from 'solid-js';
 import { debugStore, setOpenSections } from '../editor-store';
 import { DraggableAccordionItem } from './DraggableAccordionItem';
 import { PANEL_CONFIGS, renderPanelContent } from './panel-config';
+import { currentAccordionIds } from './panel-visibility';
 
 /**
  * Accordion menu for debug UI with multiple panels.
@@ -12,9 +13,7 @@ import { PANEL_CONFIGS, renderPanelContent } from './panel-config';
 export const AccordionMenu: Component = () => {
 	// Get panels that are not currently detached, in order
 	const getDockedPanels = () => {
-		const detachedIds = Object.keys(debugStore.detachedPanels);
-		return debugStore.panelOrder
-			.filter((id) => !detachedIds.includes(id))
+		return currentAccordionIds()
 			.map((id) => PANEL_CONFIGS.find((p) => p.id === id))
 			.filter((p): p is NonNullable<typeof p> => p !== undefined);
 	};

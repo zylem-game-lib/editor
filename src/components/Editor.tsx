@@ -13,8 +13,13 @@ import {
 	findDockedSide,
 	isPanelDetached,
 	MAIN_PANEL_ID,
+	seedToolbarDock,
+	setMainCollapsed,
 	setPanelPosition,
 	setPanelSize,
+	setToolbarCollapsed,
+	TOOLBAR_PANEL_ID,
+	TOOLBAR_STRIP_THICKNESS,
 	undockPanelFromSides,
 } from '.';
 import { type DockRequest, FloatingPanel } from './common/FloatingPanel';
@@ -22,6 +27,8 @@ import { viewportSize } from './common/viewport';
 import { EditorToggleButton } from './EditorToggleButton';
 import { DetachedPanel } from './editor-panel/DetachedPanel';
 import { Menu } from './editor-panel/Menu';
+import { currentPanelVisibility, isPanelVisible } from './editor-panel/panel-visibility';
+import { Toolbar } from './toolbar/Toolbar';
 
 // Panel dimensions
 const PANEL_WIDTH = 460;
@@ -36,7 +43,7 @@ export interface EditorController {
 	openPanel: () => void;
 	closePanel: () => void;
 	togglePanel: () => void;
-	/** Whether the main panel is showing; collapsed still counts, closed does not. */
+	/** Whether either editor window is showing; collapsed still counts, closed does not. */
 	isPanelOpen: () => boolean;
 	/**
 	 * Dock a panel to a viewport edge, or pass `null` to float it.
@@ -123,19 +130,31 @@ const getInitialPanelPosition = () => {
  * Renders both the main editor panel and any detached floating panels.
  */
 export const Editor: Component<EditorProps> = (props) => {
-	const [isOpen, setIsOpen] = createSignal(false);
-	const [dockRequest, setDockRequest] = createSignal<DockRequest | null>(null);
+	const [toolbarOpen, setToolbarOpen] = createSignal(false);
+	const [panelOpen, setPanelOpen] = createSignal(false);
+	const [toolbarDockRequest, setToolbarDockRequest] = createSignal<DockRequest | null>(null);
+	const [panelDockRequest, setPanelDockRequest] = createSignal<DockRequest | null>(null);
 	const launcherMode = () => props.launcherMode ?? 'floating';
+	const editorOpen = () => toolbarOpen() || panelOpen();
 
-	// Seed before the panel renders, so its first layout already reflects the
+	// Seed before the windows render, so the first layout already reflects the
 	// host's requested docks. No-ops once the user has a layout of their own.
+	// A saved layout that predates the toolbar window gets one on top, once.
 	applyDefaultDocks(props.defaultDocks);
+	seedToolbarDock();
 
-	const toggleMenu = () => {
-		setIsOpen((open) => !open);
+	const openEditor = () => {
+		setToolbarOpen(true);
+		setPanelOpen(true);
 	};
-	const closeMenu = () => setIsOpen(false);
-	const openMenu = () => setIsOpen(true);
+	const closeEditor = () => {
+		setToolbarOpen(false);
+		setPanelOpen(false);
+	};
+	const toggleEditor = () => {
+		if (editorOpen()) closeEditor();
+		else openEditor();
+	};
 
 	const handlePanelMove = (pos: { x: number; y: number }) => {
 		setPanelPosition(pos);
@@ -144,7 +163,10 @@ export const Editor: Component<EditorProps> = (props) => {
 	const mainDockedSide = () => findDockedSide(debugStore.docks, MAIN_PANEL_ID);
 
 	// Get list of detached panel IDs
-	const getDetachedPanelIds = () => Object.keys(debugStore.detachedPanels);
+	const getDetachedPanelIds = () => {
+		const visibility = currentPanelVisibility();
+		return Object.keys(debugStore.detachedPanels).filter((id) => isPanelVisible(id, visibility));
+	};
 
 	const shouldViewportFitPanel = () => {
 		if (typeof window === 'undefined') {
@@ -187,16 +209,47 @@ export const Editor: Component<EditorProps> = (props) => {
 		};
 	});
 
+	const toolbarLayout = createMemo(() => {
+		const docked = findDockedSide(debugStore.docks, TOOLBAR_PANEL_ID);
+		if (docked) {
+			const rect = computeDockLayout(debugStore.docks, viewportSize())[TOOLBAR_PANEL_ID];
+			if (rect) {
+				return {
+					initialPosition: { x: rect.x, y: rect.y },
+					initialSize: { width: rect.width, height: rect.height },
+				};
+			}
+		}
+		return {
+			initialPosition: { x: 0, y: 0 },
+			initialSize: { width: 640, height: TOOLBAR_STRIP_THICKNESS },
+		};
+	});
+
 	const controller: EditorController = {
-		openPanel: openMenu,
-		closePanel: closeMenu,
-		togglePanel: toggleMenu,
-		isPanelOpen: isOpen,
+		openPanel: openEditor,
+		closePanel: closeEditor,
+		togglePanel: toggleEditor,
+		isPanelOpen: editorOpen,
 		dockPanel: (side, panelId = MAIN_PANEL_ID) => {
+			if (panelId === TOOLBAR_PANEL_ID) {
+				setToolbarOpen(true);
+				setToolbarDockRequest((previous) => ({
+					side,
+					nonce: (previous?.nonce ?? 0) + 1,
+					panelId,
+				}));
+				return;
+			}
+
 			if (panelId === MAIN_PANEL_ID) {
 				// The panel owns the undock/restore path, so route through it.
-				openMenu();
-				setDockRequest((previous) => ({ side, nonce: (previous?.nonce ?? 0) + 1 }));
+				setPanelOpen(true);
+				setPanelDockRequest((previous) => ({
+					side,
+					nonce: (previous?.nonce ?? 0) + 1,
+					panelId,
+				}));
 				return;
 			}
 
@@ -239,22 +292,58 @@ export const Editor: Component<EditorProps> = (props) => {
 				}}
 			>
 				<Show when={launcherMode() !== 'hidden'}>
-					<EditorToggleButton onToggle={toggleMenu} />
+					<EditorToggleButton onToggle={toggleEditor} />
 				</Show>
-				<Show when={isOpen()}>
+				<Show when={toolbarOpen()}>
 					<FloatingPanel
-						title="Zylem Editor"
+						panelId={TOOLBAR_PANEL_ID}
+						label="Toolbar"
+						hideTitle
+						chrome="inline"
+						resizable={false}
+						fitDockThickness
+						hugContent
+						initialPosition={toolbarLayout().initialPosition}
+						initialSize={toolbarLayout().initialSize}
+						floatingSize={{ width: 640, height: TOOLBAR_STRIP_THICKNESS }}
+						minSize={{ width: 36, height: 36 }}
+						collapsible
+						collapsed={debugStore.toolbarCollapsed}
+						onCollapsedChange={setToolbarCollapsed}
+						onClose={() => setToolbarOpen(false)}
+						onRestoreSibling={panelOpen() ? undefined : () => setPanelOpen(true)}
+						restoreSiblingLabel="Show panels"
+						dockRequest={toolbarDockRequest}
+					>
+						{(body) => (
+							<Toolbar
+								orientation={
+									body.dockedSide() === 'left' || body.dockedSide() === 'right' ? 'column' : 'row'
+								}
+							/>
+						)}
+					</FloatingPanel>
+				</Show>
+				<Show when={panelOpen()}>
+					<FloatingPanel
+						panelId={MAIN_PANEL_ID}
+						label="Panels"
+						hideTitle
 						initialPosition={panelLayout().initialPosition}
 						initialSize={panelLayout().initialSize}
 						floatingSize={debugStore.panelSize ?? { width: PANEL_WIDTH, height: PANEL_HEIGHT }}
 						minSize={{ width: 300, height: 200 }}
-						collapsible={true}
-						onClose={closeMenu}
+						collapsible
+						collapsed={debugStore.mainCollapsed}
+						onCollapsedChange={setMainCollapsed}
+						onClose={() => setPanelOpen(false)}
+						onRestoreSibling={toolbarOpen() ? undefined : () => setToolbarOpen(true)}
+						restoreSiblingLabel="Show toolbar"
 						onMove={handlePanelMove}
 						onResize={setPanelSize}
-						dockRequest={dockRequest}
+						dockRequest={panelDockRequest}
 					>
-						{(isCollapsed) => <Menu isCollapsed={isCollapsed} />}
+						{(body) => <Menu isCollapsed={body.isCollapsed} />}
 					</FloatingPanel>
 				</Show>
 

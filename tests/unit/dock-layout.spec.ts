@@ -13,6 +13,8 @@ import {
 	previewDockRect,
 	removeFromZones,
 	resolveThickness,
+	TOOLBAR_PANEL_ID,
+	TOOLBAR_STRIP_THICKNESS,
 	type Viewport,
 } from '../../src/components/common/dock-layout';
 
@@ -158,6 +160,53 @@ describe('computeDockLayout', () => {
 	it('omits panels that are not docked', () => {
 		const layout = computeDockLayout(createEmptyDockRegistry(), viewport);
 		expect(layout).toEqual({});
+	});
+
+	it('gives a lone toolbar the full top edge and lays the left panel underneath', () => {
+		const layout = computeDockLayout(
+			registryOf([
+				['top', [TOOLBAR_PANEL_ID], 40],
+				['left', ['main'], 250],
+			]),
+			viewport
+		);
+		expect(layout[TOOLBAR_PANEL_ID]).toEqual({ x: 0, y: 0, width: 1000, height: 40 });
+		expect(layout.main).toEqual({ x: 0, y: 40, width: 250, height: 760 });
+	});
+
+	it('uses the button-strip fallback when a lone toolbar has no thickness yet', () => {
+		const layout = computeDockLayout(registryOf([['top', [TOOLBAR_PANEL_ID]]]), viewport);
+		expect(layout[TOOLBAR_PANEL_ID]).toEqual({
+			x: 0,
+			y: 0,
+			width: 1000,
+			height: TOOLBAR_STRIP_THICKNESS,
+		});
+	});
+
+	it('lays a bottom dock in the space beside a lone left toolbar', () => {
+		const layout = computeDockLayout(
+			registryOf([
+				['left', [TOOLBAR_PANEL_ID], 40],
+				['bottom', ['console'], 200],
+			]),
+			viewport
+		);
+		expect(layout[TOOLBAR_PANEL_ID]).toEqual({ x: 0, y: 0, width: 40, height: 800 });
+		expect(layout.console).toEqual({ x: 40, y: 600, width: 960, height: 200 });
+	});
+
+	it('does not give the toolbar the full edge when it shares that edge', () => {
+		const layout = computeDockLayout(
+			registryOf([
+				['left', ['main'], 200],
+				['top', [TOOLBAR_PANEL_ID, 'console'], 40],
+			]),
+			viewport
+		);
+		expect(layout[TOOLBAR_PANEL_ID]).toEqual({ x: 200, y: 0, width: 400, height: 40 });
+		expect(layout.console).toEqual({ x: 600, y: 0, width: 400, height: 40 });
+		expect(layout.main).toEqual({ x: 0, y: 0, width: 200, height: 800 });
 	});
 });
 

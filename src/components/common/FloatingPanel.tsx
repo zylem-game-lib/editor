@@ -9,9 +9,9 @@ import {
 	onMount,
 	Show,
 } from 'solid-js';
-import { MAIN_PANEL_ID } from '../editor-store';
+import { debugStore, MAIN_PANEL_ID, setDockThickness } from '../editor-store';
 import { DockMenu } from './DockMenu';
-import { type DockSide, isHorizontalSide } from './dock-layout';
+import { type DockPanelId, type DockSide, isHorizontalSide } from './dock-layout';
 import { PANEL_RANK } from './layer-ranks';
 import { createPanelDocking, DockPreviewOverlay, type ResizeMode } from './panel-docking';
 
@@ -24,10 +24,36 @@ type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw' | null;
 export interface DockRequest {
 	side: DockSide | null;
 	nonce: number;
+	/** Which window should take the command. Omit it to mean the panel container. */
+	panelId?: DockPanelId;
+}
+
+export interface FloatingPanelBody {
+	isCollapsed: Accessor<boolean>;
+	dockedSide: Accessor<DockSide | null>;
 }
 
 export interface FloatingPanelProps {
+	/** Registry id. Defaults to the panel container. */
+	panelId?: DockPanelId;
 	title?: string;
+	/** Accessible name for the window. Falls back to `title`. */
+	label?: string;
+	/** Header is the controls only. */
+	hideTitle?: boolean;
+	/**
+	 * `bar` keeps a titlebar above the body. `inline` puts the controls in
+	 * the same row as the body, which is how the toolbar is one strip.
+	 */
+	chrome?: 'bar' | 'inline';
+	/** Dragging edges resizes the window. The toolbar opts out. */
+	resizable?: boolean;
+	/**
+	 * While this window is the only panel on its edge, write the chrome's
+	 * cross-axis size into that zone. The toolbar uses this so the strip
+	 * stays as tall as its buttons.
+	 */
+	fitDockThickness?: boolean;
 	initialPosition?: { x: number; y: number };
 	initialSize?: { width: number; height: number };
 	/**
@@ -37,12 +63,20 @@ export interface FloatingPanelProps {
 	 */
 	floatingSize?: { width: number; height: number };
 	minSize?: { width: number; height: number };
+	/** Floating window wraps its content instead of keeping a stored box. */
+	hugContent?: boolean;
 	collapsible?: boolean;
+	/** Controlled collapse. Omit it and the window remembers its own. */
+	collapsed?: boolean;
+	onCollapsedChange?: (collapsed: boolean) => void;
 	onClose?: () => void;
+	/** Brings the other editor window back. Shown only when that window is closed. */
+	onRestoreSibling?: (() => void) | undefined;
+	restoreSiblingLabel?: string | undefined;
 	onMove?: (position: { x: number; y: number }) => void;
 	onResize?: (size: { width: number; height: number }) => void;
 	dockRequest?: Accessor<DockRequest | null>;
-	children: JSX.Element | ((isCollapsed: Accessor<boolean>) => JSX.Element);
+	children: JSX.Element | ((body: FloatingPanelBody) => JSX.Element);
 }
 
 /**
@@ -52,14 +86,21 @@ export interface FloatingPanelProps {
  */
 export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 	const layer = useLayer('panel', PANEL_RANK.mainPanel);
+	const panelId = props.panelId ?? MAIN_PANEL_ID;
 	const minSize = props.minSize ?? { width: 300, height: 200 };
 	const initialPanelSize = props.initialSize ?? { width: 460, height: 600 };
+	const chrome = () => props.chrome ?? 'bar';
 
 	const [position, setPosition] = createSignal(props.initialPosition ?? { x: 50, y: 50 });
 	const [size, setSize] = createSignal(initialPanelSize);
-	const [isCollapsed, setIsCollapsed] = createSignal(false);
+	const [internalCollapsed, setInternalCollapsed] = createSignal(false);
+	const isCollapsed = () => props.collapsed ?? internalCollapsed();
 
-	const toggleCollapse = () => setIsCollapsed(!isCollapsed());
+	const toggleCollapse = () => {
+		const next = !isCollapsed();
+		props.onCollapsedChange?.(next);
+		if (props.collapsed === undefined) setInternalCollapsed(next);
+	};
 
 	let isDragging = false;
 	let isResizing = false;
@@ -71,6 +112,7 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 	let startThickness = 0;
 	let hasMoved = false;
 	let panelRef: HTMLDivElement | undefined;
+	let chromeRef: HTMLDivElement | undefined;
 
 	const {
 		dockedSide,
@@ -91,7 +133,7 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 		applyDockPreview,
 		dockTo,
 	} = createPanelDocking({
-		panelId: MAIN_PANEL_ID,
+		panelId,
 		initialSize: props.floatingSize ?? initialPanelSize,
 		minSize,
 		position,
@@ -106,7 +148,7 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 	// Host-driven dock commands (toolbar buttons, postMessage from a shell).
 	createEffect(() => {
 		const request = props.dockRequest?.();
-		if (!request) return;
+		if (!request || (request.panelId && request.panelId !== panelId)) return;
 		dockTo(request.side);
 	});
 
@@ -123,6 +165,13 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 	const clampSize = (width: number, height: number) => clampSizeToViewport(width, height);
 
 	const handleTitleBarPointerDown = (e: PointerEvent) => {
+		const target = e.target;
+		if (
+			target instanceof Element &&
+			target.closest('button, a, input, textarea, select, [data-no-drag]')
+		) {
+			return;
+		}
 		isDragging = true;
 		hasMoved = false;
 		hideDockPreview();
@@ -265,12 +314,71 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 	onMount(() => {
 		window.addEventListener('pointermove', handlePointerMove);
 		window.addEventListener('pointerup', handlePointerUp);
+
+		if (!props.fitDockThickness) return;
+		const publishThickness = () => {
+			const element = chromeRef;
+			if (!element || isMoving()) return;
+			const side = dockedSide();
+			if (!side) return;
+			const occupants = debugStore.docks[side].panels;
+			if (occupants.length !== 1 || occupants[0] !== panelId) return;
+			const measured = isHorizontalSide(side) ? element.offsetWidth : element.offsetHeight;
+			const next = Math.round(measured);
+			if (next > 0 && next !== debugStore.docks[side].thickness) {
+				setDockThickness(side, next);
+			}
+		};
+		const observer = new ResizeObserver(publishThickness);
+		if (chromeRef) observer.observe(chromeRef);
+		publishThickness();
+		onCleanup(() => observer.disconnect());
 	});
 
 	onCleanup(() => {
 		window.removeEventListener('pointermove', handlePointerMove);
 		window.removeEventListener('pointerup', handlePointerUp);
 	});
+
+	const useAutoWidth = () => !isMoving() && !!props.hugContent && !dockedSide();
+	const useAutoHeight = () =>
+		!isMoving() &&
+		(useAutoWidth() ||
+			(isCollapsed() && !props.fitDockThickness) ||
+			(isAutoHeight() && !dockedSide()));
+	const stacked = () => {
+		const side = dockedSide();
+		return side === 'left' || side === 'right';
+	};
+	const renderBody = () =>
+		typeof props.children === 'function'
+			? props.children({ isCollapsed, dockedSide })
+			: props.children;
+
+	const headerControls = () => (
+		<div class="floating-panel-controls" data-no-drag>
+			<Show when={props.onRestoreSibling !== undefined}>
+				<button
+					type="button"
+					class="zylem-window-control"
+					data-testid="restore-sibling"
+					aria-label={props.restoreSiblingLabel}
+					title={props.restoreSiblingLabel}
+					style={{ 'white-space': 'nowrap', width: 'auto' }}
+					onClick={() => props.onRestoreSibling?.()}
+				>
+					{props.restoreSiblingLabel}
+				</button>
+			</Show>
+			<DockMenu dockedSide={dockedSide} onDock={(side) => dockTo(side)} />
+			<WindowControls
+				collapsed={isCollapsed()}
+				onCollapse={props.collapsible ? toggleCollapse : undefined}
+				onClose={props.onClose}
+				closeTestId="floating-panel-close"
+			/>
+		</div>
+	);
 
 	const resizeHandleStyle = (cursor: string): JSX.CSSProperties => ({
 		position: 'absolute',
@@ -280,15 +388,16 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 	});
 
 	return (
-		<div
+		<section
 			class="floating-panel"
 			ref={panelRef}
+			aria-label={props.label ?? props.title ?? 'Panel'}
 			style={{
 				position: 'fixed',
 				left: `${position().x}px`,
 				top: `${position().y}px`,
-				width: `${size().width}px`,
-				height: !isMoving() && (isCollapsed() || isAutoHeight()) ? 'auto' : `${size().height}px`,
+				width: useAutoWidth() ? 'auto' : `${size().width}px`,
+				height: useAutoHeight() ? 'auto' : `${size().height}px`,
 				'z-index': layer.zIndex(),
 				display: 'flex',
 				'flex-direction': 'column',
@@ -310,130 +419,143 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 		>
 			<DockPreviewOverlay rect={getDockPreviewRect()} rank={PANEL_RANK.mainDockPreview} />
 
-			{/* Title bar */}
-			<div
-				class="floating-panel-titlebar"
-				style={{
-					cursor: 'grab',
-					display: 'flex',
-					'align-items': 'center',
-					'justify-content': 'space-between',
-					'user-select': 'none',
-					'touch-action': 'none',
-					'border-radius': dockedSide() ? '0' : undefined,
-					visibility: isMoving() ? 'hidden' : undefined,
-				}}
-				onPointerDown={handleTitleBarPointerDown}
+			<Show
+				when={chrome() === 'inline'}
+				fallback={
+					<>
+						<div
+							class="floating-panel-titlebar"
+							style={{
+								cursor: 'grab',
+								display: 'flex',
+								'align-items': 'center',
+								'justify-content': props.hideTitle ? 'flex-start' : 'space-between',
+								'user-select': 'none',
+								'touch-action': 'none',
+								'border-radius': dockedSide() ? '0' : undefined,
+								visibility: isMoving() ? 'hidden' : undefined,
+							}}
+							onPointerDown={handleTitleBarPointerDown}
+						>
+							<Show when={!props.hideTitle}>
+								<span class="floating-panel-title">{props.title ?? 'Panel'}</span>
+							</Show>
+							{headerControls()}
+						</div>
+						<div
+							class="floating-panel-content"
+							style={{
+								flex: 1,
+								overflow: 'hidden',
+								display: 'flex',
+								'flex-direction': 'column',
+								visibility: isMoving() ? 'hidden' : undefined,
+							}}
+						>
+							{renderBody()}
+						</div>
+					</>
+				}
 			>
-				<span class="floating-panel-title">{props.title ?? 'Panel'}</span>
-				<div style={{ display: 'flex', 'align-items': 'center', gap: '7px' }}>
-					<DockMenu dockedSide={dockedSide} onDock={(side) => dockTo(side)} />
-					<WindowControls
-						collapsed={isCollapsed()}
-						onCollapse={props.collapsible ? toggleCollapse : undefined}
-						onClose={props.onClose}
-						closeTestId="floating-panel-close"
-					/>
+				<div
+					ref={chromeRef}
+					class="zylem-chrome-inline"
+					classList={{ 'zylem-chrome-inline--column': stacked() }}
+					style={{
+						// A docked top or bottom strip stretches so the controls sit
+						// on the far end. Floating and side docks hug the buttons.
+						width: !stacked() && dockedSide() ? '100%' : 'max-content',
+						visibility: isMoving() ? 'hidden' : undefined,
+					}}
+					onPointerDown={handleTitleBarPointerDown}
+				>
+					<Show when={!isCollapsed()}>{renderBody()}</Show>
+					{headerControls()}
 				</div>
-			</div>
+			</Show>
 
-			{/* Content area */}
-			<div
-				class="floating-panel-content"
-				style={{
-					flex: 1,
-					overflow: 'hidden',
-					display: 'flex',
-					'flex-direction': 'column',
-					visibility: isMoving() ? 'hidden' : undefined,
-				}}
-			>
-				{typeof props.children === 'function' ? props.children(isCollapsed) : props.children}
-			</div>
-
-			{/* Resize handles - edges */}
-			<div
-				style={{
-					...resizeHandleStyle('ns-resize'),
-					top: 0,
-					left: '10px',
-					right: '10px',
-					height: '6px',
-				}}
-				onPointerDown={handleResizePointerDown('n')}
-			/>
-			<div
-				style={{
-					...resizeHandleStyle('ns-resize'),
-					bottom: 0,
-					left: '10px',
-					right: '10px',
-					height: '6px',
-				}}
-				onPointerDown={handleResizePointerDown('s')}
-			/>
-			<div
-				style={{
-					...resizeHandleStyle('ew-resize'),
-					left: 0,
-					top: '10px',
-					bottom: '10px',
-					width: '6px',
-				}}
-				onPointerDown={handleResizePointerDown('w')}
-			/>
-			<div
-				style={{
-					...resizeHandleStyle('ew-resize'),
-					right: 0,
-					top: '10px',
-					bottom: '10px',
-					width: '6px',
-				}}
-				onPointerDown={handleResizePointerDown('e')}
-			/>
-
-			{/* Resize handles - corners */}
-			<div
-				style={{
-					...resizeHandleStyle('nwse-resize'),
-					top: 0,
-					left: 0,
-					width: '10px',
-					height: '10px',
-				}}
-				onPointerDown={handleResizePointerDown('nw')}
-			/>
-			<div
-				style={{
-					...resizeHandleStyle('nesw-resize'),
-					top: 0,
-					right: 0,
-					width: '10px',
-					height: '10px',
-				}}
-				onPointerDown={handleResizePointerDown('ne')}
-			/>
-			<div
-				style={{
-					...resizeHandleStyle('nesw-resize'),
-					bottom: 0,
-					left: 0,
-					width: '10px',
-					height: '10px',
-				}}
-				onPointerDown={handleResizePointerDown('sw')}
-			/>
-			<div
-				style={{
-					...resizeHandleStyle('nwse-resize'),
-					bottom: 0,
-					right: 0,
-					width: '10px',
-					height: '10px',
-				}}
-				onPointerDown={handleResizePointerDown('se')}
-			/>
-		</div>
+			<Show when={props.resizable !== false}>
+				<div
+					style={{
+						...resizeHandleStyle('ns-resize'),
+						top: 0,
+						left: '10px',
+						right: '10px',
+						height: '6px',
+					}}
+					onPointerDown={handleResizePointerDown('n')}
+				/>
+				<div
+					style={{
+						...resizeHandleStyle('ns-resize'),
+						bottom: 0,
+						left: '10px',
+						right: '10px',
+						height: '6px',
+					}}
+					onPointerDown={handleResizePointerDown('s')}
+				/>
+				<div
+					style={{
+						...resizeHandleStyle('ew-resize'),
+						left: 0,
+						top: '10px',
+						bottom: '10px',
+						width: '6px',
+					}}
+					onPointerDown={handleResizePointerDown('w')}
+				/>
+				<div
+					style={{
+						...resizeHandleStyle('ew-resize'),
+						right: 0,
+						top: '10px',
+						bottom: '10px',
+						width: '6px',
+					}}
+					onPointerDown={handleResizePointerDown('e')}
+				/>
+				<div
+					style={{
+						...resizeHandleStyle('nwse-resize'),
+						top: 0,
+						left: 0,
+						width: '10px',
+						height: '10px',
+					}}
+					onPointerDown={handleResizePointerDown('nw')}
+				/>
+				<div
+					style={{
+						...resizeHandleStyle('nesw-resize'),
+						top: 0,
+						right: 0,
+						width: '10px',
+						height: '10px',
+					}}
+					onPointerDown={handleResizePointerDown('ne')}
+				/>
+				<div
+					style={{
+						...resizeHandleStyle('nesw-resize'),
+						bottom: 0,
+						left: 0,
+						width: '10px',
+						height: '10px',
+					}}
+					onPointerDown={handleResizePointerDown('sw')}
+				/>
+				<div
+					style={{
+						...resizeHandleStyle('nwse-resize'),
+						bottom: 0,
+						right: 0,
+						width: '10px',
+						height: '10px',
+					}}
+					onPointerDown={handleResizePointerDown('se')}
+				/>
+			</Show>
+		</section>
 	);
 };

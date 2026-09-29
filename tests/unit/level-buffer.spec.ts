@@ -9,11 +9,14 @@ import {
 	upsertLevelEntries,
 } from '../../src/components/level/level-buffer';
 import {
+	entriesMarkedForBake,
 	levelState,
 	recordLevelRemoved,
 	recordLevelReplaced,
 	recordLevelUpsert,
+	setActorProp,
 	setLevelEditorActive,
+	setPlacementRole,
 	snapshotLevelBuffer,
 } from '../../src/components/level/level-state';
 import { stageState } from '../../src/components/stages/stage-state';
@@ -35,6 +38,8 @@ const box: LevelSourceEntity = {
 beforeEach(() => {
 	setLevelEditorActive(false);
 	levelState.buffer = null;
+	levelState.annotations = {};
+	setPlacementRole(null);
 	stageState.config = null;
 	setEntityCatalog([]);
 	stageState.entities = [];
@@ -154,5 +159,53 @@ describe('level editor mode', () => {
 
 		setLevelEditorActive(false);
 		expect(snapshotLevelBuffer()?.buffer.entries).toHaveLength(1);
+	});
+});
+
+describe('level entry roles', () => {
+	beforeEach(() => {
+		setEntityCatalog([
+			{ id: 'box', label: 'Box' },
+			{ id: 'sphere', label: 'Sphere' },
+		]);
+	});
+
+	it('tags a new placement and leaves earlier entries alone', () => {
+		stageState.entities = [box];
+		setLevelEditorActive(true);
+		expect(levelState.annotations.crate?.role).toBe('doodad');
+
+		setPlacementRole('level');
+		recordLevelUpsert([{ uuid: 'wall', type: 'Box', position: { x: 0, y: 0, z: 0 } }]);
+		recordLevelUpsert([{ uuid: 'crate', type: 'Box', position: { x: 4, y: 0, z: 0 } }]);
+
+		expect(levelState.annotations.wall?.role).toBe('level');
+		expect(levelState.annotations.crate?.role).toBe('doodad');
+		expect(entriesMarkedForBake(levelState.buffer?.entries ?? [], levelState.annotations)).toEqual([
+			'wall',
+		]);
+	});
+
+	it('writes actor props on the buffer entry and nowhere else', () => {
+		stageState.entities = [box];
+		setLevelEditorActive(true);
+		setPlacementRole('actor');
+		recordLevelUpsert([{ uuid: 'hero', type: 'sphere' }]);
+
+		setActorProp('hero', 'ammo', '12');
+		setActorProp('crate', 'ammo', '1');
+		setActorProp('hero', ' ', 'nope');
+
+		expect(levelState.annotations.hero?.props).toEqual({ ammo: '12' });
+		expect(levelState.annotations.crate?.props).toEqual({});
+		expect(snapshotLevelBuffer()?.annotations.hero?.props).toEqual({ ammo: '12' });
+		expect(snapshotLevelBuffer()?.annotations).not.toBe(levelState.annotations);
+	});
+
+	it('drops the annotation when the entry leaves the buffer', () => {
+		stageState.entities = [box];
+		setLevelEditorActive(true);
+		recordLevelRemoved(['crate']);
+		expect(levelState.annotations.crate).toBeUndefined();
 	});
 });

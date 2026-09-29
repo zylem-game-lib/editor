@@ -42,6 +42,19 @@ export interface DockRect {
 
 export const DOCK_SIDES: readonly DockSide[] = ['left', 'right', 'top', 'bottom'];
 
+/**
+ * The toolbar window. When it is the only panel on its edge it takes that
+ * whole edge, and every other dock lays out in the space left over.
+ */
+export const TOOLBAR_PANEL_ID = 'toolbar';
+
+/**
+ * Cross-axis size of the button strip before the toolbar window has measured
+ * itself. A normal zone with no stored thickness uses a quarter of the
+ * viewport; the toolbar must not.
+ */
+export const TOOLBAR_STRIP_THICKNESS = 40;
+
 /** Keeps at least a sliver of the game visible between opposing docks. */
 export const MIN_FREE_SPACE = 80;
 
@@ -205,11 +218,99 @@ export interface DockLayoutOptions {
  * Left and right zones take the full viewport height and win over top and
  * bottom, which inset horizontally to the space between them. Panels sharing a
  * zone split its long axis evenly.
+ *
+ * The toolbar is the exception when it is alone on its edge: that strip runs
+ * the full length of the edge, and the rules above apply to everyone else
+ * inside the leftover rectangle. Sharing its edge with another panel drops
+ * the exception and the toolbar splits that edge like any other panel.
  */
 export const computeDockLayout = (
 	registry: DockRegistry,
 	viewport: Viewport,
 	options: DockLayoutOptions = {}
+): Record<DockPanelId, DockRect> => {
+	const outerSide = soleToolbarSide(registry);
+	if (!outerSide) return layoutZones(registry, viewport, options);
+
+	const thickness = toolbarStripThickness(registry, outerSide, viewport);
+	const innerRegistry = removeFromZones(registry, TOOLBAR_PANEL_ID);
+	const innerViewport: Viewport = { width: viewport.width, height: viewport.height };
+	const origin = { x: 0, y: 0 };
+	let toolbarRect: DockRect;
+
+	switch (outerSide) {
+		case 'top':
+			innerViewport.height = Math.max(1, viewport.height - thickness);
+			origin.y = thickness;
+			toolbarRect = { x: 0, y: 0, width: viewport.width, height: thickness };
+			break;
+		case 'bottom':
+			innerViewport.height = Math.max(1, viewport.height - thickness);
+			toolbarRect = {
+				x: 0,
+				y: Math.max(0, viewport.height - thickness),
+				width: viewport.width,
+				height: thickness,
+			};
+			break;
+		case 'left':
+			innerViewport.width = Math.max(1, viewport.width - thickness);
+			origin.x = thickness;
+			toolbarRect = { x: 0, y: 0, width: thickness, height: viewport.height };
+			break;
+		case 'right':
+			innerViewport.width = Math.max(1, viewport.width - thickness);
+			toolbarRect = {
+				x: Math.max(0, viewport.width - thickness),
+				y: 0,
+				width: thickness,
+				height: viewport.height,
+			};
+			break;
+	}
+
+	const layout = layoutZones(innerRegistry, innerViewport, options);
+	if (origin.x !== 0 || origin.y !== 0) {
+		for (const rect of Object.values(layout)) {
+			rect.x += origin.x;
+			rect.y += origin.y;
+		}
+	}
+	layout[TOOLBAR_PANEL_ID] = toolbarRect;
+	return layout;
+};
+
+/** The toolbar's edge when it is the only occupant, otherwise null. */
+const soleToolbarSide = (registry: DockRegistry): DockSide | null => {
+	const side = findDockedSide(registry, TOOLBAR_PANEL_ID);
+	if (!side) return null;
+	const panels = registry[side].panels;
+	return panels.length === 1 ? side : null;
+};
+
+/**
+ * Thickness of a lone toolbar strip. An explicit zone size wins; otherwise
+ * the button-strip fallback, never a quarter of the viewport.
+ */
+const toolbarStripThickness = (
+	registry: DockRegistry,
+	side: DockSide,
+	viewport: Viewport
+): number => {
+	const extent = zoneViewportExtent(side, viewport);
+	const stored = registry[side].thickness;
+	const thickness = stored > 0 ? stored : TOOLBAR_STRIP_THICKNESS;
+	return Math.max(1, Math.min(thickness, Math.max(1, extent)));
+};
+
+/**
+ * Side-wins layout inside one rectangle. Callers that reserved an outer
+ * toolbar strip pass the leftover viewport.
+ */
+const layoutZones = (
+	registry: DockRegistry,
+	viewport: Viewport,
+	options: DockLayoutOptions
 ): Record<DockPanelId, DockRect> => {
 	const minSlot = options.minSlotExtent ?? 0;
 	const layout: Record<DockPanelId, DockRect> = {};

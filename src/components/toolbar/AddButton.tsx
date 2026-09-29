@@ -2,10 +2,23 @@ import { ItemPicker, MenuButton } from '@zylem/ui/components';
 import Plus from 'lucide-solid/icons/plus';
 import { type Component, createMemo, createSignal, onCleanup, Show } from 'solid-js';
 import { debugStore } from '..';
+import { type LevelRole, levelStore } from '../level/level-state';
 import { isAddArmed, resolvePlacementTarget, toPickerItems } from './add-button-state';
 import { catalogStore } from './catalog-state';
 import { armAddTool, armAddType, registerAddPaletteOpener } from './toolbar-actions';
 import { withShortcut } from './toolbar-shortcuts';
+
+interface AddButtonProps {
+	/** Placement tag stamped on entities that appear while this button is armed. */
+	placement?: LevelRole;
+	/** Button name. Defaults to the single Add tool label. */
+	label?: string;
+	/**
+	 * The Shift+A palette shortcut binds one button. The primitive button keeps
+	 * it; actor and level have their own palettes without that chord.
+	 */
+	registerPaletteShortcut?: boolean;
+}
 
 /**
  * The Add tool: a palette of entity types plus an armed placement mode.
@@ -18,8 +31,10 @@ import { withShortcut } from './toolbar-shortcuts';
  * The palette's entries are game-owned — they arrive as `catalog:snapshot` — so a
  * host that registers its own entity types game-side gets them here for free.
  */
-export const AddButton: Component = () => {
-	const isArmed = () => isAddArmed(debugStore.tool, catalogStore.armedTypeId);
+export const AddButton: Component<AddButtonProps> = (props) => {
+	const role = () => props.placement ?? 'doodad';
+	const isArmed = () =>
+		isAddArmed(debugStore.tool, catalogStore.armedTypeId) && levelStore.placementRole === role();
 
 	/** What the face shows and what a press places. */
 	const target = createMemo(() =>
@@ -30,32 +45,40 @@ export const AddButton: Component = () => {
 
 	const faceLabel = () => {
 		const descriptor = target();
+		if (props.label) return descriptor ? `${props.label}: ${descriptor.label}` : props.label;
 		return descriptor ? `Place ${descriptor.label}` : 'Add';
 	};
 
 	// Controlled, so the Shift+A shortcut can open it while this button is
 	// mounted. Declines when the button is disabled, to match a click.
 	const [paletteOpen, setPaletteOpen] = createSignal(false);
+	const bindsShortcut = () => props.registerPaletteShortcut ?? role() === 'doodad';
 	onCleanup(
-		registerAddPaletteOpener(() => {
-			if (catalogStore.entities.length === 0) return false;
-			setPaletteOpen(true);
-			return true;
-		})
+		bindsShortcut()
+			? registerAddPaletteOpener(() => {
+					if (catalogStore.entities.length === 0) return false;
+					setPaletteOpen(true);
+					return true;
+				})
+			: () => {}
 	);
 
 	return (
 		<div class="zylem-add-tool">
 			<MenuButton
 				label={faceLabel()}
-				tooltip={`${withShortcut(faceLabel(), 'add')} · ${withShortcut('Palette', 'addPalette')}`}
+				tooltip={
+					props.label
+						? faceLabel()
+						: `${withShortcut(faceLabel(), 'add')} · ${withShortcut('Palette', 'addPalette')}`
+				}
 				selected={isArmed()}
 				// An empty catalog is the one case with nothing to arm. Disabled
 				// rather than silently inert, so a press that cannot work looks
 				// like one; the game publishes its catalog on connect, so this is
 				// only ever the no-game state.
 				disabled={catalogStore.entities.length === 0}
-				onAction={armAddTool}
+				onAction={() => armAddTool(role())}
 				open={paletteOpen()}
 				onOpenChange={setPaletteOpen}
 				menu={(close) => (
@@ -65,7 +88,7 @@ export const AddButton: Component = () => {
 						searchPlaceholder="Search entities…"
 						emptyMessage="No entity types published. Is a game running?"
 						onSelect={(item) => {
-							armAddType(item.id);
+							armAddType(item.id, role());
 							close();
 						}}
 					/>

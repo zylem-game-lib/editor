@@ -19,6 +19,7 @@ import {
 	setDraggingPanel,
 	setDropTargetIndex,
 } from '../editor-store';
+import { currentAccordionIds } from './panel-visibility';
 
 // Minimum drag distance before showing ghost
 const DRAG_THRESHOLD = 5;
@@ -43,11 +44,7 @@ export const DraggableAccordionItem: Component<DraggableAccordionItemProps> = (p
 	let isPointerDown = false;
 
 	// Get current index of this panel in the order
-	const getCurrentIndex = () => {
-		const detachedIds = Object.keys(debugStore.detachedPanels);
-		const dockedPanels = debugStore.panelOrder.filter((id) => !detachedIds.includes(id));
-		return dockedPanels.indexOf(props.value);
-	};
+	const getCurrentIndex = () => currentAccordionIds().indexOf(props.value);
 
 	const handlePointerDown = (e: PointerEvent) => {
 		// Only start drag on left click
@@ -155,11 +152,10 @@ export const DraggableAccordionItem: Component<DraggableAccordionItemProps> = (p
 					const currentIndex = getCurrentIndex();
 					if (dropIndex !== currentIndex && dropIndex !== currentIndex + 1) {
 						// Calculate new order
-						const detachedIds = Object.keys(debugStore.detachedPanels);
-						const dockedPanels = debugStore.panelOrder.filter((id) => !detachedIds.includes(id));
+						const visible = currentAccordionIds();
 
 						// Remove current item
-						const newOrder = dockedPanels.filter((id) => id !== props.value);
+						const newOrder = visible.filter((id) => id !== props.value);
 
 						// Adjust insert index if we're moving down
 						let insertIndex = dropIndex;
@@ -172,11 +168,9 @@ export const DraggableAccordionItem: Component<DraggableAccordionItemProps> = (p
 
 						// Update store with full panel order (including detached)
 						const fullOrder = [...newOrder];
-						// Add back detached panels at their original positions
+						// Hidden and detached panels stay in the stored order.
 						debugStore.panelOrder.forEach((id) => {
-							if (detachedIds.includes(id) && !fullOrder.includes(id)) {
-								fullOrder.push(id);
-							}
+							if (!fullOrder.includes(id)) fullOrder.push(id);
 						});
 
 						reorderPanels(fullOrder);

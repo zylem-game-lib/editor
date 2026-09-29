@@ -14,6 +14,7 @@ import { addPaletteCSS } from '../components/toolbar/add-palette.css';
 import { installToolShortcuts } from '../components/toolbar/tool-shortcuts';
 import { installToolbarShortcuts } from '../components/toolbar/toolbar-shortcuts';
 import { installTransformToolGuard } from '../components/toolbar/transform-tool-guard';
+import { connectViewState } from '../components/toolbar/view-state';
 import { connectTransformState } from '../components/transform/transform-state';
 
 /**
@@ -229,6 +230,7 @@ export class ZylemEditorElement extends HTMLElement {
 			// Pushes the editor's snap increments and grid visibility to the game, so
 			// the gizmo snaps to whatever the toolbar shows.
 			connectTransformState(),
+			connectViewState(),
 			installHistoryShortcuts({ enabled: this._config.enableUndoShortcut !== false }),
 			installToolShortcuts({ enabled: this._config.enableEscapeShortcut !== false }),
 			// Read per keystroke: the controller arrives after the first render, and
@@ -283,7 +285,7 @@ export class ZylemEditorElement extends HTMLElement {
 		this.controller?.togglePanel();
 	}
 
-	/** Whether the main panel is showing. Collapsed counts as showing; closed does not. */
+	/** Whether either editor window is showing. Collapsed counts as showing; closed does not. */
 	isPanelOpen(): boolean {
 		return this.controller?.isPanelOpen() ?? false;
 	}

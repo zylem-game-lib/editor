@@ -13,6 +13,7 @@ import type {
 	BridgeVec3,
 	EntitySelectMode,
 	LevelBuffer,
+	CameraViewPreset,
 	SnapSettingsPayload,
 } from '@zylem/bridge';
 import { channel } from './channel';
@@ -104,4 +105,9 @@ export function sendSnapSettings(snap: SnapSettingsPayload): void {
 /** Show or hide the game's construction-plane grid. */
 export function sendGridVisible(visible: boolean): void {
 	channel.send('grid:set', { visible });
+}
+
+/** Lock the game's debug orbit camera to a view preset. */
+export function sendCameraView(preset: CameraViewPreset): void {
+	channel.send('camera:view:set', { preset });
 }

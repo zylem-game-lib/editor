@@ -1,18 +1,17 @@
 import { type Accessor, type Component, Show } from 'solid-js';
-import { Toolbar } from '../toolbar/Toolbar';
 import { AccordionMenu } from './AccordionMenu';
 
 interface MenuProps {
 	isCollapsed: Accessor<boolean>;
 }
 
+/** Accordion of every section. The toolbar is its own window. */
 export const Menu: Component<MenuProps> = (props) => {
 	return (
-		<div class="zylem-menu">
-			<Toolbar />
-			<Show when={!props.isCollapsed()}>
+		<Show when={!props.isCollapsed()}>
+			<div class="zylem-menu">
 				<AccordionMenu />
-			</Show>
-		</div>
+			</div>
+		</Show>
 	);
 };

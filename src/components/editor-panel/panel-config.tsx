@@ -8,6 +8,7 @@ import { BridgePanel } from '../bridge/BridgePanel';
 import { Console } from '../console/Console';
 import { EntitiesSection } from '../entities/EntitiesSection';
 import { GameSection } from '../game/GameSection';
+import { LevelSection } from '../level/LevelSection';
 import { StageSection } from '../stages/StageSection';
 import { TransformSection } from '../transform/TransformSection';
 
@@ -26,6 +27,7 @@ export const PANEL_CONFIGS: PanelConfig[] = [
 	{ id: 'stage-config', title: 'Stage', component: StageSection },
 	{ id: 'entities', title: 'Entities', component: EntitiesSection },
 	{ id: 'transform', title: 'Transform', component: TransformSection },
+	{ id: 'level', title: 'Level', component: LevelSection },
 	{ id: 'console', title: 'Console', component: Console },
 	{ id: 'bridge', title: 'Bridge', component: BridgePanel },
 ];

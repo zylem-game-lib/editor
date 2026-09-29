@@ -136,13 +136,14 @@ export interface MountZylemEditorOptions extends EditorStateBridgeOptions {
 	 */
 	launcherMode?: EditorLauncherMode;
 	/**
-	 * Dock layout to seed on first run, keyed by viewport edge. `'main'` is the
-	 * editor panel; any other id is a section such as `'console'`. Ignored once
-	 * the user has a saved layout.
+	 * Dock layout to seed on first run, keyed by viewport edge. `'toolbar'` is
+	 * the tool strip, `'main'` is the panel container, and any other id is a
+	 * section such as `'console'`. A host that omits the toolbar still gets it
+	 * on top. Ignored once the user has a saved layout.
 	 *
 	 * @example
 	 * ```ts
-	 * mountZylemEditor({ defaultDocks: { left: ['main'], bottom: ['console'] } });
+	 * mountZylemEditor({ defaultDocks: { top: ['toolbar'], left: ['main'] } });
 	 * ```
 	 */
 	defaultDocks?: EditorDockDefaults;

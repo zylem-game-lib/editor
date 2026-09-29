@@ -30,6 +30,7 @@ import {
 	toggleSnap,
 	toggleTool,
 } from './toolbar-actions';
+import { setSpaceHeld } from './view-state';
 
 export interface ShortcutChord {
 	/** `KeyboardEvent.key`, matched case-insensitively so Caps Lock changes nothing. */
@@ -207,6 +208,26 @@ export function installToolbarShortcuts(options: ToolbarShortcutOptions = {}): (
 
 	const isActive = options.isActive ?? (() => true);
 
+	const isSpace = (event: KeyboardEvent) => event.key === ' ' || event.key === 'Spacebar';
+
+	// Hold Space for a temporary custom camera. Release restores the latched preset.
+	// Keyup always clears, including after the panel closes mid-hold.
+	const onSpaceDown = (event: KeyboardEvent) => {
+		if (!isSpace(event) || event.repeat) return;
+		if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+		if (isEditableTarget(event) || isOverlayTarget(event)) return;
+		if (!isActive()) return;
+
+		event.preventDefault();
+		event.stopImmediatePropagation();
+		setSpaceHeld(true);
+	};
+
+	const onSpaceUp = (event: KeyboardEvent) => {
+		if (!isSpace(event)) return;
+		setSpaceHeld(false);
+	};
+
 	const onKeyDown = (event: KeyboardEvent) => {
 		const action = classifyToolbarShortcut(event);
 		if (!action) return;
@@ -230,6 +251,12 @@ export function installToolbarShortcuts(options: ToolbarShortcutOptions = {}): (
 		runToolbarAction(action);
 	};
 
+	target.addEventListener('keydown', onSpaceDown, true);
+	target.addEventListener('keyup', onSpaceUp, true);
 	target.addEventListener('keydown', onKeyDown, true);
-	return () => target.removeEventListener('keydown', onKeyDown, true);
+	return () => {
+		target.removeEventListener('keydown', onSpaceDown, true);
+		target.removeEventListener('keyup', onSpaceUp, true);
+		target.removeEventListener('keydown', onKeyDown, true);
+	};
 }

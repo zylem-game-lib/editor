@@ -20,6 +20,7 @@
 export { bridgeChannel } from './channel';
 export {
 	sendAddType,
+	sendCameraView,
 	sendDebugEnabled,
 	sendEntityCreate,
 	sendEntityFocus,

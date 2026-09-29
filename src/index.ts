@@ -3,6 +3,7 @@ export {
 	connectEditorBridge,
 	disconnectEditorBridge,
 	sendAddType,
+	sendCameraView,
 	sendDebugEnabled,
 	sendEntityCreate,
 	sendEntityFocus,
@@ -35,6 +36,7 @@ export {
 	getDockedSide,
 	MAIN_PANEL_ID,
 	stageState,
+	TOOLBAR_PANEL_ID,
 	undockPanelFromSides,
 } from './components';
 export * from './components/common/Icon';

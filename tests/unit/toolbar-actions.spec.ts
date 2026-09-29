@@ -10,6 +10,7 @@ import {
 	setPaused,
 	setSelectedEntityId,
 } from '../../src/components/entities/entities-state';
+import { levelState, setPlacementRole } from '../../src/components/level/level-state';
 import { stageState } from '../../src/components/stages/stage-state';
 import {
 	catalogState,
@@ -53,6 +54,7 @@ beforeEach(() => {
 	catalogState.lastTypeId = null;
 	transformState.enabled = true;
 	transformState.gridVisible = false;
+	setPlacementRole(null);
 
 	sent = [];
 	const capture = (type: Parameters<typeof channel.on>[0]) =>
@@ -248,6 +250,14 @@ describe('armAddType', () => {
 		expect(armAddType('gone')).toBe(false);
 		expect(getDebugTool()).toBe('none');
 		expect(sent).toEqual([]);
+	});
+
+	it('tags the placement role and drops it when another tool takes over', () => {
+		armAddType('box', 'actor');
+		expect(levelState.placementRole).toBe('actor');
+
+		selectTool('select');
+		expect(levelState.placementRole).toBeNull();
 	});
 });
 

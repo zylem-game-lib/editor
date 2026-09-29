@@ -26,6 +26,7 @@ import {
 	TOOLBAR_SHORTCUTS,
 	withShortcut,
 } from '../../src/components/toolbar/toolbar-shortcuts';
+import { setSpaceHeld, viewState } from '../../src/components/toolbar/view-state';
 import { transformState } from '../../src/components/transform/transform-state';
 
 function keydown(init: Partial<KeyboardEventInit> & { key: string }): KeyboardEvent {
@@ -444,5 +445,19 @@ describe('installToolbarShortcuts', () => {
 		press({ key: 'q' });
 
 		expect(getDebugTool()).toBe('none');
+	});
+
+	it('holds Space as a temporary custom camera and restores on release', () => {
+		uninstall = installToolbarShortcuts();
+		setSpaceHeld(false);
+		viewState.preset = 'side';
+
+		expect(press({ key: ' ' })).toBe(true);
+		expect(viewState.spaceHeld).toBe(true);
+
+		const up = new KeyboardEvent('keyup', { key: ' ', bubbles: true });
+		window.dispatchEvent(up);
+		expect(viewState.spaceHeld).toBe(false);
+		expect(viewState.preset).toBe('side');
 	});
 });
