@@ -13,7 +13,6 @@ import type {
 	BridgeVec3,
 	EntitySelectMode,
 	LevelBuffer,
-	CameraViewPreset,
 	SnapSettingsPayload,
 } from '@zylem/bridge';
 import { channel } from './channel';
@@ -47,7 +46,7 @@ export function sendEntitySelectMany(uuids: string[], mode: EntitySelectMode = '
 	channel.send('entity:select', { uuid: uuids[0] ?? null, uuids, mode });
 }
 
-/** Focus/frame the game debug camera on an entity. */
+/** Focus/frame the active editor camera on an entity. */
 export function sendEntityFocus(uuid: string): void {
 	channel.send('entity:focus', { uuid });
 }
@@ -107,7 +106,7 @@ export function sendGridVisible(visible: boolean): void {
 	channel.send('grid:set', { visible });
 }
 
-/** Lock the game's debug orbit camera to a view preset. */
-export function sendCameraView(preset: CameraViewPreset): void {
-	channel.send('camera:view:set', { preset });
+/** Make a game or editor camera the main view. */
+export function sendCameraActivate(id: string): void {
+	channel.send('camera:activate', { id });
 }

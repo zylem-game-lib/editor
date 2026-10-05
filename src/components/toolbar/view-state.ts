@@ -1,38 +1,53 @@
 /**
  * Editor camera view.
  *
- * Top, side, and isometric keep a fixed rotation; custom is free rotation.
- * Holding Space borrows custom and gives the latched preset back on release.
- * `connectViewState` mirrors the effective preset to the game on `camera:view:set`.
+ * Game is the camera the game is already rendering. Side, top, and isometric
+ * are locked orthographic cameras; free is a perspective orbit camera.
+ * Holding Space borrows free and gives the latched camera back on release.
+ * `connectViewState` sends `camera:activate` only after the latch changes, so
+ * attaching the editor leaves the game camera in place.
  */
 
-import type { CameraViewPreset } from '@zylem/bridge';
+import { EDITOR_CAMERAS, GAME_CAMERA_ID } from '@zylem/bridge';
 import { proxy, subscribe } from 'valtio/vanilla';
-import { sendCameraView } from '../../bridge/commands';
+import { sendCameraActivate } from '../../bridge/commands';
 import { mirrorProxy } from '../common/proxy-mirror';
 
-export type ViewPreset = CameraViewPreset;
+export type ViewPreset = 'game' | 'side' | 'top' | 'isometric' | 'free';
+
+const CAMERA_IDS: Record<ViewPreset, string> = {
+	game: GAME_CAMERA_ID,
+	side: EDITOR_CAMERAS.side,
+	top: EDITOR_CAMERAS.top,
+	isometric: EDITOR_CAMERAS.isometric,
+	free: EDITOR_CAMERAS.free,
+};
+
+/** Bridge id for a toolbar camera. */
+export function cameraIdForPreset(preset: ViewPreset): string {
+	return CAMERA_IDS[preset];
+}
 
 export interface ViewState {
-	/** Perspective layer. Off hides the preset buttons; it does not change the preset. */
+	/** Perspective layer. Off hides the camera buttons; it does not change the camera. */
 	perspective: boolean;
-	/** Preset restored when Space is released. */
+	/** Camera restored when Space is released. */
 	preset: ViewPreset;
 	spaceHeld: boolean;
 }
 
 export const viewState = proxy<ViewState>({
 	perspective: false,
-	preset: 'top',
+	preset: 'game',
 	spaceHeld: false,
 });
 
 /** Solid-reactive view of {@link viewState}. */
 export const viewStore = mirrorProxy(viewState);
 
-/** The preset the camera is using right now. Space wins over the latched one. */
+/** The camera the view is using right now. Space wins over the latched one. */
 export function effectiveViewPreset(preset: ViewPreset, spaceHeld: boolean): ViewPreset {
-	return spaceHeld ? 'custom' : preset;
+	return spaceHeld ? 'free' : preset;
 }
 
 export function togglePerspective(): void {
@@ -50,8 +65,8 @@ export function setSpaceHeld(held: boolean): void {
 let viewStateConnected = false;
 
 /**
- * Mirror the effective view preset to the game, and push the current value
- * once so a game that started unlocked matches the toolbar.
+ * Mirror camera changes to the game. The camera already rendering at connect
+ * time is the game camera, so the current latch is not sent until it changes.
  *
  * @returns An unsubscribe function.
  */
@@ -60,13 +75,12 @@ export function connectViewState(): () => void {
 	viewStateConnected = true;
 
 	let last = effectiveViewPreset(viewState.preset, viewState.spaceHeld);
-	sendCameraView(last);
 
 	const unsubscribe = subscribe(viewState, () => {
 		const next = effectiveViewPreset(viewState.preset, viewState.spaceHeld);
 		if (next === last) return;
 		last = next;
-		sendCameraView(next);
+		sendCameraActivate(cameraIdForPreset(next));
 	});
 
 	return () => {

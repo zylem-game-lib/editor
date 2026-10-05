@@ -3,7 +3,7 @@ export {
 	connectEditorBridge,
 	disconnectEditorBridge,
 	sendAddType,
-	sendCameraView,
+	sendCameraActivate,
 	sendDebugEnabled,
 	sendEntityCreate,
 	sendEntityFocus,

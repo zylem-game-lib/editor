@@ -17,7 +17,8 @@ import { PlayPauseButton } from './PlayPauseButton';
 import { SelectButton } from './SelectButton';
 import { RotateButton, ScaleButton, TranslateButton } from './TransformButtons';
 import {
-	CustomViewButton,
+	FreeViewButton,
+	GameViewButton,
 	IsometricViewButton,
 	SideViewButton,
 	TopViewButton,
@@ -45,14 +46,16 @@ const ContextActionButton: Component<{ action: ContextAction }> = (props) => {
 			return <RotateButton />;
 		case 'scale':
 			return <ScaleButton />;
-		case 'view-top':
-			return <TopViewButton />;
+		case 'view-game':
+			return <GameViewButton />;
 		case 'view-side':
 			return <SideViewButton />;
+		case 'view-top':
+			return <TopViewButton />;
 		case 'view-isometric':
 			return <IsometricViewButton />;
-		case 'view-custom':
-			return <CustomViewButton />;
+		case 'view-free':
+			return <FreeViewButton />;
 		case 'grid':
 			return <GridButton />;
 		case 'add-actor':

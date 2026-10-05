@@ -11,7 +11,7 @@ import { getEntityThumbnail } from './thumbnail-store';
 
 /**
  * Handle entity button click — log entity info to the editor console, select
- * the entity, and ask the game (via the bridge) to frame the debug camera on
+ * the entity, and ask the game (via the bridge) to frame the active camera on
  * it (no-op in stub mode).
  */
 function handleEntityClick(entity: Partial<BaseEntityInterface>): void {

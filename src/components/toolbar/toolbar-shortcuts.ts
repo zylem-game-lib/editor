@@ -210,7 +210,7 @@ export function installToolbarShortcuts(options: ToolbarShortcutOptions = {}): (
 
 	const isSpace = (event: KeyboardEvent) => event.key === ' ' || event.key === 'Spacebar';
 
-	// Hold Space for a temporary custom camera. Release restores the latched preset.
+	// Hold Space for a temporary free camera. Release restores the latched camera.
 	// Keyup always clears, including after the panel closes mid-hold.
 	const onSpaceDown = (event: KeyboardEvent) => {
 		if (!isSpace(event) || event.repeat) return;

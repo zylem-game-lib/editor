@@ -1,59 +1,53 @@
-import { ToolbarButton } from '@zylem/ui/components';
-import Box from 'lucide-solid/icons/box';
-import Camera from 'lucide-solid/icons/camera';
-import LayerArrowDown from 'lucide-solid/icons/layer-arrow-down';
-import SquareArrowRightEnter from 'lucide-solid/icons/square-arrow-right-enter';
-import type { Component, JSX } from 'solid-js';
 import {
-	effectiveViewPreset,
-	setViewPreset,
-	type ViewPreset,
-	viewStore,
-} from './view-state';
+	FreePerspective,
+	GameCamera,
+	IsometricPerspective,
+	SideviewPerspective,
+	ToolbarButton,
+	TopDownPerspective,
+} from '@zylem/ui/components';
+import type { Component } from 'solid-js';
+import { effectiveViewPreset, setViewPreset, type ViewPreset, viewStore } from './view-state';
 
 interface ViewPresetButtonProps {
 	preset: ViewPreset;
 	label: string;
-	children: JSX.Element;
+	icon: Component<{ class?: string }>;
 }
 
 /**
- * Latches a camera preset. While Space is held the effective preset is custom,
- * so only that button reads as selected until the key comes up.
+ * Latches a camera. While Space is held the effective camera is free, so only
+ * that button reads as selected until the key comes up.
  */
-const ViewPresetButton: Component<ViewPresetButtonProps> = (props) => (
-	<ToolbarButton
-		label={props.label}
-		selected={
-			effectiveViewPreset(viewStore.preset, viewStore.spaceHeld) ===
-			props.preset
-		}
-		onClick={() => setViewPreset(props.preset)}
-	>
-		{props.children}
-	</ToolbarButton>
+const ViewPresetButton: Component<ViewPresetButtonProps> = (props) => {
+	const Icon = props.icon;
+	return (
+		<ToolbarButton
+			label={props.label}
+			selected={effectiveViewPreset(viewStore.preset, viewStore.spaceHeld) === props.preset}
+			onClick={() => setViewPreset(props.preset)}
+		>
+			<Icon />
+		</ToolbarButton>
+	);
+};
+
+export const GameViewButton: Component = () => (
+	<ViewPresetButton preset="game" label="Game camera" icon={GameCamera} />
 );
 
 export const TopViewButton: Component = () => (
-	<ViewPresetButton preset="top" label="Top">
-		<LayerArrowDown class="zylem-icon" />
-	</ViewPresetButton>
+	<ViewPresetButton preset="top" label="Top" icon={TopDownPerspective} />
 );
 
 export const SideViewButton: Component = () => (
-	<ViewPresetButton preset="side" label="Side">
-		<SquareArrowRightEnter class="zylem-icon" />
-	</ViewPresetButton>
+	<ViewPresetButton preset="side" label="Side" icon={SideviewPerspective} />
 );
 
 export const IsometricViewButton: Component = () => (
-	<ViewPresetButton preset="isometric" label="Isometric">
-		<Box class="zylem-icon" />
-	</ViewPresetButton>
+	<ViewPresetButton preset="isometric" label="Isometric" icon={IsometricPerspective} />
 );
 
-export const CustomViewButton: Component = () => (
-	<ViewPresetButton preset="custom" label="Custom camera">
-		<Camera class="zylem-icon" />
-	</ViewPresetButton>
+export const FreeViewButton: Component = () => (
+	<ViewPresetButton preset="free" label="Free camera" icon={FreePerspective} />
 );

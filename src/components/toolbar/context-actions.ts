@@ -10,10 +10,11 @@ export type ContextAction =
 	| 'translate'
 	| 'rotate'
 	| 'scale'
-	| 'view-top'
+	| 'view-game'
 	| 'view-side'
+	| 'view-top'
 	| 'view-isometric'
-	| 'view-custom'
+	| 'view-free'
 	| 'grid'
 	| 'add-actor'
 	| 'add-level'
@@ -32,7 +33,7 @@ export interface ContextToolbarInput {
 export function contextToolbarActions(input: ContextToolbarInput): ContextAction[] {
 	const actions: ContextAction[] = ['translate', 'rotate', 'scale'];
 	if (input.perspective) {
-		actions.push('view-top', 'view-side', 'view-isometric', 'view-custom');
+		actions.push('view-game', 'view-side', 'view-top', 'view-isometric', 'view-free');
 	}
 	if (input.debug) actions.push('grid');
 	if (input.build) actions.push('add-actor', 'add-level', 'add-primitive', 'delete');
@@ -42,5 +43,5 @@ export function contextToolbarActions(input: ContextToolbarInput): ContextAction
 
 /** Actions that open a new group, so the toolbar can draw a divider in front. */
 export function contextActionStartsGroup(action: ContextAction): boolean {
-	return action === 'view-top' || action === 'grid' || action === 'add-actor' || action === 'snap';
+	return action === 'view-game' || action === 'grid' || action === 'add-actor' || action === 'snap';
 }
