@@ -23,8 +23,8 @@ importers:
         specifier: ^0.9.0
         version: 0.9.0
       '@zylem/ui':
-        specifier: ^0.8.11
-        version: 0.8.11(solid-js@1.9.15)
+        specifier: ^0.8.12
+        version: 0.8.12(solid-js@1.9.15)
       lucide-solid:
         specifier: ^1.48.0
         version: 1.48.0(solid-js@1.9.15)
@@ -48,8 +48,8 @@ importers:
         specifier: ^0.8.9
         version: 0.8.9(three@0.185.1)
       '@zylem/game-lib':
-        specifier: ^0.9.0
-        version: 0.9.0(howler@2.2.4)(nanoid@3.3.18)(three@0.185.1)(valtio@2.3.2)
+        specifier: ^0.9.4
+        version: 0.9.4(howler@2.2.4)(nanoid@3.3.18)(three@0.185.1)(valtio@2.3.2)
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -1110,8 +1110,8 @@ packages:
   '@zylem/bridge@0.9.0':
     resolution: {integrity: sha512-dZHtyDuUwCLHrzMbyHECPwQRc4FzbruroJxXLFjODiGkIhVMN73MIj6rYzE5GtDJF6v8vCqg5UPAtWzf+xCH5g==}
 
-  '@zylem/game-lib@0.9.0':
-    resolution: {integrity: sha512-uKZqlZWlSsrFgU0uplVaIpV/LeM+XcgNAwLT9VQzVcUM/GZHcaAFu461D8NL5uDS7YZBzsm4VE/BNEWv3TgRZQ==}
+  '@zylem/game-lib@0.9.4':
+    resolution: {integrity: sha512-FQKwT+LXKz+T5i80Oo7yTPxXXSDH7QET31PProY9tiC8QQ20EbGwfYyLTfPXbdIi2DwrHSwTzj+p+AFXNv+/6w==}
     peerDependencies:
       howler: ^2.2.4
       nanoid: ^5.1.5
@@ -1122,8 +1122,8 @@ packages:
     resolution: {integrity: sha512-u2UNFe/zhvlc0jJZr/gLRDkdc/R7fayQqdqeRNV9mRiV8tFwEhaQX9+yw/Gn2F37dmrXYVtA/z0pDT6A0CKAAQ==}
     engines: {node: '>=20.10.0'}
 
-  '@zylem/ui@0.8.11':
-    resolution: {integrity: sha512-sHL/H53PaV+mNXnRvnTt1YRY2UuUplY6o9ctd6gzS2wfYp1ZcsLokkmab9Rjo0k5W3bII7Wq1RdSp23um4XiUA==}
+  '@zylem/ui@0.8.12':
+    resolution: {integrity: sha512-1bA7C5TPntb9IM4hUfq7Un2T/bBY4X7GzWzQKqk37oP9t4MpUYRBKRCRFKan7CRTNn0/IRXw5UmN9acSu4wDKQ==}
     engines: {node: '>=22.12.0', pnpm: '>=10.32.1'}
     peerDependencies:
       solid-js: ^1.9.9
@@ -1589,8 +1589,8 @@ packages:
     resolution: {integrity: sha512-yau8yJdTt989Mm0Bd/236QnzEiPf2xLLTqUZRUJOo/3CB078LSwzei343DgtJVmfJKJE3TMINY1u42SQsP6mXw==}
     engines: {node: '>=14.0.0'}
 
-  tone@15.1.22:
-    resolution: {integrity: sha512-TCScAGD4sLsama5DjvTUXlLDXSqPealhL64nsdV1hhr6frPWve0DeSo63AKnSJwgfg55fhvxj0iPPRwPN5o0ag==}
+  tone@15.5.57:
+    resolution: {integrity: sha512-sRdRh8MGzYjnPkWoR+Y0dUSI8nkpZQ+rtPGyyD5BzEYvCcmyPJIgC3Fw+XnrDiqb8BgRqwicr/4TV0gL1DzelQ==}
 
   tree-kill@1.2.2:
     resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}
@@ -2595,7 +2595,7 @@ snapshots:
 
   '@zylem/bridge@0.9.0': {}
 
-  '@zylem/game-lib@0.9.0(howler@2.2.4)(nanoid@3.3.18)(three@0.185.1)(valtio@2.3.2)':
+  '@zylem/game-lib@0.9.4(howler@2.2.4)(nanoid@3.3.18)(three@0.185.1)(valtio@2.3.2)':
     dependencies:
       '@dgreenheck/three-pinata': 2.0.1(three@0.185.1)
       '@sinclair/typebox': 0.34.52
@@ -2609,7 +2609,7 @@ snapshots:
       nanoid: 3.3.18
       stats.js: 0.17.0
       three: 0.185.1
-      tone: 15.1.22
+      tone: 15.5.57
       typescript-fsm: 1.6.0
       valtio: 2.3.2
     transitivePeerDependencies:
@@ -2618,7 +2618,7 @@ snapshots:
 
   '@zylem/runtime@0.8.8': {}
 
-  '@zylem/ui@0.8.11(solid-js@1.9.15)':
+  '@zylem/ui@0.8.12(solid-js@1.9.15)':
     dependencies:
       '@kobalte/core': 0.13.13(solid-js@1.9.15)
       '@vanilla-extract/css': 1.21.2
@@ -3083,7 +3083,7 @@ snapshots:
 
   tinyrainbow@3.1.1: {}
 
-  tone@15.1.22:
+  tone@15.5.57:
     dependencies:
       standardized-audio-context: 25.3.77
       tslib: 2.8.1

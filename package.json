@@ -65,14 +65,14 @@
 		"valtio": "^2.1.7"
 	},
 	"peerDependencies": {
-		"@zylem/game-lib": "^0.9.3"
+		"@zylem/game-lib": "^0.9.4"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.7",
 		"@types/three": "^0.185.0",
 		"@typescript/native": "npm:typescript@7.0.2",
 		"@zylem/behaviors": "^0.8.9",
-		"@zylem/game-lib": "^0.9.3",
+		"@zylem/game-lib": "^0.9.4",
 		"cross-env": "^10.1.0",
 		"esbuild": "^0.25.0",
 		"esbuild-plugin-solid": "^0.6.0",
