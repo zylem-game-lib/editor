@@ -20,8 +20,8 @@ importers:
         specifier: ^0.14.0
         version: 0.14.10(solid-js@1.9.15)
       '@zylem/bridge':
-        specifier: ^0.9.0
-        version: 0.9.0
+        specifier: ^0.9.4
+        version: 0.9.4
       '@zylem/ui':
         specifier: ^0.8.13
         version: 0.8.13(solid-js@1.9.15)
@@ -1111,8 +1111,8 @@ packages:
     peerDependencies:
       three: 0.185.1
 
-  '@zylem/bridge@0.9.0':
-    resolution: {integrity: sha512-dZHtyDuUwCLHrzMbyHECPwQRc4FzbruroJxXLFjODiGkIhVMN73MIj6rYzE5GtDJF6v8vCqg5UPAtWzf+xCH5g==}
+  '@zylem/bridge@0.9.4':
+    resolution: {integrity: sha512-Txkre/yEdH+s1L4t5yh+ctXuOAE/3PARcPkSE6JCTtuLFcq0BKUdD0+zFcian4Rynt1YQ/qCojqkuiUvexnAng==}
 
   '@zylem/game-lib@0.9.4':
     resolution: {integrity: sha512-FQKwT+LXKz+T5i80Oo7yTPxXXSDH7QET31PProY9tiC8QQ20EbGwfYyLTfPXbdIi2DwrHSwTzj+p+AFXNv+/6w==}
@@ -2599,7 +2599,7 @@ snapshots:
       - '@types/react'
       - react
 
-  '@zylem/bridge@0.9.0': {}
+  '@zylem/bridge@0.9.4': {}
 
   '@zylem/game-lib@0.9.4(howler@2.2.4)(nanoid@3.3.18)(three@0.185.1)(valtio@2.3.2)':
     dependencies:
@@ -2607,7 +2607,7 @@ snapshots:
       '@sinclair/typebox': 0.34.52
       '@types/howler': 2.2.13
       '@zylem/behaviors': 0.8.9(three@0.185.1)
-      '@zylem/bridge': 0.9.0
+      '@zylem/bridge': 0.9.4
       comlink: 4.4.2
       howler: 2.2.4
       idb-keyval: 6.3.0
