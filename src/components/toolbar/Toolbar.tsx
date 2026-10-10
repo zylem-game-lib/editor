@@ -30,9 +30,9 @@ export const MainToolbar: Component = () => {
 	return (
 		<div class="zylem-toolbar-group">
 			<SelectButton />
+			<BuildButton />
 			<PerspectiveButton />
 			<DebugButton />
-			<BuildButton />
 			<PlayPauseButton />
 		</div>
 	);
@@ -106,7 +106,9 @@ export const Toolbar: Component<{ orientation?: 'row' | 'column' }> = (props) =>
 	return (
 		<div
 			class="zylem-toolbar"
-			classList={{ 'zylem-toolbar--vertical': (props.orientation ?? 'row') === 'column' }}
+			classList={{
+				'zylem-toolbar--vertical': (props.orientation ?? 'row') === 'column',
+			}}
 		>
 			<MainToolbar />
 			<span class="zylem-toolbar-divider" />
