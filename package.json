@@ -71,7 +71,7 @@
 		"@biomejs/biome": "^2.3.7",
 		"@types/three": "^0.185.0",
 		"@typescript/native": "npm:typescript@7.0.2",
-		"@zylem/behaviors": "^0.8.9",
+		"@zylem/behaviors": "^0.8.10",
 		"@zylem/game-lib": "^0.9.4",
 		"cross-env": "^10.1.0",
 		"esbuild": "^0.25.0",

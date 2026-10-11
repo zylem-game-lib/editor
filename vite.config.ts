@@ -52,15 +52,15 @@ export default defineConfig({
 			// swapped a dependency for a `link:` override. A published
 			// `@zylem/runtime` serves its wasm from
 			// `node_modules/.pnpm/@zylem+runtime@*/dist`, but a linked one resolves
-			// through the symlink to `../runtime/dist`, which is outside this repo
-			// and would otherwise be refused with a 403. `zylem` covers linked
-			// `@zylem/game-lib` and `@zylem/bridge` (`zylem/packages/*`).
+			// through the symlink to `../simulation/packages/runtime/dist`, which
+			// is outside this repo and would otherwise be refused with a 403.
+			// `zylem` covers linked `@zylem/game-lib` and `@zylem/bridge`
+			// (`zylem/packages/*`).
 			allow: [
 				path.resolve(__dirname),
 				path.resolve(__dirname, '../zylem'),
 				path.resolve(__dirname, '../zylem-ui'),
-				path.resolve(__dirname, '../behaviors'),
-				path.resolve(__dirname, '../runtime'),
+				path.resolve(__dirname, '../simulation'),
 			],
 		},
 	},

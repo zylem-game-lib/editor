@@ -68,9 +68,10 @@ zw link prod    # back to registry ranges before committing
 ```
 
 `vite.config.ts` already allows the sibling directories (`../zylem`,
-`../zylem-ui`, `../behaviors`, `../runtime`) in `server.fs.allow`, so linked
-packages -- including the physics wasm served from `../runtime/dist` -- work
-in the dev harness without further configuration.
+`../zylem-ui`, `../simulation`) in `server.fs.allow`, so linked
+packages -- including the physics wasm served from
+`../simulation/packages/runtime/dist` -- work in the dev harness without
+further configuration.
 
 Commit registry ranges, not `link:` specifiers.
 
