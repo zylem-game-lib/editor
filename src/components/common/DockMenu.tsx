@@ -1,4 +1,4 @@
-import { useLayer } from '@zylem/ui/components';
+import { Tooltip, useLayer } from '@zylem/ui/components';
 import { PanelBottom, PanelLeft, PanelRight, PanelTop } from 'lucide-solid';
 import {
 	type Accessor,
@@ -6,6 +6,7 @@ import {
 	createEffect,
 	createSignal,
 	For,
+	type JSX,
 	onCleanup,
 	Show,
 } from 'solid-js';
@@ -22,6 +23,15 @@ const DOCK_OPTIONS: Array<{
 	{ side: 'bottom', label: 'Dock to bottom', icon: PanelBottom },
 	{ side: 'right', label: 'Dock to right', icon: PanelRight },
 ];
+
+/** Keeps a ghost control at its own size inside a tooltip trigger. */
+const DockTip: Component<{ content: string; children: JSX.Element }> = (props) => (
+	<span style={{ display: 'inline-flex', flex: 'none' }}>
+		<Tooltip content={props.content} placement="bottom">
+			{props.children}
+		</Tooltip>
+	</span>
+);
 
 export interface DockMenuProps {
 	dockedSide: Accessor<DockSide | null>;
@@ -110,19 +120,20 @@ export const DockMenu: Component<DockMenuProps> = (props) => {
 			style={{ display: 'inline-flex' }}
 			onPointerDown={(event) => event.stopPropagation()}
 		>
-			<button
-				type="button"
-				ref={triggerRef}
-				class="floating-panel-button"
-				title="Dock panel"
-				aria-label="Dock panel"
-				aria-haspopup="true"
-				aria-expanded={open()}
-				data-testid="dock-menu-trigger"
-				onClick={toggle}
-			>
-				<Dynamic component={triggerIcon()} size={12} />
-			</button>
+			<DockTip content="Dock panel">
+				<button
+					type="button"
+					ref={triggerRef}
+					class="floating-panel-button"
+					aria-label="Dock panel"
+					aria-haspopup="true"
+					aria-expanded={open()}
+					data-testid="dock-menu-trigger"
+					onClick={toggle}
+				>
+					<Dynamic component={triggerIcon()} size={12} />
+				</button>
+			</DockTip>
 			<Show when={open() && layer.mount()}>
 				<Portal mount={layer.mount()!}>
 					<div
@@ -150,24 +161,27 @@ export const DockMenu: Component<DockMenuProps> = (props) => {
 							{(option) => {
 								const active = () => props.dockedSide() === option.side;
 								return (
-									<button
-										type="button"
-										role="menuitem"
-										class="floating-panel-button"
-										title={option.label}
-										aria-label={option.label}
-										data-testid={`dock-menu-${option.side}`}
-										style={{
-											'border-color': active() ? 'var(--zylem-color-primary, #61a6e8)' : undefined,
-											background: active() ? 'rgba(97, 166, 232, 0.4)' : undefined,
-										}}
-										onClick={() => {
-											props.onDock(option.side);
-											setOpen(false);
-										}}
-									>
-										<Dynamic component={option.icon} size={12} />
-									</button>
+									<DockTip content={option.label}>
+										<button
+											type="button"
+											role="menuitem"
+											class="floating-panel-button"
+											aria-label={option.label}
+											data-testid={`dock-menu-${option.side}`}
+											style={{
+												'border-color': active()
+													? 'var(--zylem-color-primary, #61a6e8)'
+													: undefined,
+												background: active() ? 'rgba(97, 166, 232, 0.4)' : undefined,
+											}}
+											onClick={() => {
+												props.onDock(option.side);
+												setOpen(false);
+											}}
+										>
+											<Dynamic component={option.icon} size={12} />
+										</button>
+									</DockTip>
 								);
 							}}
 						</For>

@@ -7,6 +7,7 @@
  */
 
 import { Accordion } from '@kobalte/core';
+import ChevronDown from 'lucide-solid/icons/chevron-down';
 import { useLayer } from '@zylem/ui/components';
 import { type Component, createSignal, type JSX, onCleanup, onMount, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
@@ -205,7 +206,10 @@ export const DraggableAccordionItem: Component<DraggableAccordionItemProps> = (p
 					onPointerDown={handlePointerDown}
 					style={{ 'touch-action': 'none' }}
 				>
-					<Accordion.Trigger class="accordion-trigger zylem-exo-2">{props.title}</Accordion.Trigger>
+					<Accordion.Trigger class="accordion-trigger zylem-exo-2">
+						{props.title}
+						<ChevronDown class="accordion-chevron" aria-hidden="true" />
+					</Accordion.Trigger>
 				</Accordion.Header>
 				<Accordion.Content class="accordion-content scrollable-y scroll-thin">
 					{props.children}
@@ -236,7 +240,7 @@ export const DraggableAccordionItem: Component<DraggableAccordionItemProps> = (p
 							border: '2px dotted #E64534',
 							'border-radius': '12px',
 							color: '#61A6E8',
-							'font-family': "'Exo 2', sans-serif",
+							'font-family': 'var(--zylem-font-family)',
 							'backdrop-filter': 'blur(8px)',
 							'box-shadow': '0 8px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px #E64534',
 						}}
@@ -244,12 +248,13 @@ export const DraggableAccordionItem: Component<DraggableAccordionItemProps> = (p
 						<span
 							class="accordion-trigger zylem-exo-2"
 							style={{
-								'font-family': "'Exo 2', sans-serif",
+								'font-family': 'var(--zylem-font-family)',
 								'font-weight': 400,
 								padding: '8px 12px',
 							}}
 						>
 							{props.title}
+							<ChevronDown class="accordion-chevron" aria-hidden="true" />
 						</span>
 					</div>
 				</Portal>

@@ -17,7 +17,7 @@ export const GameSection: Component = () => {
 					</div>
 					<div class="zylem-property-row">
 						<span class="zylem-property-label">Aspect Ratio</span>
-						<span class="zylem-property-value">{game.config?.aspectRatio.toFixed(3)}</span>
+						<span class="zylem-property-value zylem-mono">{game.config?.aspectRatio.toFixed(3)}</span>
 					</div>
 					<div class="zylem-property-row">
 						<span class="zylem-property-label">Fullscreen</span>
@@ -30,7 +30,7 @@ export const GameSection: Component = () => {
 					<Show when={game.config?.internalResolution}>
 						<div class="zylem-property-row">
 							<span class="zylem-property-label">Resolution</span>
-							<span class="zylem-property-value">
+							<span class="zylem-property-value zylem-mono">
 								{game.config?.internalResolution?.width}x{game.config?.internalResolution?.height}
 							</span>
 						</div>

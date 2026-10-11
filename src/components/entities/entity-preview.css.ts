@@ -102,6 +102,7 @@ export const entityPreviewCSS = `
 	position: absolute;
 	pointer-events: none;
 	color: rgba(255, 255, 255, 0.9);
+	font-family: var(--zylem-font-family-mono);
 	font-size: 9px;
 	line-height: 1;
 	font-variant-numeric: tabular-nums;
@@ -114,6 +115,7 @@ export const entityPreviewCSS = `
 	top: 2px;
 	right: 3px;
 	z-index: 1;
+	font-family: var(--zylem-font-family-mono);
 	font-size: 9px;
 	line-height: 1;
 	padding: 1px 3px;

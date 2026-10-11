@@ -1,4 +1,4 @@
-import { useLayer, WindowControls } from '@zylem/ui/components';
+import { Tooltip, useLayer, WindowControls } from '@zylem/ui/components';
 import {
 	type Accessor,
 	type Component,
@@ -73,6 +73,8 @@ export interface FloatingPanelProps {
 	/** Brings the other editor window back. Shown only when that window is closed. */
 	onRestoreSibling?: (() => void) | undefined;
 	restoreSiblingLabel?: string | undefined;
+	/** Icon for the restore control. The label stays the tooltip and accessible name. */
+	restoreSiblingIcon?: JSX.Element | undefined;
 	onMove?: (position: { x: number; y: number }) => void;
 	onResize?: (size: { width: number; height: number }) => void;
 	dockRequest?: Accessor<DockRequest | null>;
@@ -358,17 +360,24 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 	const headerControls = () => (
 		<div class="floating-panel-controls" data-no-drag>
 			<Show when={props.onRestoreSibling !== undefined}>
-				<button
-					type="button"
-					class="zylem-window-control"
-					data-testid="restore-sibling"
-					aria-label={props.restoreSiblingLabel}
-					title={props.restoreSiblingLabel}
-					style={{ 'white-space': 'nowrap', width: 'auto' }}
-					onClick={() => props.onRestoreSibling?.()}
-				>
-					{props.restoreSiblingLabel}
-				</button>
+				<span style={{ display: 'inline-flex', flex: 'none' }}>
+					<Tooltip content={props.restoreSiblingLabel ?? ''} placement="bottom">
+						<button
+							type="button"
+							class="zylem-window-control"
+							data-testid="restore-sibling"
+							aria-label={props.restoreSiblingLabel}
+							style={
+								props.restoreSiblingIcon
+									? undefined
+									: { 'white-space': 'nowrap', width: 'auto' }
+							}
+							onClick={() => props.onRestoreSibling?.()}
+						>
+							{props.restoreSiblingIcon ?? props.restoreSiblingLabel}
+						</button>
+					</Tooltip>
+				</span>
 			</Show>
 			<DockMenu dockedSide={dockedSide} onDock={(side) => dockTo(side)} />
 			<WindowControls

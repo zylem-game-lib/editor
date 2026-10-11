@@ -51,7 +51,7 @@ export const BridgePanel: Component = () => {
 				<Button size="sm" onClick={clearBridgeLog}>
 					Clear
 				</Button>
-				<span class="zylem-property-value">{totalRate().toFixed(0)} msg/s</span>
+				<span class="zylem-property-value zylem-mono">{totalRate().toFixed(0)} msg/s</span>
 			</section>
 
 			<Show
@@ -75,7 +75,7 @@ export const BridgePanel: Component = () => {
 									}
 								>
 									<span class="zylem-property-label">{row.type}</span>
-									<span class="zylem-property-value">
+									<span class="zylem-property-value zylem-mono">
 										{row.sent} · {row.rate.toFixed(0)}/s · {formatBytes(row.bytes)}
 										{row.retained > 0 ? ` · ${row.retained} kept` : ''}
 									</span>

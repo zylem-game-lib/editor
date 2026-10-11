@@ -19,7 +19,7 @@ export const StageSection: Component = () => {
 					<Show when={stage.config?.backgroundImage}>
 						<PropertyRow label="Image" value={stage.config?.backgroundImage ?? ''} isPath={true} />
 					</Show>
-					<PropertyRow label="Gravity">
+					<PropertyRow label="Gravity" valueClass="zylem-mono">
 						X:{stage.config?.gravity.x.toFixed(2)} Y:{stage.config?.gravity.y.toFixed(2)} Z:
 						{stage.config?.gravity.z.toFixed(2)}
 					</PropertyRow>

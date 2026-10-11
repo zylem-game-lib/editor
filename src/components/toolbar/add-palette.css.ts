@@ -110,7 +110,7 @@ export const addPaletteCSS = `
 	width: 100%;
 	min-width: 0;
 	padding: 3px 5px;
-	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-family: var(--zylem-font-family-mono);
 	font-size: 11px;
 	color: #e6edf3;
 	background: rgba(255, 255, 255, 0.06);
@@ -202,5 +202,11 @@ export const addPaletteCSS = `
 	border: 1px solid rgba(255, 255, 255, 0.12);
 	border-radius: 4px;
 	cursor: pointer;
+}
+
+/* The property value's own face is declared later than .zylem-mono, so a unit
+   readout needs both classes to beat it. */
+.zylem-property-value.zylem-mono {
+	font-family: var(--zylem-font-family-mono);
 }
 `;

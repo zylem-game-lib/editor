@@ -1,4 +1,6 @@
 import { LayerProvider } from '@zylem/ui/components';
+import Eye from 'lucide-solid/icons/eye';
+import PanelTop from 'lucide-solid/icons/panel-top';
 import { type Component, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { render } from 'solid-js/web';
 import {
@@ -313,6 +315,7 @@ export const Editor: Component<EditorProps> = (props) => {
 						onClose={() => setToolbarOpen(false)}
 						onRestoreSibling={panelOpen() ? undefined : () => setPanelOpen(true)}
 						restoreSiblingLabel="Show panels"
+						restoreSiblingIcon={<Eye size={11} strokeWidth={2.5} aria-hidden="true" />}
 						dockRequest={toolbarDockRequest}
 					>
 						{(body) => (
@@ -339,6 +342,7 @@ export const Editor: Component<EditorProps> = (props) => {
 						onClose={() => setPanelOpen(false)}
 						onRestoreSibling={toolbarOpen() ? undefined : () => setToolbarOpen(true)}
 						restoreSiblingLabel="Show toolbar"
+						restoreSiblingIcon={<PanelTop size={11} strokeWidth={2.5} aria-hidden="true" />}
 						onMove={handlePanelMove}
 						onResize={setPanelSize}
 						dockRequest={panelDockRequest}
