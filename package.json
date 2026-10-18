@@ -1,6 +1,6 @@
 {
 	"name": "@zylem/editor",
-	"version": "0.9.8",
+	"version": "0.9.9",
 	"type": "module",
 	"description": "SolidJS debug UI and scene editor for Zylem games. Talks to a running @zylem/game-lib game over the typed @zylem/bridge channel.",
 	"license": "MIT",
@@ -58,8 +58,8 @@
 	"dependencies": {
 		"@kobalte/core": "^0.13.11",
 		"@solidjs/router": "^0.14.0",
-		"@zylem/bridge": "^0.9.4",
-		"@zylem/ui": "^0.9.2",
+		"@zylem/bridge": "^0.9.6",
+		"@zylem/ui": "^0.9.3",
 		"lucide-solid": "^1.48.0",
 		"solid-js": "^1.9.9",
 		"valtio": "^2.1.7"
@@ -71,7 +71,7 @@
 		"@biomejs/biome": "^2.3.7",
 		"@types/three": "^0.185.0",
 		"@typescript/native": "npm:typescript@7.0.2",
-		"@zylem/behaviors": "^0.8.10",
+		"@zylem/behaviors": "^0.8.11",
 		"@zylem/game-lib": "^0.9.6",
 		"cross-env": "^10.1.0",
 		"esbuild": "^0.25.0",
@@ -92,7 +92,7 @@
 		"overrides": {
 			"@types/three": "0.185.1",
 			"three": "0.185.1",
-			"@zylem/bridge": "^0.9.4"
+			"@zylem/bridge": "^0.9.6"
 		}
 	}
 }
