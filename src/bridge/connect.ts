@@ -6,7 +6,18 @@
  * shows current config/entities immediately.
  */
 
+import { applyIncomingGesture, selectLevelObject } from '../components/level/level-state';
+import type { LevelGesture } from '../components/level/level-types';
 import { channel } from './channel';
+
+function onGameMessage<T>(type: string, handler: (payload: T) => void): () => void {
+	const listen = channel.on.bind(channel) as (
+		message: string,
+		handle: (payload: T) => void
+	) => () => void;
+	return listen(type, handler);
+}
+
 import { applyCatalog, applyEntitySelection, applySceneOperation } from './sync-editing';
 import {
 	applyEntityRemoved,
@@ -60,6 +71,12 @@ export function connectEditorBridge(): () => void {
 		channel.on('game:notice', applyGameNotice),
 		channel.on('catalog:snapshot', applyCatalog),
 		channel.on('scene:operation', applySceneOperation),
+		onGameMessage<{ gesture: LevelGesture }>('level:gesture', ({ gesture }) => {
+			applyIncomingGesture(gesture);
+		}),
+		onGameMessage<{ id: string | null }>('level:select', ({ id }) => {
+			selectLevelObject(id);
+		}),
 	];
 
 	// Rebuild the uuid index from whatever survived a previous connection.

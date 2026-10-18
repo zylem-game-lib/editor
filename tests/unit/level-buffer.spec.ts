@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
 	type LevelCatalogType,
@@ -8,19 +8,6 @@ import {
 	seedLevelBuffer,
 	upsertLevelEntries,
 } from '../../src/components/level/level-buffer';
-import {
-	entriesMarkedForBake,
-	levelState,
-	recordLevelRemoved,
-	recordLevelReplaced,
-	recordLevelUpsert,
-	setActorProp,
-	setLevelEditorActive,
-	setPlacementRole,
-	snapshotLevelBuffer,
-} from '../../src/components/level/level-state';
-import { stageState } from '../../src/components/stages/stage-state';
-import { setEntityCatalog } from '../../src/components/toolbar/catalog-state';
 
 const catalog: LevelCatalogType[] = [
 	{ id: 'box', label: 'Box' },
@@ -34,16 +21,6 @@ const box: LevelSourceEntity = {
 	rotation: { x: 0, y: 0, z: 0 },
 	scale: { x: 1, y: 1, z: 1 },
 };
-
-beforeEach(() => {
-	setLevelEditorActive(false);
-	levelState.buffer = null;
-	levelState.annotations = {};
-	setPlacementRole(null);
-	stageState.config = null;
-	setEntityCatalog([]);
-	stageState.entities = [];
-});
 
 describe('resolveCatalogTypeId', () => {
 	it('matches a catalog id, then a constructor-symbol label', () => {
@@ -102,110 +79,5 @@ describe('level buffer edits', () => {
 
 		expect(removeLevelEntries(unresolved, ['orb', 'missing']).entries).toEqual([]);
 		expect(removeLevelEntries(seeded, ['missing'])).toBe(seeded);
-	});
-});
-
-describe('level editor mode', () => {
-	it('seeds on enter, records while active, and freezes when left', () => {
-		setEntityCatalog([{ id: 'box', label: 'Box' }]);
-		stageState.entities = [{ uuid: 'crate', name: 'Crate', type: 'Box' }];
-
-		setLevelEditorActive(true);
-		expect(levelState.active).toBe(true);
-		expect(levelState.buffer?.entries.map((entry) => entry.typeId)).toEqual(['box']);
-
-		recordLevelUpsert([{ uuid: 'orb', type: 'Box', position: { x: 2, y: 0, z: 0 } }]);
-		expect(levelState.buffer?.entries.map((entry) => entry.id)).toEqual(['crate', 'orb']);
-
-		recordLevelRemoved(['crate']);
-		expect(levelState.buffer?.entries.map((entry) => entry.id)).toEqual(['orb']);
-
-		setLevelEditorActive(false);
-		recordLevelReplaced([]);
-		recordLevelUpsert([{ uuid: 'later', type: 'Box' }]);
-		recordLevelRemoved(['orb']);
-		expect(levelState.buffer?.entries.map((entry) => entry.id)).toEqual(['orb']);
-
-		stageState.entities = [];
-		setLevelEditorActive(true);
-		expect(levelState.buffer?.entries).toEqual([]);
-	});
-
-	it('snapshots a plain copy after Build is on, and nothing before', () => {
-		expect(snapshotLevelBuffer()).toBeNull();
-
-		setEntityCatalog([{ id: 'box', label: 'Box' }]);
-		stageState.config = {
-			id: 'arena',
-			backgroundColor: '#000',
-			backgroundImage: null,
-			gravity: { x: 0, y: 0, z: 0 },
-			inputs: {},
-			variables: {},
-		};
-		stageState.entities = [
-			{ uuid: 'crate', name: 'Crate', type: 'Box', position: { x: 1, y: 0, z: 0 } },
-		];
-		setLevelEditorActive(true);
-
-		const snapshot = snapshotLevelBuffer();
-		expect(snapshot?.stageId).toBe('arena');
-		expect(snapshot?.buffer.entries[0]?.typeId).toBe('box');
-		expect(snapshot?.buffer).not.toBe(levelState.buffer);
-
-		const copied = snapshot?.buffer.entries[0];
-		if (copied) copied.typeId = 'sphere';
-		expect(levelState.buffer?.entries[0]?.typeId).toBe('box');
-
-		setLevelEditorActive(false);
-		expect(snapshotLevelBuffer()?.buffer.entries).toHaveLength(1);
-	});
-});
-
-describe('level entry roles', () => {
-	beforeEach(() => {
-		setEntityCatalog([
-			{ id: 'box', label: 'Box' },
-			{ id: 'sphere', label: 'Sphere' },
-		]);
-	});
-
-	it('tags a new placement and leaves earlier entries alone', () => {
-		stageState.entities = [box];
-		setLevelEditorActive(true);
-		expect(levelState.annotations.crate?.role).toBe('doodad');
-
-		setPlacementRole('level');
-		recordLevelUpsert([{ uuid: 'wall', type: 'Box', position: { x: 0, y: 0, z: 0 } }]);
-		recordLevelUpsert([{ uuid: 'crate', type: 'Box', position: { x: 4, y: 0, z: 0 } }]);
-
-		expect(levelState.annotations.wall?.role).toBe('level');
-		expect(levelState.annotations.crate?.role).toBe('doodad');
-		expect(entriesMarkedForBake(levelState.buffer?.entries ?? [], levelState.annotations)).toEqual([
-			'wall',
-		]);
-	});
-
-	it('writes actor props on the buffer entry and nowhere else', () => {
-		stageState.entities = [box];
-		setLevelEditorActive(true);
-		setPlacementRole('actor');
-		recordLevelUpsert([{ uuid: 'hero', type: 'sphere' }]);
-
-		setActorProp('hero', 'ammo', '12');
-		setActorProp('crate', 'ammo', '1');
-		setActorProp('hero', ' ', 'nope');
-
-		expect(levelState.annotations.hero?.props).toEqual({ ammo: '12' });
-		expect(levelState.annotations.crate?.props).toEqual({});
-		expect(snapshotLevelBuffer()?.annotations.hero?.props).toEqual({ ammo: '12' });
-		expect(snapshotLevelBuffer()?.annotations).not.toBe(levelState.annotations);
-	});
-
-	it('drops the annotation when the entry leaves the buffer', () => {
-		stageState.entities = [box];
-		setLevelEditorActive(true);
-		recordLevelRemoved(['crate']);
-		expect(levelState.annotations.crate).toBeUndefined();
 	});
 });

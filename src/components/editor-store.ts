@@ -274,7 +274,7 @@ export const getDockedSide = (panelId: DockPanelId): DockSide | null =>
 /** First-run layout when a host does not request one. */
 const BUILTIN_DOCK_DEFAULTS: EditorDockDefaults = {
 	top: [TOOLBAR_PANEL_ID],
-	left: [MAIN_PANEL_ID],
+	right: [MAIN_PANEL_ID],
 };
 
 /** Host docks keep their edges. A missing toolbar is added on top. */

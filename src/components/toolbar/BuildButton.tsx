@@ -6,16 +6,15 @@ import { toggleLevelEditor } from './toolbar-actions';
 import { withShortcut } from './toolbar-shortcuts';
 
 /**
- * Level-editor mode. While it is on, the stage is recorded into a level buffer
- * the game can stream later. The count is how many catalog entries that buffer
- * holds, including one frozen from a previous session of the mode.
+ * Level mode. The document is the file; the stage only previews it.
+ * The count is brushes, doodads, and entities in that document.
  */
 export const BuildButton: Component = () => {
-	const count = () => levelStore.buffer?.entries.length ?? 0;
-	const label = () => {
-		const name = levelStore.active ? 'Building' : 'Build';
-		return count() > 0 ? `${name} (${count()})` : name;
+	const count = () => {
+		const document = levelStore.document;
+		return document.solids.length + document.doodads.length + document.entities.length;
 	};
+	const label = () => (count() > 0 ? `Level (${count()})` : 'Level');
 
 	return (
 		<ToolbarButton

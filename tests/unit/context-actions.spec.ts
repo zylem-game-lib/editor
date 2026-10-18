@@ -19,9 +19,28 @@ describe('contextToolbarActions', () => {
 			'view-isometric',
 			'view-free',
 			'grid',
-			'add-actor',
-			'add-level',
-			'add-primitive',
+			'draw-brush',
+			'clip-brush',
+			'vertex-brush',
+			'delete',
+			'snap',
+			'undo',
+			'redo',
+		]);
+	});
+
+	it('switches the level row with the active layer', () => {
+		expect(
+			contextToolbarActions({ perspective: false, debug: false, build: true, levelLayer: 'doodad' })
+		).toEqual(['translate', 'rotate', 'scale', 'add-doodad', 'delete', 'snap', 'undo', 'redo']);
+		expect(
+			contextToolbarActions({ perspective: false, debug: false, build: true, levelLayer: 'entity' })
+		).toEqual([
+			'translate',
+			'rotate',
+			'scale',
+			'add-spawn',
+			'add-trigger',
 			'delete',
 			'snap',
 			'undo',

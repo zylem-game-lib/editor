@@ -155,6 +155,41 @@ export const addPaletteCSS = `
 	opacity: 0.5;
 }
 
+.zylem-level-layer {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-bottom: 10px;
+}
+
+.zylem-level-layer__head {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+}
+
+.zylem-level-layer__name,
+.zylem-level-layer__hide,
+.zylem-level-row {
+	color: inherit;
+	background: transparent;
+	border: 0;
+	padding: 0;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.zylem-level-layer__name.is-active {
+	color: #9ecbff;
+}
+
+.zylem-level-layer__hide {
+	opacity: 0.65;
+	font-size: 10px;
+}
+
 .zylem-level-list {
 	list-style: none;
 	margin: 0;

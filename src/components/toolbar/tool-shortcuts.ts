@@ -9,6 +9,7 @@
 import { sendAddType, sendTool } from '../../bridge/editor-bridge';
 import { getDebugTool, setDebugTool } from '../entities/entities-state';
 import { isEditableTarget } from '../history/history-shortcuts';
+import { setLevelPlacement } from '../level/level-state';
 import { catalogState, setArmedType } from './catalog-state';
 
 export interface ToolShortcutOptions {
@@ -31,6 +32,7 @@ export function disarmTools(): boolean {
 		setDebugTool('none');
 		sendTool('none');
 	}
+	setLevelPlacement(null);
 	return true;
 }
 

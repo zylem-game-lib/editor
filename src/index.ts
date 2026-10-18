@@ -59,8 +59,10 @@ export {
 export {
 	type LevelSnapshot,
 	levelState,
-	snapshotLevelBuffer,
+	loadLevelDocument,
+	snapshotLevelDocument,
 } from './components/level/level-state';
+export type { LevelDocument } from './components/level/level-types';
 export {
 	buildStageExport,
 	copyStageExport,

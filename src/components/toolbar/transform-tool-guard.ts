@@ -11,6 +11,7 @@
 import { subscribe } from 'valtio/vanilla';
 import { sendTool } from '../../bridge/editor-bridge';
 import { type DebugTools, debugState, setDebugTool } from '../entities/entities-state';
+import { levelState } from '../level/level-state';
 
 const TRANSFORM_TOOLS = new Set<DebugTools>(['translate', 'rotate', 'scale']);
 
@@ -26,6 +27,9 @@ export function isTransformTool(tool: DebugTools): boolean {
  */
 export function releaseOrphanedTransformTool(): boolean {
 	if (debugState.selectedEntityIds.length > 0) return false;
+	if (levelState.active && levelState.selectedIds.length > 0 && debugState.tool === 'translate') {
+		return false;
+	}
 	if (!isTransformTool(debugState.tool)) return false;
 
 	setDebugTool('none');

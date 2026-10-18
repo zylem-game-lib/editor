@@ -6,7 +6,17 @@
 import { proxy } from 'valtio/vanilla';
 import { editorEvents } from '../events';
 
-export type DebugTools = 'select' | 'translate' | 'rotate' | 'scale' | 'delete' | 'add' | 'none';
+export type DebugTools =
+	| 'select'
+	| 'translate'
+	| 'rotate'
+	| 'scale'
+	| 'delete'
+	| 'add'
+	| 'brush'
+	| 'clip'
+	| 'vertex'
+	| 'none';
 
 export interface DebugState {
 	paused: boolean;

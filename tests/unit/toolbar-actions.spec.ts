@@ -10,7 +10,11 @@ import {
 	setPaused,
 	setSelectedEntityId,
 } from '../../src/components/entities/entities-state';
-import { levelState, setPlacementRole } from '../../src/components/level/level-state';
+import {
+	levelState,
+	resetLevelEditor,
+	setLevelEditorActive,
+} from '../../src/components/level/level-state';
 import { stageState } from '../../src/components/stages/stage-state';
 import {
 	catalogState,
@@ -54,7 +58,7 @@ beforeEach(() => {
 	catalogState.lastTypeId = null;
 	transformState.enabled = true;
 	transformState.gridVisible = false;
-	setPlacementRole(null);
+	resetLevelEditor();
 
 	sent = [];
 	const capture = (type: Parameters<typeof channel.on>[0]) =>
@@ -252,12 +256,14 @@ describe('armAddType', () => {
 		expect(sent).toEqual([]);
 	});
 
-	it('tags the placement role and drops it when another tool takes over', () => {
-		armAddType('box', 'actor');
-		expect(levelState.placementRole).toBe('actor');
+	it('arms a doodad placement while level mode is on, and clears it with the next tool', () => {
+		setLevelEditorActive(true);
+		armAddType('box');
+		expect(levelState.placement).toEqual({ kind: 'doodad', typeId: 'box', props: { size: 1 } });
+		expect(levelState.activeLayer).toBe('doodad');
 
 		selectTool('select');
-		expect(levelState.placementRole).toBeNull();
+		expect(levelState.placement).toBeNull();
 	});
 });
 

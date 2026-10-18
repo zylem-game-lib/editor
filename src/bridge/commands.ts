@@ -15,7 +15,14 @@ import type {
 	LevelBuffer,
 	SnapSettingsPayload,
 } from '@zylem/bridge';
+import type { LevelDocument, LevelSyncPayload } from '../components/level/level-types';
 import { channel } from './channel';
+
+/** The published bridge types lag the local protocol, so new level messages go out by name. */
+function sendRaw(type: string, payload: unknown): void {
+	const send = channel.send.bind(channel) as (message: string, body: unknown) => void;
+	send(type, payload);
+}
 
 /** Toggle the game's debug mode. */
 export function sendDebugEnabled(enabled: boolean): void {
@@ -23,8 +30,8 @@ export function sendDebugEnabled(enabled: boolean): void {
 }
 
 /** Switch the active editor tool in the game. */
-export function sendTool(tool: BridgeDebugTool): void {
-	channel.send('tool:set', { tool });
+export function sendTool(tool: BridgeDebugTool | 'brush' | 'clip' | 'vertex'): void {
+	channel.send('tool:set', { tool: tool as BridgeDebugTool });
 }
 
 /** Pause or resume the game loop. */
@@ -82,6 +89,21 @@ export function sendAddType(typeId: string | null, props?: Record<string, unknow
 /** Stream a recorded level into the running stage. */
 export function sendLevelLoad(buffer: LevelBuffer): void {
 	channel.send('level:load', { buffer });
+}
+
+/** Replace the game's edit preview of the level document. */
+export function sendLevelSync(payload: LevelSyncPayload): void {
+	sendRaw('level:sync', payload);
+}
+
+/** Ask the game to play the document: collision on, brush faces hidden. */
+export function sendLevelPlay(document: LevelDocument): void {
+	sendRaw('level:play', { document });
+}
+
+/** Remove the level preview from the stage. */
+export function sendLevelClose(): void {
+	sendRaw('level:close', {});
 }
 
 /** Spawn a catalog entity without a placement click. */

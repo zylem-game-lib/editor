@@ -12,6 +12,13 @@ import { DebugButton } from './DebugButton';
 import { DeleteButton } from './DeleteButton';
 import { GridButton, SnapButton } from './GridButton';
 import { RedoButton, UndoButton } from './HistoryButtons';
+import {
+	AddSpawnButton,
+	AddTriggerButton,
+	ClipBrushButton,
+	DrawBrushButton,
+	VertexBrushButton,
+} from './LevelToolButtons';
 import { PerspectiveButton } from './PerspectiveButton';
 import { PlayPauseButton } from './PlayPauseButton';
 import { SelectButton } from './SelectButton';
@@ -58,12 +65,18 @@ const ContextActionButton: Component<{ action: ContextAction }> = (props) => {
 			return <FreeViewButton />;
 		case 'grid':
 			return <GridButton />;
-		case 'add-actor':
-			return <AddButton placement="actor" label="Add actor" registerPaletteShortcut={false} />;
-		case 'add-level':
-			return <AddButton placement="level" label="Add level" registerPaletteShortcut={false} />;
-		case 'add-primitive':
-			return <AddButton placement="doodad" label="Add primitive" />;
+		case 'draw-brush':
+			return <DrawBrushButton />;
+		case 'clip-brush':
+			return <ClipBrushButton />;
+		case 'vertex-brush':
+			return <VertexBrushButton />;
+		case 'add-doodad':
+			return <AddButton label="Add doodad" />;
+		case 'add-spawn':
+			return <AddSpawnButton />;
+		case 'add-trigger':
+			return <AddTriggerButton />;
 		case 'delete':
 			return <DeleteButton />;
 		case 'snap':
@@ -82,6 +95,7 @@ export const ContextToolbar: Component = () => {
 			perspective: viewStore.perspective,
 			debug: debugStore.debug,
 			build: levelStore.active,
+			levelLayer: levelStore.activeLayer,
 		});
 
 	return (

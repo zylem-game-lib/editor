@@ -5,6 +5,7 @@ import Scale3d from 'lucide-solid/icons/scale-3d';
 import { type Component, createMemo, type JSX } from 'solid-js';
 import { debugStore } from '..';
 import { useEditor } from '../EditorContext';
+import { levelStore } from '../level/level-state';
 import { type TransformTool, toggleTransformTool } from './toolbar-actions';
 import { withShortcut } from './toolbar-shortcuts';
 import { resolveTransformTarget } from './transform-button-state';
@@ -35,12 +36,14 @@ const TransformToolButton: Component<TransformToolButtonProps> = (props) => {
 			stage.entities.map((entity) => entity.uuid).filter((uuid): uuid is string => Boolean(uuid))
 		)
 	);
+	const levelMove = () =>
+		props.tool === 'translate' && levelStore.active && levelStore.selectedIds.length > 0;
 
 	return (
 		<ToolbarButton
 			label={withShortcut(props.label, props.tool)}
 			selected={debugStore.tool === props.tool}
-			disabled={!target()}
+			disabled={!target() && !levelMove()}
 			onClick={() => toggleTransformTool(props.tool)}
 		>
 			{props.children}

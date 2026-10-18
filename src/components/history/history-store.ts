@@ -17,6 +17,15 @@ import { proxy } from 'valtio/vanilla';
 
 import { bridgeChannel } from '../../bridge/channel';
 import { mirrorProxy } from '../common/proxy-mirror';
+import {
+	isLevelEditorActive,
+	levelCanRedo,
+	levelCanUndo,
+	levelRedoLabel,
+	levelUndoLabel,
+	redoLevel,
+	undoLevel,
+} from '../level/level-state';
 
 /**
  * Depth cap. Each entry holds two poses per affected entity, so this is cheap;
@@ -42,20 +51,24 @@ export const historyState = proxy<HistoryState>({
 export const historyStore = mirrorProxy(historyState, { key: 'opId' });
 
 export function canUndo(): boolean {
+	if (isLevelEditorActive()) return levelCanUndo();
 	return historyState.undoStack.length > 0;
 }
 
 export function canRedo(): boolean {
+	if (isLevelEditorActive()) return levelCanRedo();
 	return historyState.redoStack.length > 0;
 }
 
 /** Label of the operation `undo()` would revert, for menu text. */
 export function undoLabel(): string | null {
+	if (isLevelEditorActive()) return levelUndoLabel();
 	return historyState.undoStack[historyState.undoStack.length - 1]?.label ?? null;
 }
 
 /** Label of the operation `redo()` would replay. */
 export function redoLabel(): string | null {
+	if (isLevelEditorActive()) return levelRedoLabel();
 	return historyState.redoStack[historyState.redoStack.length - 1]?.label ?? null;
 }
 
@@ -76,8 +89,9 @@ export function pushOperation(op: SceneOperationPayload): void {
 	}
 }
 
-/** Revert the most recent operation. */
+/** Revert the most recent operation. Level mode rewinds the document, not the live scene. */
 export function undo(): boolean {
+	if (isLevelEditorActive()) return undoLevel();
 	const op = historyState.undoStack.pop();
 	if (!op) return false;
 	historyState.redoStack.push(op);
@@ -85,8 +99,9 @@ export function undo(): boolean {
 	return true;
 }
 
-/** Replay the most recently undone operation. */
+/** Replay the most recently undone operation. Level mode replays the document. */
 export function redo(): boolean {
+	if (isLevelEditorActive()) return redoLevel();
 	const op = historyState.redoStack.pop();
 	if (!op) return false;
 	historyState.undoStack.push(op);

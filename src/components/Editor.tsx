@@ -1,7 +1,16 @@
 import { LayerProvider } from '@zylem/ui/components';
 import Eye from 'lucide-solid/icons/eye';
 import PanelTop from 'lucide-solid/icons/panel-top';
-import { type Component, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import {
+	type Component,
+	createEffect,
+	createMemo,
+	createSignal,
+	For,
+	onCleanup,
+	onMount,
+	Show,
+} from 'solid-js';
 import { render } from 'solid-js/web';
 import {
 	applyDefaultDocks,
@@ -30,6 +39,7 @@ import { EditorToggleButton } from './EditorToggleButton';
 import { DetachedPanel } from './editor-panel/DetachedPanel';
 import { Menu } from './editor-panel/Menu';
 import { currentPanelVisibility, isPanelVisible } from './editor-panel/panel-visibility';
+import { levelStore } from './level/level-state';
 import { Toolbar } from './toolbar/Toolbar';
 
 // Panel dimensions
@@ -145,10 +155,23 @@ export const Editor: Component<EditorProps> = (props) => {
 	applyDefaultDocks(props.defaultDocks);
 	seedToolbarDock();
 
+	const sidePanelAllowed = () => debugStore.debug || levelStore.active;
+
 	const openEditor = () => {
 		setToolbarOpen(true);
-		setPanelOpen(true);
+		if (sidePanelAllowed()) setPanelOpen(true);
 	};
+
+	// Entering build mode opens the panel. Closing it by hand does not leave build mode.
+	createEffect(() => {
+		if (levelStore.active) setPanelOpen(true);
+	});
+
+	// Neither debug nor build: the panel closes. One of them still on leaves a manual close alone.
+	createEffect(() => {
+		if (!debugStore.debug && !levelStore.active) setPanelOpen(false);
+	});
+
 	const closeEditor = () => {
 		setToolbarOpen(false);
 		setPanelOpen(false);
@@ -246,7 +269,8 @@ export const Editor: Component<EditorProps> = (props) => {
 
 			if (panelId === MAIN_PANEL_ID) {
 				// The panel owns the undock/restore path, so route through it.
-				setPanelOpen(true);
+				// With neither debug nor build on, the window stays closed; the request applies on the next open.
+				if (sidePanelAllowed()) setPanelOpen(true);
 				setPanelDockRequest((previous) => ({
 					side,
 					nonce: (previous?.nonce ?? 0) + 1,
@@ -313,7 +337,9 @@ export const Editor: Component<EditorProps> = (props) => {
 						collapsed={debugStore.toolbarCollapsed}
 						onCollapsedChange={setToolbarCollapsed}
 						onClose={() => setToolbarOpen(false)}
-						onRestoreSibling={panelOpen() ? undefined : () => setPanelOpen(true)}
+						onRestoreSibling={
+							panelOpen() || !sidePanelAllowed() ? undefined : () => setPanelOpen(true)
+						}
 						restoreSiblingLabel="Show panels"
 						restoreSiblingIcon={<Eye size={11} strokeWidth={2.5} aria-hidden="true" />}
 						dockRequest={toolbarDockRequest}
@@ -327,7 +353,7 @@ export const Editor: Component<EditorProps> = (props) => {
 						)}
 					</FloatingPanel>
 				</Show>
-				<Show when={panelOpen()}>
+				<Show when={panelOpen() && sidePanelAllowed()}>
 					<FloatingPanel
 						panelId={MAIN_PANEL_ID}
 						label="Panels"

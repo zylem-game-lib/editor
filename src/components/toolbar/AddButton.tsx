@@ -2,20 +2,17 @@ import { ItemPicker, MenuButton } from '@zylem/ui/components';
 import Plus from 'lucide-solid/icons/plus';
 import { type Component, createMemo, createSignal, onCleanup, Show } from 'solid-js';
 import { debugStore } from '..';
-import { type LevelRole, levelStore } from '../level/level-state';
+import { levelStore } from '../level/level-state';
 import { isAddArmed, resolvePlacementTarget, toPickerItems } from './add-button-state';
 import { catalogStore } from './catalog-state';
 import { armAddTool, armAddType, registerAddPaletteOpener } from './toolbar-actions';
 import { withShortcut } from './toolbar-shortcuts';
 
 interface AddButtonProps {
-	/** Placement tag stamped on entities that appear while this button is armed. */
-	placement?: LevelRole;
 	/** Button name. Defaults to the single Add tool label. */
 	label?: string;
 	/**
-	 * The Shift+A palette shortcut binds one button. The primitive button keeps
-	 * it; actor and level have their own palettes without that chord.
+	 * The Shift+A palette shortcut binds one button. Doodad placement keeps it.
 	 */
 	registerPaletteShortcut?: boolean;
 }
@@ -32,9 +29,9 @@ interface AddButtonProps {
  * host that registers its own entity types game-side gets them here for free.
  */
 export const AddButton: Component<AddButtonProps> = (props) => {
-	const role = () => props.placement ?? 'doodad';
 	const isArmed = () =>
-		isAddArmed(debugStore.tool, catalogStore.armedTypeId) && levelStore.placementRole === role();
+		isAddArmed(debugStore.tool, catalogStore.armedTypeId) &&
+		(!levelStore.active || levelStore.placement?.kind === 'doodad');
 
 	/** What the face shows and what a press places. */
 	const target = createMemo(() =>
@@ -52,7 +49,7 @@ export const AddButton: Component<AddButtonProps> = (props) => {
 	// Controlled, so the Shift+A shortcut can open it while this button is
 	// mounted. Declines when the button is disabled, to match a click.
 	const [paletteOpen, setPaletteOpen] = createSignal(false);
-	const bindsShortcut = () => props.registerPaletteShortcut ?? role() === 'doodad';
+	const bindsShortcut = () => props.registerPaletteShortcut ?? true;
 	onCleanup(
 		bindsShortcut()
 			? registerAddPaletteOpener(() => {
@@ -78,7 +75,7 @@ export const AddButton: Component<AddButtonProps> = (props) => {
 				// like one; the game publishes its catalog on connect, so this is
 				// only ever the no-game state.
 				disabled={catalogStore.entities.length === 0}
-				onAction={() => armAddTool(role())}
+				onAction={() => armAddTool()}
 				open={paletteOpen()}
 				onOpenChange={setPaletteOpen}
 				menu={(close) => (
@@ -88,7 +85,7 @@ export const AddButton: Component<AddButtonProps> = (props) => {
 						searchPlaceholder="Search entities…"
 						emptyMessage="No entity types published. Is a game running?"
 						onSelect={(item) => {
-							armAddType(item.id, role());
+							armAddType(item.id);
 							close();
 						}}
 					/>

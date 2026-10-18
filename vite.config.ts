@@ -1,4 +1,8 @@
-import { zylemVersionsPlugin } from '@zylem/ui/vite';
+// Bare `@zylem/ui/vite` is a `.ts` file inside node_modules. Node 22.18+
+// type-strips config imports and refuses to strip anything under
+// node_modules. A relative path is bundled by Vite's config loader instead,
+// so Node never has to execute that TypeScript.
+import { zylemVersionsPlugin } from './node_modules/@zylem/ui/vite/index.ts';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { defineConfig } from 'vite';

@@ -29,8 +29,10 @@ import {
 	setSelectedEntityId,
 } from '../entities/entities-state';
 import {
-	type LevelRole,
-	setPlacementRole,
+	levelState,
+	playLevelDocument,
+	setLevelPlacement,
+	syncLevelDocument,
 	toggleLevelEditor as toggleLevelMode,
 } from '../level/level-state';
 import { stageState } from '../stages/stage-state';
@@ -52,13 +54,13 @@ export function toggleDebug(): void {
 /**
  * Make a tool the active one, in the editor and the game.
  *
- * Leaving Add clears the placement role so the next stage update is not tagged
- * as whatever was being placed.
+ * Leaving Add clears the level placement so the next click is not a doodad,
+ * spawn, or trigger.
  */
 function activateTool(tool: DebugTools): void {
 	setDebugTool(tool);
 	sendTool(tool);
-	if (tool !== 'add') setPlacementRole(null);
+	if (tool !== 'add') setLevelPlacement(null);
 }
 
 /**
@@ -93,6 +95,15 @@ export function transformTarget(): string | null {
  * disabled for.
  */
 function applyTransformTool(next: TransformTool | 'none'): boolean {
+	if (
+		levelState.active &&
+		levelState.selectedIds.length > 0 &&
+		(next === 'translate' || next === 'none')
+	) {
+		activateTool(next);
+		return true;
+	}
+
 	const uuid = transformTarget();
 	if (!uuid) return false;
 
@@ -137,18 +148,25 @@ export function toggleTransformTool(tool: TransformTool): boolean {
  *
  * @returns `false` when the catalog has no such type.
  */
-export function armAddType(typeId: string, role: LevelRole = 'doodad'): boolean {
+export function armAddType(typeId: string): boolean {
 	const descriptor = getEntityDescriptor(typeId);
 	if (!descriptor) return false;
 
-	setPlacementRole(role);
+	const props = descriptor.defaultProps ? snapshot(descriptor.defaultProps) : undefined;
 	setArmedType(descriptor.id);
 	// Snapshotted: the props cross the bridge into the game, which should not
-	// receive a live handle on the editor's store. Later actor-field edits stay
-	// on the buffer entry and are not sent again.
-	sendAddType(descriptor.id, descriptor.defaultProps && snapshot(descriptor.defaultProps));
+	// receive a live handle on the editor's store.
+	sendAddType(descriptor.id, props);
 	setDebugTool('add');
 	sendTool('add');
+	if (levelState.active) {
+		levelState.activeLayer = 'doodad';
+		setLevelPlacement({
+			kind: 'doodad',
+			typeId: descriptor.id,
+			...(props ? { props } : {}),
+		});
+	}
 	return true;
 }
 
@@ -157,13 +175,13 @@ export function armAddType(typeId: string, role: LevelRole = 'doodad'): boolean 
  *
  * @returns `false` on an empty catalog, the one state with nothing to arm.
  */
-export function armAddTool(role: LevelRole = 'doodad'): boolean {
+export function armAddTool(): boolean {
 	const descriptor = resolvePlacementTarget(
 		catalogState.entities,
 		catalogState.armedTypeId,
 		catalogState.lastTypeId
 	);
-	return descriptor ? armAddType(descriptor.id, role) : false;
+	return descriptor ? armAddType(descriptor.id) : false;
 }
 
 /*
@@ -199,15 +217,47 @@ export function toggleGrid(): void {
 	setGridVisible(!transformState.gridVisible);
 }
 
+/** Arm draw, clip, or vertex on the solids layer. */
+export function armSolidTool(tool: 'brush' | 'clip' | 'vertex'): void {
+	levelState.activeLayer = 'solid';
+	activateTool(tool);
+}
+
+/** Arm a spawn marker on the entity layer. The click is recorded in the document. */
+export function armSpawnTool(): void {
+	levelState.activeLayer = 'entity';
+	setArmedType(null);
+	sendAddType(null);
+	setDebugTool('add');
+	sendTool('add');
+	setLevelPlacement({ kind: 'spawn' });
+}
+
+/** Arm a trigger volume on the entity layer. */
+export function armTriggerTool(): void {
+	levelState.activeLayer = 'entity';
+	setArmedType(null);
+	sendAddType(null);
+	setDebugTool('add');
+	sendTool('add');
+	setLevelPlacement({ kind: 'trigger', size: { x: 2, y: 2, z: 2 } });
+}
+
 /**
- * Enter or leave level-editor mode.
+ * Enter or leave level mode.
  *
- * Entering reseeds the level buffer from the stage. Leaving freezes it. This
- * does not stream the buffer back into the stage — the entities are already
- * there, and a replay would duplicate them.
+ * Entering shows the saved document. Leaving drops the preview and leaves the
+ * stage's own entities in place. A level tool left armed is returned to Select
+ * so the next click cannot spawn into the live stage.
  */
 export function toggleLevelEditor(): void {
+	const leaving = levelState.active;
 	toggleLevelMode();
+	if (!leaving) return;
+	const tool = debugState.tool;
+	if (tool === 'add' || tool === 'brush' || tool === 'clip' || tool === 'vertex') {
+		activateTool('select');
+	}
 }
 
 /** Pause or resume the simulation, in the editor and the game. */
@@ -215,4 +265,8 @@ export function togglePlayback(): void {
 	const paused = !debugState.paused;
 	setPaused(paused);
 	sendPlayback(paused);
+	if (!levelState.active) return;
+	// Pausing returns to the edit preview. Resuming plays the document.
+	if (paused) syncLevelDocument();
+	else playLevelDocument();
 }

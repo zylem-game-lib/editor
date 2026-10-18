@@ -143,7 +143,7 @@ export interface MountZylemEditorOptions extends EditorStateBridgeOptions {
 	 *
 	 * @example
 	 * ```ts
-	 * mountZylemEditor({ defaultDocks: { top: ['toolbar'], left: ['main'] } });
+	 * mountZylemEditor({ defaultDocks: { top: ['toolbar'], right: ['main'] } });
 	 * ```
 	 */
 	defaultDocks?: EditorDockDefaults;

@@ -1,6 +1,5 @@
 import { getZylemBridge, type SceneOperationPayload } from '@zylem/bridge';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
 import {
 	canRedo,
 	canUndo,
@@ -13,6 +12,7 @@ import {
 	undo,
 	undoLabel,
 } from '../../src/components/history/history-store';
+import { resetLevelEditor } from '../../src/components/level/level-state';
 
 function operation(
 	opId: string,
@@ -37,6 +37,7 @@ let applied: Array<{ opId: string; direction: string }>;
 let stopCapture: (() => void) | null = null;
 
 beforeEach(() => {
+	resetLevelEditor();
 	getZylemBridge().channel.reset();
 	clearHistory();
 
