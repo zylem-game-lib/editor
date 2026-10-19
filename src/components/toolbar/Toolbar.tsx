@@ -1,8 +1,11 @@
-import { type Component, For, Show } from 'solid-js';
+import { type Accessor, type Component, For, Show } from 'solid-js';
+import { DockMenu } from '../common/DockMenu';
+import type { DockSide } from '../common/dock-layout';
 import { debugStore } from '../editor-store';
 import { levelStore } from '../level/level-state';
 import { AddButton } from './AddButton';
 import { BuildButton } from './BuildButton';
+import { CameraButton } from './CameraButton';
 import {
 	type ContextAction,
 	contextActionStartsGroup,
@@ -19,7 +22,6 @@ import {
 	DrawBrushButton,
 	VertexBrushButton,
 } from './LevelToolButtons';
-import { PerspectiveButton } from './PerspectiveButton';
 import { PlayPauseButton } from './PlayPauseButton';
 import { SelectButton } from './SelectButton';
 import { RotateButton, ScaleButton, TranslateButton } from './TransformButtons';
@@ -33,14 +35,18 @@ import {
 import { viewStore } from './view-state';
 
 /** Exclusive editing stays Select. The other main buttons are layers or session toggles. */
-export const MainToolbar: Component = () => {
+export const MainToolbar: Component<{
+	dockedSide: Accessor<DockSide | null>;
+	onDock: (side: DockSide) => void;
+}> = (props) => {
 	return (
 		<div class="zylem-toolbar-group">
 			<SelectButton />
 			<BuildButton />
-			<PerspectiveButton />
+			<CameraButton />
 			<DebugButton />
 			<PlayPauseButton />
+			<DockMenu dockedSide={props.dockedSide} onDock={props.onDock} variant="toolbar" />
 		</div>
 	);
 };
@@ -92,7 +98,7 @@ const ContextActionButton: Component<{ action: ContextAction }> = (props) => {
 export const ContextToolbar: Component = () => {
 	const actions = () =>
 		contextToolbarActions({
-			perspective: viewStore.perspective,
+			camera: viewStore.camera,
 			debug: debugStore.debug,
 			build: levelStore.active,
 			levelLayer: levelStore.activeLayer,
@@ -113,10 +119,14 @@ export const ContextToolbar: Component = () => {
 };
 
 /**
- * One strip. Top and bottom docks lay the buttons out in a row; a side dock
- * stacks them in a column as wide as one button.
+ * One strip. Top and bottom docks lay the buttons out in a row. A side dock
+ * lays them in two columns, under the window controls that head those columns.
  */
-export const Toolbar: Component<{ orientation?: 'row' | 'column' }> = (props) => {
+export const Toolbar: Component<{
+	orientation?: 'row' | 'column';
+	dockedSide: Accessor<DockSide | null>;
+	onDock: (side: DockSide) => void;
+}> = (props) => {
 	return (
 		<div
 			class="zylem-toolbar"
@@ -124,7 +134,7 @@ export const Toolbar: Component<{ orientation?: 'row' | 'column' }> = (props) =>
 				'zylem-toolbar--vertical': (props.orientation ?? 'row') === 'column',
 			}}
 		>
-			<MainToolbar />
+			<MainToolbar dockedSide={props.dockedSide} onDock={props.onDock} />
 			<span class="zylem-toolbar-divider" />
 			<ContextToolbar />
 		</div>

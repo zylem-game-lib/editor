@@ -36,6 +36,7 @@ import {
 	toggleTransformTool,
 	transformTarget,
 } from '../../src/components/toolbar/toolbar-actions';
+import { setViewPreset, viewState } from '../../src/components/toolbar/view-state';
 import { transformState } from '../../src/components/transform/transform-state';
 
 let sent: Array<{ type: string; payload: unknown }>;
@@ -59,6 +60,7 @@ beforeEach(() => {
 	transformState.enabled = true;
 	transformState.gridVisible = false;
 	resetLevelEditor();
+	setViewPreset('game');
 
 	sent = [];
 	const capture = (type: Parameters<typeof channel.on>[0]) =>
@@ -79,12 +81,15 @@ afterEach(() => {
 
 describe('toggleDebug', () => {
 	it('flips debug mode and tells the game', () => {
+		setViewPreset('side');
 		toggleDebug();
 		expect(debugStore.debug).toBe(true);
+		expect(viewState.preset).toBe('free');
 		expect(sentOf('debug:set').map((m) => m.payload)).toEqual([{ enabled: true }]);
 
 		toggleDebug();
 		expect(debugStore.debug).toBe(false);
+		expect(viewState.preset).toBe('free');
 	});
 });
 

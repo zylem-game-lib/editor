@@ -349,6 +349,8 @@ export const Editor: Component<EditorProps> = (props) => {
 								orientation={
 									body.dockedSide() === 'left' || body.dockedSide() === 'right' ? 'column' : 'row'
 								}
+								dockedSide={body.dockedSide}
+								onDock={body.onDock}
 							/>
 						)}
 					</FloatingPanel>

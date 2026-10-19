@@ -275,6 +275,7 @@ export const getDockedSide = (panelId: DockPanelId): DockSide | null =>
 const BUILTIN_DOCK_DEFAULTS: EditorDockDefaults = {
 	top: [TOOLBAR_PANEL_ID],
 	right: [MAIN_PANEL_ID],
+	bottom: ['console'],
 };
 
 /** Host docks keep their edges. A missing toolbar is added on top. */
@@ -284,6 +285,15 @@ const withToolbarDock = (defaults: EditorDockDefaults): EditorDockDefaults => {
 	);
 	if (placed) return defaults;
 	return { ...defaults, top: [TOOLBAR_PANEL_ID, ...(defaults.top ?? [])] };
+};
+
+/** A host that omits the main panel still gets it on the right. */
+const withMainDock = (defaults: EditorDockDefaults): EditorDockDefaults => {
+	const placed = (['left', 'right', 'top', 'bottom'] as const).some((side) =>
+		defaults[side]?.includes(MAIN_PANEL_ID)
+	);
+	if (placed) return defaults;
+	return { ...defaults, right: [MAIN_PANEL_ID, ...(defaults.right ?? [])] };
 };
 
 /** A lone toolbar with no stored thickness starts at the button-strip size. */
@@ -324,7 +334,7 @@ export const applyDefaultDocks = (defaults: EditorDockDefaults | undefined) => {
 		return;
 	}
 
-	const resolved = withToolbarDock(defaults ?? BUILTIN_DOCK_DEFAULTS);
+	const resolved = withMainDock(withToolbarDock(defaults ?? BUILTIN_DOCK_DEFAULTS));
 	let docks = createEmptyDockRegistry();
 
 	for (const side of ['left', 'right', 'top', 'bottom'] as const) {

@@ -4,7 +4,10 @@ import { mountBuildLabel } from '@zylem/ui/build-label';
 import './web-components/zylem-editor';
 import { bootstrapHarnessGame, createHarnessGameElement } from './dev/harness-game';
 
-mountBuildLabel({ packages: ZYLEM_PACKAGE_VERSIONS });
+mountBuildLabel({
+	packages: ZYLEM_PACKAGE_VERSIONS,
+	prefer: '@zylem/editor',
+});
 
 const root = document.getElementById('root');
 

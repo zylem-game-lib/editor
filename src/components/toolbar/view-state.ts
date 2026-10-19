@@ -29,15 +29,15 @@ export function cameraIdForPreset(preset: ViewPreset): string {
 }
 
 export interface ViewState {
-	/** Perspective layer. Off hides the camera buttons; it does not change the camera. */
-	perspective: boolean;
+	/** Camera layer. Off hides the camera buttons; it does not change the camera. */
+	camera: boolean;
 	/** Camera restored when Space is released. */
 	preset: ViewPreset;
 	spaceHeld: boolean;
 }
 
 export const viewState = proxy<ViewState>({
-	perspective: false,
+	camera: false,
 	preset: 'game',
 	spaceHeld: false,
 });
@@ -50,8 +50,8 @@ export function effectiveViewPreset(preset: ViewPreset, spaceHeld: boolean): Vie
 	return spaceHeld ? 'free' : preset;
 }
 
-export function togglePerspective(): void {
-	viewState.perspective = !viewState.perspective;
+export function toggleCamera(): void {
+	viewState.camera = !viewState.camera;
 }
 
 export function setViewPreset(preset: ViewPreset): void {

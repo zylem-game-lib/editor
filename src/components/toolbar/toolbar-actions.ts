@@ -40,15 +40,22 @@ import { setGridVisible, setSnapEnabled, transformState } from '../transform/tra
 import { resolvePlacementTarget } from './add-button-state';
 import { catalogState, getEntityDescriptor, setArmedType } from './catalog-state';
 import { resolveTransformTarget } from './transform-button-state';
+import { setViewPreset } from './view-state';
 
 export type TransformTool = Extract<DebugTools, 'translate' | 'rotate' | 'scale'>;
 export type ClickTool = Extract<DebugTools, 'select' | 'delete'>;
 
-/** Debug mode on or off, in the editor and the game. */
+/**
+ * Debug mode on or off, in the editor and the game.
+ *
+ * Turning it on latches the free camera. The game copies the gameplay camera
+ * onto that view and switches to it. Turning it off leaves the camera alone.
+ */
 export function toggleDebug(): void {
 	const enabled = !debugStore.debug;
 	setDebugStore('debug', enabled);
 	sendDebugEnabled(enabled);
+	if (enabled) setViewPreset('free');
 }
 
 /**

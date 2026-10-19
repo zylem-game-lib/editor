@@ -7,8 +7,8 @@
  */
 export const addPaletteCSS = `
 /*
- * The toolbar is its own window: one row on a top or bottom dock, one column
- * on a side dock. Wrapping would break that strip.
+ * The toolbar is its own window: one row on a top or bottom dock. A side dock
+ * is two columns, headed by the window controls.
  */
 .zylem-toolbar {
 	flex-wrap: nowrap;
@@ -51,10 +51,39 @@ export const addPaletteCSS = `
 }
 
 .zylem-chrome-inline--column {
-	flex-direction: column;
-	justify-content: flex-start;
+	display: grid;
+	grid-template-columns: repeat(2, 34px);
+	gap: 0.5rem;
+	align-content: start;
+	justify-items: stretch;
 	align-self: flex-start;
 	width: max-content;
+	max-height: 100%;
+	min-height: 0;
+	overflow-x: hidden;
+	overflow-y: auto;
+}
+
+/* Let the window controls and tool buttons share one two-column grid. */
+.zylem-chrome-inline--column .floating-panel-controls,
+.zylem-chrome-inline--column .floating-panel-controls > span,
+.zylem-chrome-inline--column .zylem-window-controls,
+.zylem-chrome-inline--column .zylem-toolbar,
+.zylem-chrome-inline--column .zylem-toolbar-group {
+	display: contents;
+}
+
+.zylem-chrome-inline--column .zylem-window-control {
+	width: 34px;
+	height: 34px;
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background: rgba(8, 22, 38, 0.92);
+}
+
+.zylem-chrome-inline--column .zylem-toolbar-divider {
+	grid-column: 1 / -1;
 }
 
 /* Keeps a group's buttons together when the toolbar wraps. */

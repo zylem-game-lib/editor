@@ -172,7 +172,10 @@ export const resolveThickness = (
 	if (registry[side].panels.length === 0) return 0;
 	const extent = zoneViewportExtent(side, viewport);
 	const stored = registry[side].thickness;
-	const thickness = stored > 0 ? stored : Math.round(extent / 4);
+	const loneToolbar =
+		registry[side].panels.length === 1 && registry[side].panels[0] === TOOLBAR_PANEL_ID;
+	const thickness =
+		stored > 0 ? stored : loneToolbar ? TOOLBAR_STRIP_THICKNESS : Math.round(extent / 4);
 	return Math.max(1, Math.min(thickness, extent));
 };
 
@@ -215,97 +218,20 @@ export interface DockLayoutOptions {
 /**
  * Rect for every docked panel.
  *
- * Left and right zones take the full viewport height and win over top and
- * bottom, which inset horizontally to the space between them. Panels sharing a
- * zone split its long axis evenly.
- *
- * The toolbar is the exception when it is alone on its edge: that strip runs
- * the full length of the edge, and the rules above apply to everyone else
- * inside the leftover rectangle. Sharing its edge with another panel drops
- * the exception and the toolbar splits that edge like any other panel.
+ * Top and bottom span the full width. Left and right occupy the band between
+ * them, so a right-hand panel sits between a top strip and a bottom strip.
+ * A side with nothing above or below still spans the full height. Panels
+ * sharing a zone split its long axis evenly. A lone toolbar with no stored
+ * thickness uses the button-strip size instead of a quarter of the viewport.
  */
 export const computeDockLayout = (
 	registry: DockRegistry,
 	viewport: Viewport,
 	options: DockLayoutOptions = {}
-): Record<DockPanelId, DockRect> => {
-	const outerSide = soleToolbarSide(registry);
-	if (!outerSide) return layoutZones(registry, viewport, options);
-
-	const thickness = toolbarStripThickness(registry, outerSide, viewport);
-	const innerRegistry = removeFromZones(registry, TOOLBAR_PANEL_ID);
-	const innerViewport: Viewport = { width: viewport.width, height: viewport.height };
-	const origin = { x: 0, y: 0 };
-	let toolbarRect: DockRect;
-
-	switch (outerSide) {
-		case 'top':
-			innerViewport.height = Math.max(1, viewport.height - thickness);
-			origin.y = thickness;
-			toolbarRect = { x: 0, y: 0, width: viewport.width, height: thickness };
-			break;
-		case 'bottom':
-			innerViewport.height = Math.max(1, viewport.height - thickness);
-			toolbarRect = {
-				x: 0,
-				y: Math.max(0, viewport.height - thickness),
-				width: viewport.width,
-				height: thickness,
-			};
-			break;
-		case 'left':
-			innerViewport.width = Math.max(1, viewport.width - thickness);
-			origin.x = thickness;
-			toolbarRect = { x: 0, y: 0, width: thickness, height: viewport.height };
-			break;
-		case 'right':
-			innerViewport.width = Math.max(1, viewport.width - thickness);
-			toolbarRect = {
-				x: Math.max(0, viewport.width - thickness),
-				y: 0,
-				width: thickness,
-				height: viewport.height,
-			};
-			break;
-	}
-
-	const layout = layoutZones(innerRegistry, innerViewport, options);
-	if (origin.x !== 0 || origin.y !== 0) {
-		for (const rect of Object.values(layout)) {
-			rect.x += origin.x;
-			rect.y += origin.y;
-		}
-	}
-	layout[TOOLBAR_PANEL_ID] = toolbarRect;
-	return layout;
-};
-
-/** The toolbar's edge when it is the only occupant, otherwise null. */
-const soleToolbarSide = (registry: DockRegistry): DockSide | null => {
-	const side = findDockedSide(registry, TOOLBAR_PANEL_ID);
-	if (!side) return null;
-	const panels = registry[side].panels;
-	return panels.length === 1 ? side : null;
-};
+): Record<DockPanelId, DockRect> => layoutZones(registry, viewport, options);
 
 /**
- * Thickness of a lone toolbar strip. An explicit zone size wins; otherwise
- * the button-strip fallback, never a quarter of the viewport.
- */
-const toolbarStripThickness = (
-	registry: DockRegistry,
-	side: DockSide,
-	viewport: Viewport
-): number => {
-	const extent = zoneViewportExtent(side, viewport);
-	const stored = registry[side].thickness;
-	const thickness = stored > 0 ? stored : TOOLBAR_STRIP_THICKNESS;
-	return Math.max(1, Math.min(thickness, Math.max(1, extent)));
-};
-
-/**
- * Side-wins layout inside one rectangle. Callers that reserved an outer
- * toolbar strip pass the leftover viewport.
+ * Horizontal docks span the full width. Side docks fill the band between them.
  */
 const layoutZones = (
 	registry: DockRegistry,
@@ -320,33 +246,33 @@ const layoutZones = (
 	const topThickness = resolveThickness(registry, 'top', viewport);
 	const bottomThickness = resolveThickness(registry, 'bottom', viewport);
 
-	// Side zones own the full height.
-	for (const side of ['left', 'right'] as const) {
-		const panels = registry[side].panels;
-		if (panels.length === 0) continue;
-		const width = side === 'left' ? leftThickness : rightThickness;
-		const x = side === 'left' ? 0 : Math.max(0, viewport.width - width);
-		const extents = slotExtents(viewport.height, panels.length, minSlot);
-		let y = 0;
-		panels.forEach((panelId, index) => {
-			layout[panelId] = { x, y, width, height: extents[index]! };
-			y += extents[index]!;
-		});
-	}
-
-	// Top and bottom fill only what the side zones leave behind.
-	const insetX = leftThickness;
-	const insetWidth = Math.max(1, viewport.width - leftThickness - rightThickness);
+	// Top and bottom own the full width.
 	for (const side of ['top', 'bottom'] as const) {
 		const panels = registry[side].panels;
 		if (panels.length === 0) continue;
 		const height = side === 'top' ? topThickness : bottomThickness;
 		const y = side === 'top' ? 0 : Math.max(0, viewport.height - height);
-		const extents = slotExtents(insetWidth, panels.length, minSlot);
-		let x = insetX;
+		const extents = slotExtents(viewport.width, panels.length, minSlot);
+		let x = 0;
 		panels.forEach((panelId, index) => {
 			layout[panelId] = { x, y, width: extents[index]!, height };
 			x += extents[index]!;
+		});
+	}
+
+	// Side zones fill the band between the horizontal docks.
+	const insetY = topThickness;
+	const insetHeight = Math.max(1, viewport.height - topThickness - bottomThickness);
+	for (const side of ['left', 'right'] as const) {
+		const panels = registry[side].panels;
+		if (panels.length === 0) continue;
+		const width = side === 'left' ? leftThickness : rightThickness;
+		const x = side === 'left' ? 0 : Math.max(0, viewport.width - width);
+		const extents = slotExtents(insetHeight, panels.length, minSlot);
+		let y = insetY;
+		panels.forEach((panelId, index) => {
+			layout[panelId] = { x, y, width, height: extents[index]! };
+			y += extents[index]!;
 		});
 	}
 

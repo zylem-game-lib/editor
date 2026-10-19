@@ -40,7 +40,7 @@ describe('connectViewState', () => {
 		channel.reset();
 		viewState.preset = 'game';
 		viewState.spaceHeld = false;
-		viewState.perspective = false;
+		viewState.camera = false;
 		messages = [];
 		stopCapture = channel.on('camera:activate', ({ id }) => messages.push(id));
 	});

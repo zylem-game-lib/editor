@@ -16,6 +16,8 @@ export interface PanelChromeProps {
 	restoreSiblingLabel?: string | undefined;
 	restoreSiblingIcon?: JSX.Element | undefined;
 	onDock: (side: DockSide) => void;
+	/** When false, the dock control is rendered by the body (the toolbar). */
+	dockInChrome?: boolean;
 	onTitlePointerDown: (event: PointerEvent) => void;
 	onChromeRef?: ((element: HTMLDivElement) => void) | undefined;
 	body: () => JSX.Element;
@@ -48,7 +50,9 @@ export const PanelChrome: Component<PanelChromeProps> = (props) => {
 					</Tooltip>
 				</span>
 			</Show>
-			<DockMenu dockedSide={props.dockedSide} onDock={props.onDock} />
+			<Show when={props.dockInChrome !== false}>
+				<DockMenu dockedSide={props.dockedSide} onDock={props.onDock} />
+			</Show>
 			<WindowControls
 				collapsed={props.isCollapsed()}
 				onCollapse={props.onCollapse}
@@ -109,8 +113,9 @@ export const PanelChrome: Component<PanelChromeProps> = (props) => {
 				}}
 				onPointerDown={props.onTitlePointerDown}
 			>
+				<Show when={stacked()}>{headerControls()}</Show>
 				<Show when={!props.isCollapsed()}>{props.body()}</Show>
-				{headerControls()}
+				<Show when={!stacked()}>{headerControls()}</Show>
 			</div>
 		</Show>
 	);

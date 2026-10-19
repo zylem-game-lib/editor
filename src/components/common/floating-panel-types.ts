@@ -12,6 +12,7 @@ export interface DockRequest {
 export interface FloatingPanelBody {
 	isCollapsed: Accessor<boolean>;
 	dockedSide: Accessor<DockSide | null>;
+	onDock: (side: DockSide) => void;
 }
 
 export interface FloatingPanelProps {

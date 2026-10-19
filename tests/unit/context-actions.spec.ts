@@ -5,11 +5,11 @@ describe('contextToolbarActions', () => {
 	const base = ['translate', 'rotate', 'scale', 'snap', 'undo', 'redo'];
 
 	it('always shows the select gizmos, then snap, undo, and redo once', () => {
-		expect(contextToolbarActions({ perspective: false, debug: false, build: false })).toEqual(base);
+		expect(contextToolbarActions({ camera: false, debug: false, build: false })).toEqual(base);
 	});
 
 	it('appends each layer without repeating the shared actions', () => {
-		expect(contextToolbarActions({ perspective: true, debug: true, build: true })).toEqual([
+		expect(contextToolbarActions({ camera: true, debug: true, build: true })).toEqual([
 			'translate',
 			'rotate',
 			'scale',
@@ -31,10 +31,10 @@ describe('contextToolbarActions', () => {
 
 	it('switches the level row with the active layer', () => {
 		expect(
-			contextToolbarActions({ perspective: false, debug: false, build: true, levelLayer: 'doodad' })
+			contextToolbarActions({ camera: false, debug: false, build: true, levelLayer: 'doodad' })
 		).toEqual(['translate', 'rotate', 'scale', 'add-doodad', 'delete', 'snap', 'undo', 'redo']);
 		expect(
-			contextToolbarActions({ perspective: false, debug: false, build: true, levelLayer: 'entity' })
+			contextToolbarActions({ camera: false, debug: false, build: true, levelLayer: 'entity' })
 		).toEqual([
 			'translate',
 			'rotate',

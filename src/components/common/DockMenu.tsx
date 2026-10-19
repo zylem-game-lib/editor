@@ -36,6 +36,8 @@ const DockTip: Component<{ content: string; children: JSX.Element }> = (props) =
 export interface DockMenuProps {
 	dockedSide: Accessor<DockSide | null>;
 	onDock: (side: DockSide) => void;
+	/** `toolbar` matches the tool buttons. `chrome` is the small titlebar control. */
+	variant?: 'chrome' | 'toolbar';
 }
 
 /**
@@ -69,6 +71,7 @@ export const DockMenu: Component<DockMenuProps> = (props) => {
 
 	const triggerIcon = () =>
 		DOCK_OPTIONS.find((option) => option.side === props.dockedSide())?.icon ?? PanelRight;
+	const toolbarButton = () => props.variant === 'toolbar';
 
 	/** Right-aligned under the trigger, matching where the inline menu sat. */
 	const measure = () => {
@@ -120,18 +123,18 @@ export const DockMenu: Component<DockMenuProps> = (props) => {
 			style={{ display: 'inline-flex' }}
 			onPointerDown={(event) => event.stopPropagation()}
 		>
-			<DockTip content="Dock panel">
+			<DockTip content="Dock">
 				<button
 					type="button"
 					ref={triggerRef}
-					class="floating-panel-button"
-					aria-label="Dock panel"
+					class={toolbarButton() ? 'zylem-toolbar-btn' : 'floating-panel-button'}
+					aria-label="Dock"
 					aria-haspopup="true"
 					aria-expanded={open()}
 					data-testid="dock-menu-trigger"
 					onClick={toggle}
 				>
-					<Dynamic component={triggerIcon()} size={12} />
+					<Dynamic component={triggerIcon()} size={toolbarButton() ? 18 : 12} />
 				</button>
 			</DockTip>
 			<Show when={open() && layer.mount()}>

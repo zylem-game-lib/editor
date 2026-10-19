@@ -1,7 +1,7 @@
 /**
  * What the context toolbar shows.
  *
- * Select's gizmos are always there. Perspective, Debug, and Level are layers,
+ * Select's gizmos are always there. Camera, Debug, and Level are layers,
  * so each one appends its own actions instead of replacing the row. Magnet,
  * undo, and redo sit once at the end because Select and Level both want them.
  *
@@ -33,7 +33,7 @@ export type ContextAction =
 	| 'redo';
 
 export interface ContextToolbarInput {
-	perspective: boolean;
+	camera: boolean;
 	debug: boolean;
 	build: boolean;
 	/** Which level layer is showing tools. Ignored while level mode is off. */
@@ -42,7 +42,7 @@ export interface ContextToolbarInput {
 
 export function contextToolbarActions(input: ContextToolbarInput): ContextAction[] {
 	const actions: ContextAction[] = ['translate', 'rotate', 'scale'];
-	if (input.perspective) {
+	if (input.camera) {
 		actions.push('view-game', 'view-side', 'view-top', 'view-isometric', 'view-free');
 	}
 	if (input.debug) actions.push('grid');

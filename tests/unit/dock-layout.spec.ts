@@ -111,25 +111,26 @@ describe('computeDockLayout', () => {
 		expect(layout.console).toEqual({ x: 0, y: 600, width: 1000, height: 200 });
 	});
 
-	it('insets a bottom dock to the right of a left dock', () => {
+	it('lifts a left dock above a bottom dock that spans the full width', () => {
 		const registry = registryOf([
 			['left', ['main']],
 			['bottom', ['console']],
 		]);
 		const layout = computeDockLayout(registry, viewport);
-		expect(layout.main).toEqual({ x: 0, y: 0, width: 250, height: 800 });
-		// Starts where the left dock ends rather than running under it.
-		expect(layout.console).toEqual({ x: 250, y: 600, width: 750, height: 200 });
+		expect(layout.console).toEqual({ x: 0, y: 600, width: 1000, height: 200 });
+		expect(layout.main).toEqual({ x: 0, y: 0, width: 250, height: 600 });
 	});
 
-	it('insets a top dock between both side zones', () => {
+	it('insets both side docks under a top dock', () => {
 		const registry = registryOf([
 			['left', ['main'], 200],
 			['right', ['entities'], 100],
 			['top', ['console'], 150],
 		]);
 		const layout = computeDockLayout(registry, viewport);
-		expect(layout.console).toEqual({ x: 200, y: 0, width: 700, height: 150 });
+		expect(layout.console).toEqual({ x: 0, y: 0, width: 1000, height: 150 });
+		expect(layout.main).toEqual({ x: 0, y: 150, width: 200, height: 650 });
+		expect(layout.entities).toEqual({ x: 900, y: 150, width: 100, height: 650 });
 	});
 
 	it('splits a side zone evenly down its height', () => {
@@ -139,14 +140,15 @@ describe('computeDockLayout', () => {
 		expect(layout.console).toEqual({ x: 0, y: 400, width: 200, height: 400 });
 	});
 
-	it('splits a bottom zone evenly across the inset width', () => {
+	it('splits a bottom zone evenly across the full width', () => {
 		const registry = registryOf([
 			['left', ['main'], 250],
 			['bottom', ['console', 'entities'], 200],
 		]);
 		const layout = computeDockLayout(registry, viewport);
-		expect(layout.console).toEqual({ x: 250, y: 600, width: 375, height: 200 });
-		expect(layout.entities).toEqual({ x: 625, y: 600, width: 375, height: 200 });
+		expect(layout.console).toEqual({ x: 0, y: 600, width: 500, height: 200 });
+		expect(layout.entities).toEqual({ x: 500, y: 600, width: 500, height: 200 });
+		expect(layout.main).toEqual({ x: 0, y: 0, width: 250, height: 600 });
 	});
 
 	it('clamps a crowded zone to the minimum slot rather than vanishing', () => {
@@ -184,7 +186,21 @@ describe('computeDockLayout', () => {
 		});
 	});
 
-	it('lays a bottom dock in the space beside a lone left toolbar', () => {
+	it('sets a right panel between a top toolbar and a bottom console', () => {
+		const layout = computeDockLayout(
+			registryOf([
+				['top', [TOOLBAR_PANEL_ID], 40],
+				['right', ['main'], 300],
+				['bottom', ['console'], 200],
+			]),
+			viewport
+		);
+		expect(layout[TOOLBAR_PANEL_ID]).toEqual({ x: 0, y: 0, width: 1000, height: 40 });
+		expect(layout.console).toEqual({ x: 0, y: 600, width: 1000, height: 200 });
+		expect(layout.main).toEqual({ x: 700, y: 40, width: 300, height: 560 });
+	});
+
+	it('shortens a lone left toolbar so a bottom dock can span the full width', () => {
 		const layout = computeDockLayout(
 			registryOf([
 				['left', [TOOLBAR_PANEL_ID], 40],
@@ -192,11 +208,11 @@ describe('computeDockLayout', () => {
 			]),
 			viewport
 		);
-		expect(layout[TOOLBAR_PANEL_ID]).toEqual({ x: 0, y: 0, width: 40, height: 800 });
-		expect(layout.console).toEqual({ x: 40, y: 600, width: 960, height: 200 });
+		expect(layout[TOOLBAR_PANEL_ID]).toEqual({ x: 0, y: 0, width: 40, height: 600 });
+		expect(layout.console).toEqual({ x: 0, y: 600, width: 1000, height: 200 });
 	});
 
-	it('does not give the toolbar the full edge when it shares that edge', () => {
+	it('splits a shared top edge across the full width and insets the side panel', () => {
 		const layout = computeDockLayout(
 			registryOf([
 				['left', ['main'], 200],
@@ -204,9 +220,9 @@ describe('computeDockLayout', () => {
 			]),
 			viewport
 		);
-		expect(layout[TOOLBAR_PANEL_ID]).toEqual({ x: 200, y: 0, width: 400, height: 40 });
-		expect(layout.console).toEqual({ x: 600, y: 0, width: 400, height: 40 });
-		expect(layout.main).toEqual({ x: 0, y: 0, width: 200, height: 800 });
+		expect(layout[TOOLBAR_PANEL_ID]).toEqual({ x: 0, y: 0, width: 500, height: 40 });
+		expect(layout.console).toEqual({ x: 500, y: 0, width: 500, height: 40 });
+		expect(layout.main).toEqual({ x: 0, y: 40, width: 200, height: 760 });
 	});
 });
 
@@ -223,14 +239,14 @@ describe('dockSlotIndex', () => {
 	});
 
 	it('picks a slot from the pointer position along the zone', () => {
-		// Slots span 250-625 (mid 437.5) and 625-1000 (mid 812.5).
-		expect(dockSlotIndex(registry, 'bottom', { x: 300, y: 700 }, viewport)).toBe(0);
-		expect(dockSlotIndex(registry, 'bottom', { x: 500, y: 700 }, viewport)).toBe(1);
+		// Slots span 0-500 (mid 250) and 500-1000 (mid 750).
+		expect(dockSlotIndex(registry, 'bottom', { x: 100, y: 700 }, viewport)).toBe(0);
+		expect(dockSlotIndex(registry, 'bottom', { x: 400, y: 700 }, viewport)).toBe(1);
 		expect(dockSlotIndex(registry, 'bottom', { x: 900, y: 700 }, viewport)).toBe(2);
 	});
 
 	it('ignores the dragged panel own slot', () => {
-		// Without `console`, `entities` alone fills 250-1000 (mid 625).
+		// Without `console`, `entities` alone fills 0-1000 (mid 500).
 		expect(dockSlotIndex(registry, 'bottom', { x: 400, y: 700 }, viewport, 'console')).toBe(0);
 		expect(dockSlotIndex(registry, 'bottom', { x: 700, y: 700 }, viewport, 'console')).toBe(1);
 	});

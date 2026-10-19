@@ -1,6 +1,6 @@
 import { useLayer } from '@zylem/ui/components';
 import { type Component, createEffect, createSignal, onCleanup, onMount, Show } from 'solid-js';
-import { debugStore, MAIN_PANEL_ID, setDockThickness } from '../editor-store';
+import { debugStore, MAIN_PANEL_ID, setDockThickness, TOOLBAR_PANEL_ID } from '../editor-store';
 import { isHorizontalSide } from './dock-layout';
 import type { DockRequest, FloatingPanelBody, FloatingPanelProps } from './floating-panel-types';
 import { PANEL_RANK } from './layer-ranks';
@@ -97,14 +97,23 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 	});
 
 	const useAutoWidth = () => !docking.isMoving() && !!props.hugContent && !docking.dockedSide();
+	const sideDocked = () => {
+		const side = docking.dockedSide();
+		return side === 'left' || side === 'right';
+	};
 	const useAutoHeight = () =>
 		!docking.isMoving() &&
 		(useAutoWidth() ||
 			(isCollapsed() && !props.fitDockThickness) ||
-			(docking.isAutoHeight() && !docking.dockedSide()));
+			(docking.isAutoHeight() && !docking.dockedSide()) ||
+			(!!props.fitDockThickness && sideDocked()));
 	const renderBody = () =>
 		typeof props.children === 'function'
-			? props.children({ isCollapsed, dockedSide: docking.dockedSide })
+			? props.children({
+					isCollapsed,
+					dockedSide: docking.dockedSide,
+					onDock: (side) => docking.dockTo(side),
+				})
 			: props.children;
 
 	return (
@@ -118,6 +127,7 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 				top: `${position().y}px`,
 				width: useAutoWidth() ? 'auto' : `${size().width}px`,
 				height: useAutoHeight() ? 'auto' : `${size().height}px`,
+				'max-height': useAutoHeight() && docking.dockedSide() ? `${size().height}px` : undefined,
 				'z-index': layer.zIndex(),
 				display: 'flex',
 				'flex-direction': 'column',
@@ -151,6 +161,7 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 				onRestoreSibling={props.onRestoreSibling}
 				restoreSiblingLabel={props.restoreSiblingLabel}
 				restoreSiblingIcon={props.restoreSiblingIcon}
+				dockInChrome={panelId !== TOOLBAR_PANEL_ID}
 				onDock={(side) => docking.dockTo(side)}
 				onTitlePointerDown={pointer.handleTitleBarPointerDown}
 				onChromeRef={(element) => {
