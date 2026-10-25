@@ -9,7 +9,7 @@ import { defineConfig } from 'vite';
 import solid from 'vite-plugin-solid';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const devPort = 3332;
+const devPort = 3333;
 
 // `@zylem/ui/styles.css` is resolved via the package's `exports` map
 // (`"./styles.css": "./dist/styles.css"`), so no explicit alias is needed

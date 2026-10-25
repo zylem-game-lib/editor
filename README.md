@@ -43,7 +43,7 @@ Requires Node `v22.12.0` (see `.nvmrc`) and [pnpm](https://pnpm.io/).
 ```bash
 pnpm install
 
-# Dev harness at http://localhost:3332 -- boots a real game (WebGL, wasm
+# Dev harness at http://localhost:3333 -- boots a real game (WebGL, wasm
 # physics, game-side bridge adapter) with the editor overlaid on it.
 pnpm dev
 
