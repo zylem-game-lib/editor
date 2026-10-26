@@ -110,9 +110,6 @@ export function bootstrapHarnessGame(element: HTMLElement): ReturnType<typeof cr
 	const game = createGame(
 		{
 			id: 'editor-harness',
-			// Debug on from the start, so selection, hover, and the gizmo are live
-			// without a trip to the toolbar.
-			debug: true,
 		},
 		createHarnessStage()
 	);

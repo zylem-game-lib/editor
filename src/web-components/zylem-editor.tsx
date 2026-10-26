@@ -14,6 +14,7 @@ import { addPaletteCSS } from '../components/toolbar/add-palette.css';
 import { installToolShortcuts } from '../components/toolbar/tool-shortcuts';
 import { installToolbarShortcuts } from '../components/toolbar/toolbar-shortcuts';
 import { installTransformToolGuard } from '../components/toolbar/transform-tool-guard';
+import { applyHarnessMode, harnessCapturesKeys, type HarnessModeId } from '../dev/harness-modes';
 import { connectViewState } from '../components/toolbar/view-state';
 import { connectTransformState } from '../components/transform/transform-state';
 
@@ -237,7 +238,7 @@ export class ZylemEditorElement extends HTMLElement {
 			// the panel opens and closes underneath the listener.
 			installToolbarShortcuts({
 				enabled: this._config.enableToolbarShortcuts !== false,
-				isActive: () => this.isPanelOpen(),
+				isActive: () => this.isPanelOpen() && harnessCapturesKeys(),
 			}),
 			// The gizmo mode buttons hide with the selection, so an active tool has to
 			// be released with it or it becomes unreachable.
@@ -296,6 +297,14 @@ export class ZylemEditorElement extends HTMLElement {
 	 */
 	dockPanel(side: DockSide | null, panelId?: DockPanelId) {
 		this.controller?.dockPanel(side, panelId);
+	}
+
+	/**
+	 * Apply a harness mode: camera, debug, level editing, and the toolbar profile.
+	 * The gear that chooses the mode lives outside this element.
+	 */
+	setMode(mode: HarnessModeId) {
+		applyHarnessMode(mode);
 	}
 
 	/**
