@@ -63,7 +63,7 @@ export default defineConfig({
 			allow: [
 				path.resolve(__dirname),
 				path.resolve(__dirname, '../zylem'),
-				path.resolve(__dirname, '../zylem-ui'),
+				path.resolve(__dirname, '../ui'),
 				path.resolve(__dirname, '../simulation'),
 			],
 		},
