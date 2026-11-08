@@ -12,6 +12,7 @@
  * click — and the mirrors lag the proxies by a microtask.
  */
 
+import type { BrushShape, LevelElementMode } from '@zylem/bridge';
 import { snapshot } from 'valtio/vanilla';
 import {
 	sendAddType,
@@ -29,8 +30,11 @@ import {
 	setSelectedEntityId,
 } from '../entities/entities-state';
 import {
+	duplicateLevelSelection,
+	hasLevelSelection,
 	levelState,
 	playLevelDocument,
+	setLevelDrawShape,
 	setLevelElementMode,
 	setLevelPlacement,
 	syncLevelDocument,
@@ -40,11 +44,13 @@ import { stageState } from '../stages/stage-state';
 import { setGridVisible, setSnapEnabled, transformState } from '../transform/transform-state';
 import { resolvePlacementTarget } from './add-button-state';
 import { catalogState, getEntityDescriptor, setArmedType } from './catalog-state';
+import { canClip, canShear } from './level-tool-state';
 import { resolveTransformTarget } from './transform-button-state';
 import { setViewPreset } from './view-state';
 
 export type TransformTool = Extract<DebugTools, 'translate' | 'rotate' | 'scale'>;
 export type ClickTool = Extract<DebugTools, 'select' | 'delete'>;
+export type ElementMode = Exclude<LevelElementMode, 'object'>;
 
 /**
  * Debug mode on or off, in the editor and the game.
@@ -103,11 +109,7 @@ export function transformTarget(): string | null {
  * disabled for.
  */
 function applyTransformTool(next: TransformTool | 'none'): boolean {
-	if (
-		levelState.active &&
-		levelState.selectedIds.length > 0 &&
-		(next === 'translate' || next === 'none')
-	) {
+	if (hasLevelSelection()) {
 		activateTool(next);
 		return true;
 	}
@@ -263,12 +265,95 @@ export function armSolidTool(tool: 'brush' | 'clip' | 'shear'): void {
 	activateTool(tool);
 }
 
-/** Pick vertices with the select tool, or go back to picking whole solids. */
-export function toggleVertexMode(): void {
-	const entering = levelState.elementMode !== 'vertex';
+/** Arm the brush with a shape. Every shape draws. */
+export function armBrushShape(shape: BrushShape): void {
+	setLevelDrawShape(shape);
+	armSolidTool('brush');
+}
+
+/** The Brush face: arm the brush with the current shape, or disarm it. */
+export function toggleBrushTool(): void {
+	if (debugState.tool === 'brush') activateTool('none');
+	else armSolidTool('brush');
+}
+
+/**
+ * Arm Clip from its key. Pressing it while armed keeps it.
+ *
+ * @returns `false` with no solid selected, since Clip cuts the selected solids.
+ */
+export function armClipTool(): boolean {
+	if (!canClip(debugState.tool, levelState.document, levelState.selectedIds)) return false;
+	if (debugState.tool !== 'clip') armSolidTool('clip');
+	return true;
+}
+
+/** Toggle Clip from its button. */
+export function toggleClipTool(): boolean {
+	if (debugState.tool !== 'clip') return armClipTool();
+	activateTool('none');
+	return true;
+}
+
+/**
+ * Toggle Shear, which slides faces within their own planes.
+ *
+ * @returns `false` outside face mode or with no face selected.
+ */
+export function toggleShearTool(): boolean {
+	const tool = debugState.tool;
+	if (!canShear(tool, levelState.elementMode, levelState.selectedElements)) return false;
+	if (tool === 'shear') activateTool('none');
+	else armSolidTool('shear');
+	return true;
+}
+
+/**
+ * Switch what a click on a solid picks. With nothing armed, an element mode
+ * arms Select so the next click picks. Shear only works on faces, so leaving
+ * face mode drops it.
+ */
+export function selectElementMode(mode: LevelElementMode): void {
 	levelState.activeLayer = 'solid';
-	setLevelElementMode(entering ? 'vertex' : 'object');
-	if (entering) activateTool('select');
+	setLevelElementMode(mode);
+	const tool = debugState.tool;
+	if (tool === 'shear' && mode !== 'face') activateTool(mode === 'object' ? 'none' : 'select');
+	else if (tool === 'none' && mode !== 'object') activateTool('select');
+}
+
+/** A mode button: enter its mode, or go back to whole objects when it is already on. */
+export function toggleElementMode(mode: ElementMode): void {
+	selectElementMode(levelState.elementMode === mode ? 'object' : mode);
+}
+
+/** How far a duplicate lands from its source along X: one snap step, or a unit with snap off. */
+export function duplicateOffset(): number {
+	return transformState.enabled && transformState.translate > 0 ? transformState.translate : 1;
+}
+
+/**
+ * Duplicate the level selection {@link duplicateOffset} along +X.
+ *
+ * @returns `false` with nothing selected.
+ */
+export function duplicateSelection(): boolean {
+	return duplicateLevelSelection({ x: duplicateOffset(), y: 0, z: 0 });
+}
+
+/**
+ * Level mode's starting tools: nothing armed, whole objects picked. The
+ * neutral tool is sent even when it is already set, so a game whose tool
+ * drifted is brought back into line.
+ */
+export function resetLevelTools(): void {
+	if (catalogState.armedTypeId !== null) {
+		setArmedType(null);
+		sendAddType(null);
+	}
+	setDebugTool('none');
+	sendTool('none');
+	setLevelPlacement(null);
+	setLevelElementMode('object');
 }
 
 /** Arm a spawn marker on the entity layer. The click is recorded in the document. */
@@ -294,14 +379,18 @@ export function armTriggerTool(): void {
 /**
  * Enter or leave level mode.
  *
- * Entering shows the saved document. Leaving drops the preview and leaves the
- * stage's own entities in place. A level tool left armed is returned to Select
- * so the next click cannot spawn into the live stage.
+ * Entering shows the saved document with nothing armed. Leaving drops the
+ * preview and leaves the stage's own entities in place. A level tool left
+ * armed is returned to Select so the next click cannot spawn into the live
+ * stage.
  */
 export function toggleLevelEditor(): void {
-	const leaving = levelState.active;
+	if (!levelState.active) {
+		resetLevelTools();
+		toggleLevelMode();
+		return;
+	}
 	toggleLevelMode();
-	if (!leaving) return;
 	const tool = debugState.tool;
 	if (tool === 'add' || tool === 'brush' || tool === 'clip' || tool === 'shear') {
 		activateTool('select');

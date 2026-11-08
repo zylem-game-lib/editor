@@ -19,6 +19,7 @@ import {
 	setLevelPlacement,
 } from '../components/level/level-state';
 import type { ContextAction } from '../components/toolbar/context-actions';
+import { resetLevelTools } from '../components/toolbar/toolbar-actions';
 import { setViewPreset, type ViewPreset, viewState } from '../components/toolbar/view-state';
 
 export type HarnessModeId =
@@ -37,9 +38,6 @@ export type HarnessMainAction = 'select' | 'build' | 'camera' | 'debug' | 'play'
 export type HarnessSlotId =
 	| 'navmesh'
 	| 'decal'
-	| 'edge'
-	| 'face'
-	| 'shear'
 	| 'uv-brush'
 	| 'splat'
 	| 'directional-vector'
@@ -102,9 +100,15 @@ export const HARNESS_MODES: readonly HarnessModeProfile[] = [
 		'draw-brush',
 		'clip-brush',
 		'vertex-brush',
-		'edge',
-		'face',
-		'shear',
+		'edge-brush',
+		'face-brush',
+		'shear-brush',
+		'subdivide-brush',
+		'translate',
+		'rotate',
+		'scale',
+		'duplicate-selection',
+		'delete-selection',
 	]),
 	levelBuilderMode('level-builder-navigation', 'Level Builder - Navigation', 'entity', [
 		'navmesh',
@@ -172,9 +176,6 @@ function levelBuilderMode(
 export const HARNESS_SLOT_LABELS: Record<HarnessSlotId, string> = {
 	navmesh: 'Navigation brush',
 	decal: 'Environment decal',
-	edge: 'Edge',
-	face: 'Face',
-	shear: 'Shear',
 	'uv-brush': 'UV brush',
 	splat: 'Splat',
 	'directional-vector': 'Directional vector',
@@ -213,7 +214,11 @@ export function harnessCapturesKeys(): boolean {
 	return harnessModeState.captureKeys;
 }
 
-/** Apply a harness mode to the editor's camera, debug flag, level editor, and toolbar. */
+/**
+ * Apply a harness mode to the editor's camera, debug flag, level editor, and
+ * toolbar. A level-builder mode opens with nothing armed. Any other mode
+ * releases the armed tool when it has no button for it.
+ */
 export function applyHarnessMode(id: HarnessModeId): void {
 	const profile = harnessModeProfile(id);
 	harnessModeState.id = id;
@@ -224,12 +229,13 @@ export function applyHarnessMode(id: HarnessModeId): void {
 	viewState.camera = profile.cameraLayer;
 	setViewPreset(profile.camera);
 
+	if (profile.level) resetLevelTools();
+	else releaseArmedToolOutside(profile.context);
 	if (profile.level && profile.layer) {
 		if (levelState.active) setActiveLayer(profile.layer);
 		else levelState.activeLayer = profile.layer;
 	}
 	setLevelEditorActive(profile.level);
-	releaseArmedToolOutside(profile.context);
 }
 
 /**
@@ -247,7 +253,7 @@ function armedContextAction(): HarnessContextAction | null {
 		case 'clip':
 			return 'clip-brush';
 		case 'shear':
-			return 'shear';
+			return 'shear-brush';
 		case 'translate':
 		case 'rotate':
 		case 'scale':
@@ -265,12 +271,12 @@ function armedContextAction(): HarnessContextAction | null {
 	}
 }
 
-/** Return to Select when the armed tool is absent from the mode being applied. */
+/** Return to no tool when the armed tool is absent from the mode being applied. */
 function releaseArmedToolOutside(context: readonly HarnessContextAction[] | null): void {
 	if (!context) return;
 	const armed = armedContextAction();
 	if (!armed || context.includes(armed)) return;
-	setDebugTool('select');
-	sendTool('select');
+	setDebugTool('none');
+	sendTool('none');
 	setLevelPlacement(null);
 }

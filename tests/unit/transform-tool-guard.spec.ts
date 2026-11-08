@@ -34,6 +34,7 @@ beforeEach(() => {
 	debugState.hoveredEntityId = null;
 	levelState.active = false;
 	levelState.selectedIds = [];
+	levelState.selectedElements = [];
 
 	toolMessages = [];
 	stopCapture = [channel.on('tool:set', ({ tool }) => toolMessages.push(tool))];
@@ -74,6 +75,33 @@ describe('releaseOrphanedTransformTool', () => {
 			expect(getDebugTool()).toBe(tool);
 		}
 		expect(toolMessages).toEqual([]);
+	});
+
+	it('keeps every gizmo tool while level objects are selected', () => {
+		levelState.active = true;
+		levelState.selectedIds = ['brush-1'];
+		for (const tool of ['translate', 'rotate', 'scale'] as const) {
+			setDebugTool(tool);
+			expect(releaseOrphanedTransformTool()).toBe(false);
+			expect(getDebugTool()).toBe(tool);
+		}
+	});
+
+	it('counts selected level elements', () => {
+		levelState.active = true;
+		levelState.selectedElements = [{ brushId: 'brush-1', kind: 'face', planes: [2] }];
+		setDebugTool('scale');
+
+		expect(releaseOrphanedTransformTool()).toBe(false);
+		expect(getDebugTool()).toBe('scale');
+	});
+
+	it('ignores the level selection while level mode is off', () => {
+		levelState.selectedIds = ['brush-1'];
+		setDebugTool('rotate');
+
+		expect(releaseOrphanedTransformTool()).toBe(true);
+		expect(getDebugTool()).toBe('none');
 	});
 });
 
@@ -192,6 +220,34 @@ describe('ending Select after one pick', () => {
 		expect(getDebugTool()).toBe('translate');
 		expect(toolMessages).toEqual(['translate']);
 	});
+
+	it('hands off to Move when an element is picked on a solid already selected', async () => {
+		levelState.active = true;
+		levelState.selectedIds = ['brush-1'];
+		uninstall = installTransformToolGuard();
+		setDebugTool('select');
+		await settle();
+
+		levelState.selectedElements = [{ brushId: 'brush-1', kind: 'face', planes: [2] }];
+		await settle();
+
+		expect(getDebugTool()).toBe('translate');
+	});
+
+	it('leaves no tool when an element click clears the level selection', async () => {
+		levelState.active = true;
+		levelState.selectedIds = ['brush-1'];
+		levelState.selectedElements = [{ brushId: 'brush-1', kind: 'face', planes: [2] }];
+		uninstall = installTransformToolGuard();
+		setDebugTool('select');
+		await settle();
+
+		levelState.selectedIds = [];
+		levelState.selectedElements = [];
+		await settle();
+
+		expect(getDebugTool()).toBe('none');
+	});
 });
 
 describe('installTransformToolGuard', () => {
@@ -212,6 +268,20 @@ describe('installTransformToolGuard', () => {
 		uninstall = installTransformToolGuard();
 
 		setSelectedEntityId(null);
+		await settle();
+
+		expect(getDebugTool()).toBe('none');
+	});
+
+	it('releases Scale when the level selection is cleared', async () => {
+		levelState.active = true;
+		levelState.selectedIds = ['brush-1'];
+		setDebugTool('scale');
+		uninstall = installTransformToolGuard();
+		await settle();
+		expect(getDebugTool()).toBe('scale');
+
+		levelState.selectedIds = [];
 		await settle();
 
 		expect(getDebugTool()).toBe('none');

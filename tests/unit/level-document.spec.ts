@@ -2,21 +2,36 @@ import {
 	boxBrush,
 	brushBounds,
 	DEFAULT_DRAW_SHAPE,
+	DEFAULT_SECTOR_SIZE,
 	frameForPlane,
 	type LevelDocument,
 	type LevelDrawShape,
+	type LevelElementRef,
 	type LevelGesture,
 } from '@zylem/bridge';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { applyLevelGesture, resetLevelIds } from '../../src/components/level/level-document';
+import {
+	applyLevelGesture,
+	deleteObjects,
+	duplicateObjects,
+	resetLevelIds,
+	resizeSectors,
+	subdivideSolids,
+} from '../../src/components/level/level-document';
 import {
 	applyIncomingGesture,
+	deleteLevelSelection,
+	duplicateLevelSelection,
 	levelState,
 	loadLevelDocument,
 	resetLevelEditor,
 	setLevelEditorActive,
+	setLevelElementMode,
+	setLevelSectorSize,
+	setLevelSubdivideTile,
 	snapshotLevelDocument,
+	subdivideLevelSelection,
 	undoLevel,
 } from '../../src/components/level/level-state';
 
@@ -64,6 +79,41 @@ function boundsOf(document: LevelDocument, id: string) {
 	const bounds = brushBounds(solid.planes);
 	if (!bounds) throw new Error(`solid ${id} does not compile`);
 	return bounds;
+}
+
+/** Ids `new-1`, `new-2`, ... in call order. */
+function counter(): () => string {
+	let count = 0;
+	return () => {
+		count += 1;
+		return `new-${count}`;
+	};
+}
+
+/** Solid `a` alone, `b` and `c` in group `arch`, doodad `d`, spawn `e`. */
+function scene(): LevelDocument {
+	const document = withSolids(
+		{ id: 'a', min: [0, 0, 0], max: [1, 1, 1] },
+		{ id: 'b', min: [4, 0, 0], max: [5, 1, 1] },
+		{ id: 'c', min: [6, 0, 0], max: [7, 1, 1] }
+	);
+	document.solids = document.solids.map((solid) =>
+		solid.id === 'a' ? solid : { ...solid, groupId: 'arch' }
+	);
+	document.doodads.push({
+		id: 'd',
+		typeId: 'box',
+		pose: { position: { x: 1, y: 0, z: 0 } },
+		props: { size: 1 },
+	});
+	document.entities.push({
+		id: 'e',
+		typeId: 'spawn',
+		name: 'spawn-1',
+		pose: { position: { x: 0, y: 1, z: 0 } },
+		props: { spawnKind: 'player', archetype: '' },
+	});
+	return document;
 }
 
 describe('applyLevelGesture: primitives and clip', () => {
@@ -338,6 +388,251 @@ describe('applyLevelGesture: placements', () => {
 			name: 'trigger-1',
 			props: { size: { x: 4, y: 2, z: 4 } },
 		});
+	});
+});
+
+describe('duplicateObjects', () => {
+	const offset = { x: 2, y: 0, z: 0 };
+
+	it('copies objects on every layer with new ids, offset, and selects the copies', () => {
+		const copied = duplicateObjects(scene(), ['a', 'd', 'e'], offset, counter());
+		if (!copied) throw new Error('expected a duplicate');
+		expect(copied.document.solids.map((solid) => solid.id)).toEqual(['a', 'b', 'c', 'new-1']);
+		expect(boundsOf(copied.document, 'new-1').min.x).toBeCloseTo(2, 6);
+		expect(boundsOf(copied.document, 'a').min.x).toBeCloseTo(0, 6);
+		expect(copied.document.solids[3]?.groupId).toBeUndefined();
+		expect(copied.document.doodads[1]).toEqual({
+			id: 'new-2',
+			typeId: 'box',
+			pose: { position: { x: 3, y: 0, z: 0 } },
+			props: { size: 1 },
+		});
+		expect(copied.document.entities[1]).toMatchObject({
+			id: 'new-3',
+			typeId: 'spawn',
+			pose: { position: { x: 2, y: 1, z: 0 } },
+			props: { spawnKind: 'player', archetype: '' },
+		});
+		expect(copied.selectIds).toEqual(['new-1', 'new-2', 'new-3']);
+		expect(copied.selectElements).toBeUndefined();
+	});
+
+	it('gives each copied group a fresh group shared by its copies', () => {
+		const copied = duplicateObjects(scene(), ['b', 'c'], offset, counter());
+		if (!copied) throw new Error('expected a duplicate');
+		const copies = copied.document.solids.slice(3);
+		expect(copies).toHaveLength(2);
+		expect(copies[0]?.groupId).toBeTruthy();
+		expect(copies[0]?.groupId).not.toBe('arch');
+		expect(copies[1]?.groupId).toBe(copies[0]?.groupId);
+		expect(copied.document.solids.slice(1, 3).map((solid) => solid.groupId)).toEqual([
+			'arch',
+			'arch',
+		]);
+		expect(copied.selectIds).toEqual(copies.map((solid) => solid.id));
+	});
+
+	it('does not share a group between copies made from different groups', () => {
+		const document = scene();
+		document.solids = document.solids.map((solid) =>
+			solid.id === 'a' ? { ...solid, groupId: 'other' } : solid
+		);
+		const copied = duplicateObjects(document, ['a', 'b'], offset, counter());
+		const groups = copied?.document.solids.slice(3).map((solid) => solid.groupId);
+		expect(new Set(groups).size).toBe(2);
+	});
+
+	it('returns null with nothing to copy', () => {
+		expect(duplicateObjects(scene(), ['missing'], offset)).toBeNull();
+		expect(duplicateObjects(scene(), [], offset)).toBeNull();
+	});
+});
+
+describe('subdivideSolids', () => {
+	it('cuts each selected solid on the XZ grid and selects every piece', () => {
+		const document = withSolids(
+			{ id: 'a', min: [0, 0, 0], max: [8, 1, 8] },
+			{ id: 'b', min: [9, 0, 1], max: [11, 1, 3] }
+		);
+		const cut = subdivideSolids(document, ['a', 'b'], 4, counter());
+		if (!cut) throw new Error('expected a subdivision');
+		expect(cut.document.solids.map((solid) => solid.id)).toEqual([
+			'a',
+			'new-1',
+			'new-2',
+			'new-3',
+			'b',
+		]);
+		expect(cut.selectIds).toEqual(['a', 'new-1', 'new-2', 'new-3', 'b']);
+		const first = boundsOf(cut.document, 'a');
+		expect(first.max.x).toBeCloseTo(4, 6);
+		expect(first.max.z).toBeCloseTo(4, 6);
+		const last = boundsOf(cut.document, 'new-3');
+		expect(last.min.x).toBeCloseTo(4, 6);
+		expect(last.min.z).toBeCloseTo(4, 6);
+		expect(boundsOf(cut.document, 'b').max.x).toBeCloseTo(11, 6);
+	});
+
+	it('keeps the group on every piece and leaves unselected solids alone', () => {
+		const document = withSolids(
+			{ id: 'a', min: [0, 0, 0], max: [8, 1, 1] },
+			{ id: 'b', min: [0, 0, 4], max: [8, 1, 5] }
+		);
+		document.solids = document.solids.map((solid) => ({ ...solid, groupId: 'g1' }));
+		const cut = subdivideSolids(document, ['a', 'missing-doodad'], 4, counter());
+		expect(cut?.document.solids.map((solid) => [solid.id, solid.groupId])).toEqual([
+			['a', 'g1'],
+			['new-1', 'g1'],
+			['b', 'g1'],
+		]);
+	});
+
+	it('rejects the whole edit when one solid cannot be cut', () => {
+		const document = withSolids(
+			{ id: 'a', min: [0, 0, 0], max: [8, 1, 4] },
+			{ id: 'big', min: [0, 0, 10], max: [20, 1, 30] },
+			{ id: 'flat', min: [0, 0, 40], max: [8, 0, 44] }
+		);
+		expect(subdivideSolids(document, ['a', 'big'], 1)).toBeNull();
+		expect(subdivideSolids(document, ['a', 'flat'], 4)).toBeNull();
+		expect(subdivideSolids(document, ['a'], 0)).toBeNull();
+	});
+
+	it('returns null when no grid line crosses a selected solid', () => {
+		const document = withSolids({ id: 'a', min: [0, 0, 0], max: [2, 1, 2] });
+		expect(subdivideSolids(document, ['a'], 4)).toBeNull();
+		expect(subdivideSolids(document, [], 4)).toBeNull();
+	});
+});
+
+describe('deleteObjects', () => {
+	it('removes every listed object from every layer and selects nothing', () => {
+		const deleted = deleteObjects(scene(), ['a', 'c', 'd', 'e']);
+		if (!deleted) throw new Error('expected a delete');
+		expect(deleted.document.solids.map((solid) => solid.id)).toEqual(['b']);
+		expect(deleted.document.doodads).toEqual([]);
+		expect(deleted.document.entities).toEqual([]);
+		expect(deleted.selectIds).toEqual([]);
+	});
+
+	it('returns null when nothing listed exists', () => {
+		expect(deleteObjects(scene(), ['missing'])).toBeNull();
+		expect(deleteObjects(scene(), [])).toBeNull();
+	});
+});
+
+describe('resizeSectors', () => {
+	const face: LevelElementRef = { brushId: 'a', kind: 'face', planes: [TOP] };
+
+	it('writes the sector size, at least 1, and keeps the selection', () => {
+		const resized = resizeSectors(scene(), 16, ['a'], [face]);
+		expect(resized?.document.sectors).toEqual({ size: 16 });
+		expect(resized?.selectIds).toEqual(['a']);
+		expect(resized?.selectElements).toEqual([face]);
+		expect(resizeSectors(scene(), 0.25)?.document.sectors).toEqual({ size: 1 });
+	});
+
+	it('returns null when the size would not change or is not a number', () => {
+		expect(resizeSectors(scene(), DEFAULT_SECTOR_SIZE)).toBeNull();
+		expect(resizeSectors({ ...scene(), sectors: { size: 16 } }, 16)).toBeNull();
+		expect(resizeSectors(scene(), Number.NaN)).toBeNull();
+		expect(resizeSectors(scene(), Number.POSITIVE_INFINITY)).toBeNull();
+	});
+});
+
+describe('editor commands with undo', () => {
+	beforeEach(() => {
+		loadLevelDocument(scene());
+		setLevelEditorActive(true);
+	});
+
+	it('duplicates the selection and undoes it', () => {
+		levelState.selectedIds = ['b', 'c'];
+		expect(duplicateLevelSelection({ x: 0.25, y: 0, z: 0 })).toBe(true);
+		const copies = levelState.document.solids.slice(3);
+		expect(copies).toHaveLength(2);
+		expect(levelState.selectedIds).toEqual(copies.map((solid) => solid.id));
+		expect(boundsOf(levelState.document, copies[0]?.id ?? '').min.x).toBeCloseTo(4.25, 6);
+		expect(levelState.undoLabel).toBe('Duplicate');
+
+		expect(undoLevel()).toBe(true);
+		expect(levelState.document.solids).toHaveLength(3);
+		expect(levelState.selectedIds).toEqual(['b', 'c']);
+	});
+
+	it('duplicates the solids that own the selected elements and switches to objects', () => {
+		const face: LevelElementRef = { brushId: 'a', kind: 'face', planes: [TOP] };
+		setLevelElementMode('face');
+		levelState.selectedElements = [face];
+		levelState.selectedIds = ['a'];
+
+		expect(duplicateLevelSelection({ x: 1, y: 0, z: 0 })).toBe(true);
+		expect(levelState.elementMode).toBe('object');
+		expect(levelState.selectedElements).toEqual([]);
+		expect(levelState.selectedIds).toEqual([levelState.document.solids[3]?.id]);
+
+		expect(undoLevel()).toBe(true);
+		expect(levelState.elementMode).toBe('face');
+		expect(levelState.selectedElements).toEqual([face]);
+		expect(levelState.selectedIds).toEqual(['a']);
+	});
+
+	it('subdivides at the tile size, selects the pieces, and undoes it', () => {
+		loadLevelDocument(withSolids({ id: 'a', min: [0, 0, 0], max: [4, 1, 2] }));
+		expect(levelState.subdivideTile).toBe(4);
+		levelState.selectedIds = ['a'];
+		expect(subdivideLevelSelection()).toBe(false);
+		expect(levelState.undoDepth).toBe(0);
+
+		setLevelSubdivideTile(2);
+		expect(subdivideLevelSelection()).toBe(true);
+		expect(levelState.document.solids).toHaveLength(2);
+		expect(levelState.selectedIds).toEqual(levelState.document.solids.map((solid) => solid.id));
+		expect(levelState.undoLabel).toBe('Subdivide');
+
+		expect(undoLevel()).toBe(true);
+		expect(levelState.document.solids.map((solid) => solid.id)).toEqual(['a']);
+	});
+
+	it('keeps the subdivide tile positive', () => {
+		setLevelSubdivideTile(0);
+		setLevelSubdivideTile(-2);
+		setLevelSubdivideTile(Number.NaN);
+		expect(levelState.subdivideTile).toBe(4);
+	});
+
+	it('deletes the whole selection in one step and undoes it', () => {
+		levelState.selectedIds = ['a', 'd', 'e'];
+		expect(deleteLevelSelection()).toBe(true);
+		expect(levelState.document.solids.map((solid) => solid.id)).toEqual(['b', 'c']);
+		expect(levelState.document.doodads).toEqual([]);
+		expect(levelState.document.entities).toEqual([]);
+		expect(levelState.selectedIds).toEqual([]);
+		expect(levelState.undoDepth).toBe(1);
+
+		expect(undoLevel()).toBe(true);
+		expect(levelState.document.solids).toHaveLength(3);
+		expect(levelState.document.doodads).toHaveLength(1);
+		expect(levelState.selectedIds).toEqual(['a', 'd', 'e']);
+	});
+
+	it('sets the sector size as an undo step', () => {
+		expect(setLevelSectorSize(8)).toBe(true);
+		expect(levelState.document.sectors).toEqual({ size: 8 });
+		expect(levelState.undoLabel).toBe('Sector size');
+		expect(setLevelSectorSize(8)).toBe(false);
+		expect(levelState.undoDepth).toBe(1);
+
+		expect(undoLevel()).toBe(true);
+		expect(levelState.document.sectors).toBeUndefined();
+	});
+
+	it('records nothing when a command has nothing to act on', () => {
+		levelState.selectedIds = [];
+		expect(duplicateLevelSelection({ x: 1, y: 0, z: 0 })).toBe(false);
+		expect(subdivideLevelSelection()).toBe(false);
+		expect(deleteLevelSelection()).toBe(false);
+		expect(levelState.undoDepth).toBe(0);
 	});
 });
 

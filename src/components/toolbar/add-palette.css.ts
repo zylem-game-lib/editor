@@ -216,6 +216,23 @@ export const addPaletteCSS = `
 	opacity: 0.5;
 }
 
+.zylem-level-settings {
+	margin-bottom: 10px;
+}
+
+/* A field fills its value cell, and the cell must not clip the steppers. */
+.zylem-property-value.zylem-level-field {
+	overflow: visible;
+	white-space: normal;
+}
+
+.zylem-property-value.zylem-level-field .zylem-field-root,
+.zylem-property-value.zylem-level-field .zylem-numberfield-group,
+.zylem-property-value.zylem-level-field .zylem-numberfield-input {
+	width: 100%;
+	min-width: 0;
+}
+
 .zylem-level-layer {
 	display: flex;
 	flex-direction: column;
@@ -230,25 +247,35 @@ export const addPaletteCSS = `
 	gap: 8px;
 }
 
-.zylem-level-layer__name,
-.zylem-level-layer__hide,
-.zylem-level-row {
-	color: inherit;
-	background: transparent;
-	border: 0;
-	padding: 0;
-	font: inherit;
-	text-align: left;
-	cursor: pointer;
+.zylem-level-sector {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin-top: 4px;
 }
 
-.zylem-level-layer__name.is-active {
-	color: #9ecbff;
+.zylem-level-sector__head {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11px;
 }
 
-.zylem-level-layer__hide {
-	opacity: 0.65;
-	font-size: 10px;
+.zylem-level-sector__name {
+	flex: 1;
+	min-width: 0;
+	opacity: 0.8;
+}
+
+.zylem-level-sector__tint {
+	flex-shrink: 0;
+	width: 10px;
+	height: 10px;
+	border-radius: 2px;
+}
+
+.zylem-level-sector.is-hidden .zylem-level-list {
+	opacity: 0.45;
 }
 
 .zylem-level-list {
@@ -257,19 +284,17 @@ export const addPaletteCSS = `
 	padding: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: 2px;
 }
 
 .zylem-level-row {
-	display: flex;
+	box-sizing: border-box;
+	width: 100%;
+	margin: 0;
 	flex-wrap: wrap;
 	gap: 6px 10px;
 	align-items: baseline;
 	font-size: 11px;
-}
-
-.zylem-level-row.is-selected .zylem-level-row__type {
-	color: #9ecbff;
 }
 
 .zylem-level-row__role {

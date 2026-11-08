@@ -4,14 +4,17 @@
  * The gizmo modes and the level draw tools stay active until another tool is
  * chosen, and Add and Delete wait for the click that spends them, so there has
  * to be a way out that is not "find the button you pressed and press it
- * again". Escape is that way out.
+ * again". Escape is that way out. With nothing armed, it drops the level
+ * selection instead. The game claims Escape itself while a draw or a clip is
+ * under way.
  */
 
 import { sendAddType, sendTool } from '../../bridge/editor-bridge';
 import { getDebugTool, setDebugTool } from '../entities/entities-state';
 import { isEditableTarget } from '../history/history-shortcuts';
-import { setLevelPlacement } from '../level/level-state';
+import { clearLevelSelection, setLevelPlacement } from '../level/level-state';
 import { catalogState, setArmedType } from './catalog-state';
+import { isOverlayTarget } from './toolbar-shortcuts';
 
 export interface ToolShortcutOptions {
 	/** @default true */
@@ -51,9 +54,14 @@ export function installToolShortcuts(options: ToolShortcutOptions = {}): () => v
 	const onKeyDown = (event: KeyboardEvent) => {
 		if (event.key !== 'Escape') return;
 		if (isEditableTarget(event)) return;
-		// Only claimed when a tool was actually active, so Escape still closes
-		// popovers and dialogs the rest of the time.
-		if (disarmTools()) event.preventDefault();
+		// Only claimed when a tool was actually active or a level selection was
+		// dropped, so Escape still closes popovers and dialogs the rest of the time.
+		if (disarmTools()) {
+			event.preventDefault();
+			return;
+		}
+		if (isOverlayTarget(event)) return;
+		if (clearLevelSelection()) event.preventDefault();
 	};
 
 	target.addEventListener('keydown', onKeyDown);

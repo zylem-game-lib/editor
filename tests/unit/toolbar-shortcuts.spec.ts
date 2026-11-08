@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { getZylemBridge } from '@zylem/bridge';
+import { boxBrush, getZylemBridge } from '@zylem/bridge';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { debugStore, setDebugStore } from '../../src/components/editor-store';
 import {
@@ -11,6 +11,12 @@ import {
 	setSelectedEntityId,
 } from '../../src/components/entities/entities-state';
 import { clearHistory, pushOperation } from '../../src/components/history/history-store';
+import {
+	levelState,
+	loadLevelDocument,
+	resetLevelEditor,
+	setLevelEditorActive,
+} from '../../src/components/level/level-state';
 import {
 	connectSaveTracking,
 	type EditorSave,
@@ -78,6 +84,7 @@ beforeEach(() => {
 	catalogState.lastTypeId = null;
 	transformState.enabled = true;
 	transformState.gridVisible = false;
+	resetLevelEditor();
 
 	playbackMessages = [];
 	stopCapture = [channel.on('playback:set', ({ paused }) => playbackMessages.push(paused))];
@@ -172,6 +179,18 @@ describe('classifyToolbarShortcut', () => {
 		expect(classifyToolbarShortcut(keydown({ key: 'p' }))).toBeNull();
 		expect(classifyToolbarShortcut(keydown({ key: 'Escape' }))).toBeNull();
 	});
+
+	it('maps the level keys: 1-4 for the modes, C clip, T turn, and the D chord duplicate', () => {
+		expect(classifyToolbarShortcut(keydown({ key: '1' }))).toBe('objectMode');
+		expect(classifyToolbarShortcut(keydown({ key: '2' }))).toBe('vertexMode');
+		expect(classifyToolbarShortcut(keydown({ key: '3' }))).toBe('edgeMode');
+		expect(classifyToolbarShortcut(keydown({ key: '4' }))).toBe('faceMode');
+		expect(classifyToolbarShortcut(keydown({ key: 'c' }))).toBe('clip');
+		expect(classifyToolbarShortcut(keydown({ key: 't' }))).toBe('turnWedge');
+		expect(classifyToolbarShortcut(keydown({ key: 'd', metaKey: true }))).toBe('duplicate');
+		expect(classifyToolbarShortcut(keydown({ key: 'd', ctrlKey: true }))).toBe('duplicate');
+		expect(classifyToolbarShortcut(keydown({ key: 'd' }))).toBe('debug');
+	});
 });
 
 describe('isOverlayTarget', () => {
@@ -243,6 +262,10 @@ describe('formatShortcut', () => {
 
 	it('appends to a label for the tooltip', () => {
 		expect(withShortcut('Move', 'translate')).toBe('Move (W)');
+		expect(withShortcut('Face', 'faceMode')).toBe('Face (4)');
+		expect(withShortcut('Clip', 'clip')).toBe('Clip (C)');
+		expect(formatShortcut(TOOLBAR_SHORTCUTS.duplicate, true)).toBe('Cmd+D');
+		expect(formatShortcut(TOOLBAR_SHORTCUTS.duplicate, false)).toBe('Ctrl+D');
 	});
 
 	it('covers every toolbar shortcut', () => {
@@ -491,6 +514,106 @@ describe('installToolbarShortcuts', () => {
 		press({ key: 'q' });
 
 		expect(getDebugTool()).toBe('none');
+	});
+
+	describe('level keys', () => {
+		beforeEach(() => {
+			loadLevelDocument({
+				version: 2,
+				solids: [{ id: 'a', planes: boxBrush({ x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 1 }) }],
+				doodads: [],
+				entities: [],
+			});
+		});
+
+		it('leaves 1-4, C, T, and the D chord to the game and the browser while level mode is off', () => {
+			uninstall = installToolbarShortcuts();
+			const seen = listenLikeTheGame();
+			levelState.selectedIds = ['a'];
+
+			for (const key of ['1', '2', '3', '4', 'c', 't']) expect(press({ key })).toBe(false);
+			expect(press({ key: 'd', metaKey: true })).toBe(false);
+			expect(seen).toEqual(['1', '2', '3', '4', 'c', 't', 'd']);
+			expect(levelState.elementMode).toBe('object');
+			expect(levelState.drawShape.turn).toBe(0);
+			expect(levelState.document.solids).toHaveLength(1);
+			expect(getDebugTool()).toBe('none');
+		});
+
+		it('switches modes with 1-4, arming Select with nothing armed', () => {
+			setLevelEditorActive(true);
+			uninstall = installToolbarShortcuts();
+			const seen = listenLikeTheGame();
+
+			expect(press({ key: '4' })).toBe(true);
+			expect(levelState.elementMode).toBe('face');
+			expect(getDebugTool()).toBe('select');
+			press({ key: '3' });
+			expect(levelState.elementMode).toBe('edge');
+			press({ key: '2' });
+			expect(levelState.elementMode).toBe('vertex');
+			press({ key: '2' });
+			expect(levelState.elementMode).toBe('vertex');
+			press({ key: '1' });
+			expect(levelState.elementMode).toBe('object');
+			expect(seen).toEqual([]);
+		});
+
+		it('arms Clip with C on a solid selection, and claims C either way', () => {
+			setLevelEditorActive(true);
+			uninstall = installToolbarShortcuts();
+
+			expect(press({ key: 'c' })).toBe(true);
+			expect(getDebugTool()).toBe('none');
+
+			levelState.selectedIds = ['a'];
+			expect(press({ key: 'c' })).toBe(true);
+			expect(getDebugTool()).toBe('clip');
+		});
+
+		it('turns the wedge a quarter with each T', () => {
+			setLevelEditorActive(true);
+			uninstall = installToolbarShortcuts();
+
+			press({ key: 't' });
+			expect(levelState.drawShape.turn).toBe(1);
+			press({ key: 'T' });
+			press({ key: 't' });
+			press({ key: 't' });
+			expect(levelState.drawShape.turn).toBe(0);
+		});
+
+		it('duplicates with Cmd/Ctrl+D, stopped before the browser bookmarks', () => {
+			setLevelEditorActive(true);
+			uninstall = installToolbarShortcuts();
+			const seen = listenLikeTheGame();
+			levelState.selectedIds = ['a'];
+
+			expect(press({ key: 'd', metaKey: true })).toBe(true);
+			expect(levelState.document.solids).toHaveLength(2);
+			expect(press({ key: 'd', ctrlKey: true })).toBe(true);
+			expect(levelState.document.solids).toHaveLength(3);
+			expect(debugStore.debug).toBe(false);
+			expect(seen).toEqual([]);
+
+			levelState.selectedIds = [];
+			expect(press({ key: 'd', metaKey: true })).toBe(true);
+			expect(levelState.document.solids).toHaveLength(3);
+		});
+
+		it('leaves Ctrl+D to a focused text field', () => {
+			setLevelEditorActive(true);
+			uninstall = installToolbarShortcuts();
+			levelState.selectedIds = ['a'];
+
+			const input = document.createElement('input');
+			document.body.append(input);
+			const event = keydown({ key: 'd', ctrlKey: true });
+			input.dispatchEvent(event);
+
+			expect(event.defaultPrevented).toBe(false);
+			expect(levelState.document.solids).toHaveLength(1);
+		});
 	});
 
 	it('holds Space as a temporary custom camera and restores on release', () => {

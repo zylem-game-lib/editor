@@ -12,7 +12,7 @@
 import { subscribe } from 'valtio/vanilla';
 import { sendTool } from '../../bridge/editor-bridge';
 import { type DebugTools, debugState, setDebugTool } from '../entities/entities-state';
-import { levelState } from '../level/level-state';
+import { hasLevelSelection, levelState } from '../level/level-state';
 import { selectTransformTool } from './toolbar-actions';
 
 const TRANSFORM_TOOLS = new Set<DebugTools>(['translate', 'rotate', 'scale']);
@@ -22,12 +22,9 @@ export function isTransformTool(tool: DebugTools): boolean {
 	return TRANSFORM_TOOLS.has(tool);
 }
 
-/** Entities, or level objects while level mode is on. */
+/** Entities, or level objects or elements while level mode is on. */
 function hasSelection(): boolean {
-	return (
-		debugState.selectedEntityIds.length > 0 ||
-		(levelState.active && levelState.selectedIds.length > 0)
-	);
+	return debugState.selectedEntityIds.length > 0 || hasLevelSelection();
 }
 
 /**
@@ -35,7 +32,7 @@ function hasSelection(): boolean {
  *
  * Select is for choosing. With one or more entities chosen, Move is the tool,
  * so the transform controls are the ones that read as active. Level objects
- * count too, since Move drags the level selection.
+ * and elements count too, since the gizmo drags the level selection.
  *
  * @returns `true` when the tool changed.
  */
@@ -65,10 +62,7 @@ export function endSelectAfterPick(): boolean {
  * @returns `true` when a tool was reset.
  */
 export function releaseOrphanedTransformTool(): boolean {
-	if (debugState.selectedEntityIds.length > 0) return false;
-	if (levelState.active && levelState.selectedIds.length > 0 && debugState.tool === 'translate') {
-		return false;
-	}
+	if (hasSelection()) return false;
 	if (!isTransformTool(debugState.tool)) return false;
 
 	setDebugTool('none');
@@ -76,9 +70,14 @@ export function releaseOrphanedTransformTool(): boolean {
 	return true;
 }
 
-/** Both selections as one value, so a change to either can be seen. */
+/** Every selection as one value, so a change to any of them can be seen. */
 function selectionKey(): string {
-	return `${debugState.selectedEntityIds.join(',')}|${levelState.selectedIds.join(',')}`;
+	const elements = levelState.selectedElements.map(
+		(element) => `${element.brushId}/${element.kind}/${element.planes.join('.')}`
+	);
+	return [debugState.selectedEntityIds, levelState.selectedIds, elements]
+		.map((ids) => ids.join(','))
+		.join('|');
 }
 
 export interface TransformToolGuardOptions {

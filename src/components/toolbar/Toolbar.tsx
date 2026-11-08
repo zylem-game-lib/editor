@@ -8,10 +8,7 @@ import MoveRight from 'lucide-solid/icons/move-right';
 import Paintbrush from 'lucide-solid/icons/paintbrush';
 import RectangleHorizontal from 'lucide-solid/icons/rectangle-horizontal';
 import Shield from 'lucide-solid/icons/shield';
-import SplinePointer from 'lucide-solid/icons/spline-pointer';
 import SprayCan from 'lucide-solid/icons/spray-can';
-import Square from 'lucide-solid/icons/square';
-import UnfoldHorizontal from 'lucide-solid/icons/unfold-horizontal';
 import { type Component, For, Show } from 'solid-js';
 import {
 	HARNESS_SLOT_LABELS,
@@ -36,9 +33,15 @@ import { RedoButton, UndoButton } from './HistoryButtons';
 import {
 	AddSpawnButton,
 	ClipBrushButton,
+	DeleteSelectionButton,
+	DuplicateSelectionButton,
+	EdgeModeButton,
+	FaceModeButton,
 	MeshBrushMenu,
+	ShearBrushButton,
+	SubdivideBrushButton,
 	TriggerMenu,
-	VertexBrushButton,
+	VertexModeButton,
 } from './LevelToolButtons';
 import { PanelsButton } from './PanelsButton';
 import { PlayPauseButton } from './PlayPauseButton';
@@ -134,7 +137,19 @@ const ContextActionButton: Component<{ action: HarnessContextAction }> = (props)
 		case 'clip-brush':
 			return <ClipBrushButton />;
 		case 'vertex-brush':
-			return <VertexBrushButton />;
+			return <VertexModeButton />;
+		case 'edge-brush':
+			return <EdgeModeButton />;
+		case 'face-brush':
+			return <FaceModeButton />;
+		case 'shear-brush':
+			return <ShearBrushButton />;
+		case 'subdivide-brush':
+			return <SubdivideBrushButton />;
+		case 'duplicate-selection':
+			return <DuplicateSelectionButton />;
+		case 'delete-selection':
+			return <DeleteSelectionButton />;
 		case 'add-doodad':
 			return <AddButton label="Add doodad" />;
 		case 'add-object':
@@ -157,9 +172,6 @@ const ContextActionButton: Component<{ action: HarnessContextAction }> = (props)
 const SLOT_ICONS: Record<HarnessSlotId, Component<{ class?: string }>> = {
 	navmesh: MapIcon,
 	decal: Image,
-	edge: SplinePointer,
-	face: Square,
-	shear: UnfoldHorizontal,
 	'uv-brush': Paintbrush,
 	splat: SprayCan,
 	'directional-vector': MoveRight,
@@ -185,10 +197,10 @@ function actionStartsGroup(action: HarnessContextAction): boolean {
 	if (harnessModeStore.id === 'stage-editor') {
 		return action === 'add-object' || action === 'undo';
 	}
-	// Level Builder: grid, then the mode's tools, then undo. Decoration also
-	// groups Move with Rotate and Scale.
+	// Level Builder: grid, then the mode's tools, then undo. Mesh and Decoration
+	// also group Move with Rotate and Scale.
 	if (harnessModeStore.id === 'level-builder-mesh') {
-		return action === 'draw-brush' || action === 'undo';
+		return action === 'draw-brush' || action === 'translate' || action === 'undo';
 	}
 	if (harnessModeStore.id === 'level-builder-navigation') {
 		return action === 'navmesh' || action === 'undo';

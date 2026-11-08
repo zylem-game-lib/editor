@@ -19,13 +19,23 @@
  *
  * Cmd/Ctrl+S saves, but only once a host has turned saving on. Until then it
  * stays the browser's.
+ *
+ * The level editor adds 1-4 for the Object, Vertex, Edge, and Face modes, C
+ * for Clip, T to turn the wedge, and Cmd/Ctrl+D to duplicate. They exist only
+ * while it is on; the rest of the time the keys stay the game's, and the D
+ * chord the browser's.
  */
 
+import type { LevelElementMode } from '@zylem/bridge';
 import { isEditableTarget } from '../history/history-shortcuts';
+import { isLevelEditorActive, turnLevelDrawShape } from '../level/level-state';
 import { canSave, requestSave, saveState } from '../save/save-state';
 import {
 	armAddTool,
+	armClipTool,
+	duplicateSelection,
 	openAddPalette,
+	selectElementMode,
 	selectTransformTool,
 	toggleDebug,
 	toggleGrid,
@@ -61,6 +71,13 @@ export const TOOLBAR_SHORTCUTS = {
 	redo: { key: 'z', mod: true, shift: true },
 	playback: { key: 'Enter', mod: true },
 	save: { key: 's', mod: true },
+	objectMode: { key: '1' },
+	vertexMode: { key: '2' },
+	edgeMode: { key: '3' },
+	faceMode: { key: '4' },
+	clip: { key: 'c' },
+	turnWedge: { key: 't' },
+	duplicate: { key: 'd', mod: true },
 } as const satisfies Record<string, ShortcutChord>;
 
 export type ToolbarShortcutId = keyof typeof TOOLBAR_SHORTCUTS;
@@ -80,9 +97,38 @@ const TOOLBAR_ACTIONS = [
 	'grid',
 	'playback',
 	'save',
+	'objectMode',
+	'vertexMode',
+	'edgeMode',
+	'faceMode',
+	'clip',
+	'turnWedge',
+	'duplicate',
 ] as const satisfies readonly ToolbarShortcutId[];
 
 export type ToolbarAction = (typeof TOOLBAR_ACTIONS)[number];
+
+const MODE_ACTIONS = {
+	objectMode: 'object',
+	vertexMode: 'vertex',
+	edgeMode: 'edge',
+	faceMode: 'face',
+} as const satisfies Partial<Record<ToolbarAction, LevelElementMode>>;
+
+/** Actions that exist only while the level editor is on. */
+const LEVEL_ACTIONS = new Set<ToolbarAction>([
+	'objectMode',
+	'vertexMode',
+	'edgeMode',
+	'faceMode',
+	'clip',
+	'turnWedge',
+	'duplicate',
+]);
+
+function isLevelShortcut(action: ToolbarAction): boolean {
+	return LEVEL_ACTIONS.has(action);
+}
 
 /** Whether a keydown is exactly this chord: same key, same modifiers, no Alt. */
 export function matchesChord(event: KeyboardEvent, chord: ShortcutChord): boolean {
@@ -155,9 +201,11 @@ export function withShortcut(label: string, id: ToolbarShortcutId): string {
  * "press again to leave" affordance. Everything else is a toggle by nature.
  *
  * @returns Whether anything happened. `false` mirrors a disabled button: Move
- * with nothing to move, Add with an empty catalog, the palette with no toolbar.
+ * with nothing to move, Add with an empty catalog, the palette with no toolbar,
+ * a level key with the level editor off.
  */
 export function runToolbarAction(action: ToolbarAction): boolean {
+	if (isLevelShortcut(action) && !isLevelEditorActive()) return false;
 	switch (action) {
 		case 'debug':
 			toggleDebug();
@@ -190,6 +238,19 @@ export function runToolbarAction(action: ToolbarAction): boolean {
 			if (!canSave()) return false;
 			void requestSave();
 			return true;
+		case 'objectMode':
+		case 'vertexMode':
+		case 'edgeMode':
+		case 'faceMode':
+			selectElementMode(MODE_ACTIONS[action]);
+			return true;
+		case 'clip':
+			return armClipTool();
+		case 'turnWedge':
+			turnLevelDrawShape();
+			return true;
+		case 'duplicate':
+			return duplicateSelection();
 	}
 }
 
@@ -241,6 +302,7 @@ export function installToolbarShortcuts(options: ToolbarShortcutOptions = {}): (
 	const onKeyDown = (event: KeyboardEvent) => {
 		const action = classifyToolbarShortcut(event);
 		if (!action) return;
+		if (isLevelShortcut(action) && !isLevelEditorActive()) return;
 		if (action === 'save') {
 			// The browser's until a host turns saving on. A chord cannot be typed, so
 			// once it is on it saves from a text field or a menu too, where the

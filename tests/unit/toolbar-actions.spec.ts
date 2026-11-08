@@ -1,6 +1,14 @@
 // @vitest-environment happy-dom
 
-import { DEFAULT_DRAW_SHAPE, frameForPlane, getZylemBridge } from '@zylem/bridge';
+import {
+	boxBrush,
+	brushBounds,
+	DEFAULT_DRAW_SHAPE,
+	frameForPlane,
+	getZylemBridge,
+	type LevelDocument,
+	type LevelElementRef,
+} from '@zylem/bridge';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { applyLevelGesture, applySceneOperation } from '../../src/bridge/sync-editing';
 import { debugStore, setDebugStore } from '../../src/components/editor-store';
@@ -14,7 +22,9 @@ import {
 import { clearHistory } from '../../src/components/history/history-store';
 import {
 	levelState,
+	loadLevelDocument,
 	resetLevelEditor,
+	setLevelDrawShape,
 	setLevelEditorActive,
 } from '../../src/components/level/level-state';
 import { stageState } from '../../src/components/stages/stage-state';
@@ -23,19 +33,30 @@ import {
 	setArmedType,
 	setEntityCatalog,
 } from '../../src/components/toolbar/catalog-state';
+import { isBrushArmed, isTriggerArmed } from '../../src/components/toolbar/level-tool-state';
 import {
 	armAddTool,
 	armAddType,
+	armBrushShape,
+	armClipTool,
 	armSolidTool,
 	armSpawnTool,
+	armTriggerTool,
+	duplicateSelection,
 	endToolAfterUse,
 	openAddPalette,
 	registerAddPaletteOpener,
+	selectElementMode,
 	selectTool,
 	selectTransformTool,
+	toggleBrushTool,
+	toggleClipTool,
 	toggleDebug,
+	toggleElementMode,
 	toggleGrid,
+	toggleLevelEditor,
 	togglePlayback,
+	toggleShearTool,
 	toggleSnap,
 	toggleTool,
 	toggleTransformTool,
@@ -447,6 +468,250 @@ describe('snap and grid', () => {
 		expect(transformState.enabled).toBe(false);
 		toggleGrid();
 		expect(transformState.gridVisible).toBe(true);
+	});
+});
+
+/** Solid `a`, doodad `d`. */
+function levelDocument(): LevelDocument {
+	return {
+		version: 2,
+		solids: [{ id: 'a', planes: boxBrush({ x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 1 }) }],
+		doodads: [{ id: 'd', typeId: 'box', pose: { position: { x: 3, y: 0, z: 0 } }, props: {} }],
+		entities: [],
+	};
+}
+
+const topFace: LevelElementRef = { brushId: 'a', kind: 'face', planes: [2] };
+const toolMessages = () => sentOf('tool:set').map((message) => message.payload);
+
+describe('the Brush dropdown', () => {
+	beforeEach(() => {
+		setLevelEditorActive(true);
+	});
+
+	it('arms the brush with every shape, and is lit only while armed', () => {
+		expect(isBrushArmed(getDebugTool())).toBe(false);
+		for (const shape of ['box', 'wedge', 'cylinder', 'arch'] as const) {
+			armBrushShape(shape);
+			expect(getDebugTool()).toBe('brush');
+			expect(levelState.drawShape.shape).toBe(shape);
+			expect(isBrushArmed(getDebugTool())).toBe(true);
+		}
+		expect(levelState.activeLayer).toBe('solid');
+
+		toggleTool('select');
+		expect(isBrushArmed(getDebugTool())).toBe(false);
+	});
+
+	it('arms the current shape from its face, and disarms on a second press', () => {
+		setLevelDrawShape('cylinder');
+		toggleBrushTool();
+		expect(getDebugTool()).toBe('brush');
+		expect(levelState.drawShape.shape).toBe('cylinder');
+
+		toggleBrushTool();
+		expect(getDebugTool()).toBe('none');
+		expect(isBrushArmed(getDebugTool())).toBe(false);
+		expect(toolMessages()).toEqual([{ tool: 'brush' }, { tool: 'none' }]);
+	});
+});
+
+describe('the Trigger dropdown', () => {
+	it('is lit only while its placement is armed', () => {
+		setLevelEditorActive(true);
+		expect(isTriggerArmed(getDebugTool(), levelState.placement)).toBe(false);
+		armTriggerTool();
+		expect(isTriggerArmed(getDebugTool(), levelState.placement)).toBe(true);
+		armSpawnTool();
+		expect(isTriggerArmed(getDebugTool(), levelState.placement)).toBe(false);
+	});
+});
+
+describe('the element mode buttons', () => {
+	beforeEach(() => {
+		loadLevelDocument(levelDocument());
+		setLevelEditorActive(true);
+	});
+
+	it('enter a mode, arming Select with nothing armed, and return to objects when pressed lit', () => {
+		toggleElementMode('face');
+		expect(levelState.elementMode).toBe('face');
+		expect(getDebugTool()).toBe('select');
+
+		toggleElementMode('face');
+		expect(levelState.elementMode).toBe('object');
+		expect(getDebugTool()).toBe('select');
+		expect(toolMessages()).toEqual([{ tool: 'select' }]);
+	});
+
+	it('switch straight between modes and drop the element selection', () => {
+		toggleElementMode('vertex');
+		levelState.selectedElements = [{ brushId: 'a', kind: 'vertex', planes: [0, 2, 4] }];
+		toggleElementMode('edge');
+		expect(levelState.elementMode).toBe('edge');
+		expect(levelState.selectedElements).toEqual([]);
+	});
+
+	it('leave an armed tool armed', () => {
+		armBrushShape('box');
+		toggleElementMode('vertex');
+		expect(levelState.elementMode).toBe('vertex');
+		expect(getDebugTool()).toBe('brush');
+	});
+
+	it('select from a key, and keep the mode on a second press', () => {
+		selectElementMode('edge');
+		selectElementMode('edge');
+		expect(levelState.elementMode).toBe('edge');
+		selectElementMode('object');
+		expect(levelState.elementMode).toBe('object');
+	});
+
+	it('drop Shear once face mode ends', () => {
+		selectElementMode('face');
+		levelState.selectedElements = [topFace];
+		toggleShearTool();
+		selectElementMode('edge');
+		expect(getDebugTool()).toBe('select');
+
+		selectElementMode('face');
+		levelState.selectedElements = [topFace];
+		toggleShearTool();
+		selectElementMode('object');
+		expect(getDebugTool()).toBe('none');
+	});
+});
+
+describe('Clip and Shear', () => {
+	beforeEach(() => {
+		loadLevelDocument(levelDocument());
+		setLevelEditorActive(true);
+	});
+
+	it('arm Clip on a solid selection only, and toggle it from the button', () => {
+		expect(armClipTool()).toBe(false);
+		levelState.selectedIds = ['d'];
+		expect(toggleClipTool()).toBe(false);
+		expect(getDebugTool()).toBe('none');
+
+		levelState.selectedIds = ['d', 'a'];
+		expect(armClipTool()).toBe(true);
+		expect(armClipTool()).toBe(true);
+		expect(getDebugTool()).toBe('clip');
+
+		levelState.selectedIds = [];
+		expect(toggleClipTool()).toBe(true);
+		expect(getDebugTool()).toBe('none');
+		expect(toolMessages()).toEqual([{ tool: 'clip' }, { tool: 'none' }]);
+	});
+
+	it('arm Shear in face mode with faces selected, and disarm it while armed', () => {
+		expect(toggleShearTool()).toBe(false);
+		selectElementMode('face');
+		expect(toggleShearTool()).toBe(false);
+		expect(getDebugTool()).toBe('select');
+
+		levelState.selectedElements = [topFace];
+		expect(toggleShearTool()).toBe(true);
+		expect(getDebugTool()).toBe('shear');
+		expect(levelState.activeLayer).toBe('solid');
+
+		levelState.selectedElements = [];
+		expect(toggleShearTool()).toBe(true);
+		expect(getDebugTool()).toBe('none');
+	});
+});
+
+describe('duplicateSelection', () => {
+	beforeEach(() => {
+		loadLevelDocument(levelDocument());
+		setLevelEditorActive(true);
+		transformState.translate = 0.25;
+	});
+
+	const copyMinX = () => {
+		const copy = levelState.document.solids.at(-1);
+		return copy ? brushBounds(copy.planes)?.min.x : undefined;
+	};
+
+	it('moves the copies one snap step along +X', () => {
+		transformState.translate = 0.5;
+		levelState.selectedIds = ['a'];
+		expect(duplicateSelection()).toBe(true);
+		expect(copyMinX()).toBeCloseTo(0.5, 6);
+		expect(levelState.selectedIds).toEqual([levelState.document.solids[1]?.id]);
+	});
+
+	it('moves the copies a whole unit with snap off or a zero step', () => {
+		transformState.enabled = false;
+		levelState.selectedIds = ['a'];
+		duplicateSelection();
+		expect(copyMinX()).toBeCloseTo(1, 6);
+
+		transformState.enabled = true;
+		transformState.translate = 0;
+		levelState.selectedIds = ['a'];
+		duplicateSelection();
+		expect(copyMinX()).toBeCloseTo(1, 6);
+	});
+
+	it('does nothing with nothing selected', () => {
+		expect(duplicateSelection()).toBe(false);
+		expect(levelState.undoDepth).toBe(0);
+	});
+});
+
+describe('toggleLevelEditor', () => {
+	it('enters level mode with nothing armed, picking whole objects', () => {
+		setEntityCatalog([{ id: 'box', label: 'Box' }]);
+		armAddType('box');
+		levelState.elementMode = 'face';
+		sent = [];
+
+		toggleLevelEditor();
+		expect(levelState.active).toBe(true);
+		expect(getDebugTool()).toBe('none');
+		expect(catalogState.armedTypeId).toBeNull();
+		expect(levelState.placement).toBeNull();
+		expect(levelState.elementMode).toBe('object');
+		expect(toolMessages()).toEqual([{ tool: 'none' }]);
+		expect(sentOf('add:type:set').map((message) => message.payload)).toEqual([{ typeId: null }]);
+	});
+
+	it('returns a level tool to Select on the way out', () => {
+		toggleLevelEditor();
+		armBrushShape('wedge');
+		toggleLevelEditor();
+		expect(levelState.active).toBe(false);
+		expect(getDebugTool()).toBe('select');
+	});
+});
+
+describe('the gizmo tools on the level selection', () => {
+	beforeEach(() => {
+		loadLevelDocument(levelDocument());
+		setLevelEditorActive(true);
+	});
+
+	it('enter Move, Rotate, or Scale on level objects', () => {
+		levelState.selectedIds = ['a'];
+		expect(toggleTransformTool('rotate')).toBe(true);
+		expect(getDebugTool()).toBe('rotate');
+		expect(selectTransformTool('scale')).toBe(true);
+		expect(getDebugTool()).toBe('scale');
+		expect(toggleTransformTool('scale')).toBe(true);
+		expect(getDebugTool()).toBe('none');
+	});
+
+	it('enter a gizmo mode on selected elements', () => {
+		levelState.selectedElements = [topFace];
+		expect(selectTransformTool('scale')).toBe(true);
+		expect(getDebugTool()).toBe('scale');
+	});
+
+	it('stay out with nothing selected in the level', () => {
+		expect(toggleTransformTool('rotate')).toBe(false);
+		expect(getDebugTool()).toBe('none');
 	});
 });
 

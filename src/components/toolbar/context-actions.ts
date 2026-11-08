@@ -24,6 +24,12 @@ export type ContextAction =
 	| 'draw-brush'
 	| 'clip-brush'
 	| 'vertex-brush'
+	| 'edge-brush'
+	| 'face-brush'
+	| 'shear-brush'
+	| 'subdivide-brush'
+	| 'duplicate-selection'
+	| 'delete-selection'
 	| 'add-doodad'
 	| 'add-object'
 	| 'add-spawn'
@@ -49,8 +55,19 @@ export function contextToolbarActions(input: ContextToolbarInput): ContextAction
 	if (input.debug) actions.push('grid');
 	if (input.build) {
 		const layer = input.levelLayer ?? 'solid';
-		if (layer === 'solid') actions.push('draw-brush', 'clip-brush', 'vertex-brush', 'delete');
-		else if (layer === 'doodad') actions.push('add-doodad', 'delete');
+		if (layer === 'solid') {
+			actions.push(
+				'draw-brush',
+				'clip-brush',
+				'vertex-brush',
+				'edge-brush',
+				'face-brush',
+				'shear-brush',
+				'subdivide-brush',
+				'duplicate-selection',
+				'delete'
+			);
+		} else if (layer === 'doodad') actions.push('add-doodad', 'delete');
 		else actions.push('add-spawn', 'add-trigger', 'delete');
 	}
 	actions.push('snap', 'undo', 'redo');

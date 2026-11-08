@@ -7,14 +7,18 @@
  * document, not the live scene.
  */
 
-import type {
-	LevelDocument,
-	LevelElementMode,
-	LevelElementRef,
-	LevelGesture,
-	LevelLayerId,
-	LevelPlacementArm,
-	LevelSelectPayload,
+import {
+	type BridgeVec3,
+	type BrushShape,
+	DEFAULT_DRAW_SHAPE,
+	type LevelDocument,
+	type LevelDrawShape,
+	type LevelElementMode,
+	type LevelElementRef,
+	type LevelGesture,
+	type LevelLayerId,
+	type LevelPlacementArm,
+	type LevelSelectPayload,
 } from '@zylem/bridge';
 import { proxy } from 'valtio/vanilla';
 import { sendLevelClose, sendLevelPlay, sendLevelSync } from '../../bridge/commands';
@@ -24,14 +28,21 @@ import {
 	cloneLevelDocument,
 	createLevelDocument,
 	createLevelId,
+	deleteObjects,
+	duplicateObjects,
 	type EntityFieldPatch,
+	type LevelEdit,
 	layerOf,
 	resetLevelIds,
+	resizeSectors,
+	subdivideSolids,
 	withEntityFields,
 } from './level-document';
+import { ownersOf, pickElements, pickObjects } from './level-selection';
 
 export type {
 	LevelDocument,
+	LevelDrawShape,
 	LevelElementMode,
 	LevelElementRef,
 	LevelGesture,
@@ -39,22 +50,32 @@ export type {
 	LevelPlacementArm,
 	LevelSpawnKind as SpawnKind,
 } from '@zylem/bridge';
-export { invalidSolidIds, layerOf } from './level-document';
+export { layerOf } from './level-document';
 
 const MAX_LEVEL_HISTORY = 100;
+export const DEFAULT_SUBDIVIDE_TILE = 4;
 
 export interface LevelState {
 	active: boolean;
 	document: LevelDocument;
 	/** Layers left out of the edit preview. Play streams every layer. */
 	hiddenLayers: LevelLayerId[];
+	/** Sector keys (`x:z`) whose solids are left out of the edit preview. */
+	hiddenSectors: string[];
+	/** Tint each solid by its sector in the edit preview. */
+	showSectorTint: boolean;
 	activeLayer: LevelLayerId;
+	/** In an element mode, the solids that own the selected elements. */
 	selectedIds: string[];
 	/** What a click on a solid picks. */
 	elementMode: LevelElementMode;
 	/** Selected vertices, edges, or faces while an element mode is on. */
 	selectedElements: LevelElementRef[];
 	placement: LevelPlacementArm | null;
+	/** The primitive the brush tool draws. */
+	drawShape: LevelDrawShape;
+	/** World units between the grid lines Subdivide cuts on. */
+	subdivideTile: number;
 	undoDepth: number;
 	redoDepth: number;
 	undoLabel: string | null;
@@ -68,6 +89,7 @@ export interface LevelSnapshot {
 interface LevelHistoryEntry {
 	label: string;
 	document: LevelDocument;
+	elementMode: LevelElementMode;
 	selectedIds: string[];
 	selectedElements: LevelElementRef[];
 }
@@ -76,11 +98,15 @@ export const levelState = proxy<LevelState>({
 	active: false,
 	document: createLevelDocument(),
 	hiddenLayers: [],
+	hiddenSectors: [],
+	showSectorTint: false,
 	activeLayer: 'solid',
 	selectedIds: [],
 	elementMode: 'object',
 	selectedElements: [],
 	placement: null,
+	drawShape: { ...DEFAULT_DRAW_SHAPE },
+	subdivideTile: DEFAULT_SUBDIVIDE_TILE,
 	undoDepth: 0,
 	redoDepth: 0,
 	undoLabel: null,
@@ -119,13 +145,16 @@ function currentEntry(label: string): LevelHistoryEntry {
 	return {
 		label,
 		document: cloneLevelDocument(levelState.document),
+		elementMode: levelState.elementMode,
 		selectedIds: [...levelState.selectedIds],
 		selectedElements: cloneElements(levelState.selectedElements),
 	};
 }
 
+/** The element mode comes back too, so restored elements are read in the mode that picked them. */
 function restoreEntry(entry: LevelHistoryEntry): void {
 	levelState.document = entry.document;
+	levelState.elementMode = entry.elementMode;
 	levelState.selectedIds = entry.selectedIds;
 	levelState.selectedElements = entry.selectedElements;
 }
@@ -140,6 +169,14 @@ function pushUndo(entry: LevelHistoryEntry): void {
 /** Whether level mode is on. Undo and redo read this and stay on the document. */
 export function isLevelEditorActive(): boolean {
 	return levelState.active;
+}
+
+/** Whether level mode is on with objects or elements selected. */
+export function hasLevelSelection(): boolean {
+	return (
+		levelState.active &&
+		(levelState.selectedIds.length > 0 || levelState.selectedElements.length > 0)
+	);
 }
 
 export function levelCanUndo(): boolean {
@@ -180,11 +217,14 @@ export function syncLevelDocument(): void {
 	sendLevelSync({
 		document: cloneLevelDocument(levelState.document),
 		hiddenLayers: [...levelState.hiddenLayers],
+		hiddenSectors: [...levelState.hiddenSectors],
+		showSectorTint: levelState.showSectorTint,
 		selectedIds: [...levelState.selectedIds],
 		elementMode: levelState.elementMode,
 		elements: cloneElements(levelState.selectedElements),
 		activeLayer: levelState.activeLayer,
 		placement: levelState.placement ? clonePlacement(levelState.placement) : null,
+		drawShape: { ...levelState.drawShape },
 	});
 }
 
@@ -215,9 +255,81 @@ export function toggleLevelLayerHidden(layer: LevelLayerId): void {
 	syncLevelDocument();
 }
 
+/** Show or hide one sector's solids in the edit preview. Not an undo step. */
+export function toggleLevelSectorHidden(key: string): void {
+	const hidden = new Set(levelState.hiddenSectors);
+	if (hidden.has(key)) hidden.delete(key);
+	else hidden.add(key);
+	levelState.hiddenSectors = [...hidden];
+	syncLevelDocument();
+}
+
+/** Tint solids by sector in the edit preview. Not an undo step. */
+export function setLevelSectorTint(show: boolean): void {
+	if (levelState.showSectorTint === show) return;
+	levelState.showSectorTint = show;
+	syncLevelDocument();
+}
+
 export function setLevelPlacement(placement: LevelPlacementArm | null): void {
 	levelState.placement = placement;
 	if (levelState.active) syncLevelDocument();
+}
+
+/** The primitive the brush draws. */
+export function setLevelDrawShape(shape: BrushShape): void {
+	if (levelState.drawShape.shape === shape) return;
+	levelState.drawShape.shape = shape;
+	syncLevelDocument();
+}
+
+type DrawOption = Exclude<keyof LevelDrawShape, 'shape'>;
+
+function setDrawOption(option: DrawOption, value: number | null): void {
+	if (value === null || levelState.drawShape[option] === value) return;
+	levelState.drawShape[option] = value;
+	syncLevelDocument();
+}
+
+function wholeIn(value: number, min: number, max: number): number | null {
+	return Number.isFinite(value) ? Math.min(max, Math.max(min, Math.round(value))) : null;
+}
+
+/** Cylinder side count, 3-64. */
+export function setLevelDrawSides(sides: number): void {
+	setDrawOption('sides', wholeIn(sides, 3, 64));
+}
+
+/** Arch segment count, 2-32. */
+export function setLevelDrawSegments(segments: number): void {
+	setDrawOption('segments', wholeIn(segments, 2, 32));
+}
+
+/** Arch ring thickness. Anything but a positive number is ignored. */
+export function setLevelDrawThickness(thickness: number): void {
+	setDrawOption('thickness', Number.isFinite(thickness) && thickness > 0 ? thickness : null);
+}
+
+/** Quarter turns, wrapped to 0-3. */
+export function setLevelDrawTurn(turn: number): void {
+	setDrawOption('turn', Number.isFinite(turn) ? ((Math.round(turn) % 4) + 4) % 4 : null);
+}
+
+/** Turn the wedge a quarter. */
+export function turnLevelDrawShape(): void {
+	setLevelDrawTurn(levelState.drawShape.turn + 1);
+}
+
+/** World units between Subdivide's grid lines. Anything but a positive number is ignored. */
+export function setLevelSubdivideTile(tile: number): void {
+	if (Number.isFinite(tile) && tile > 0) levelState.subdivideTile = tile;
+}
+
+function pickLevelObjects(payload: LevelSelectPayload): void {
+	levelState.selectedIds = pickObjects(levelState.document, levelState.selectedIds, payload);
+	const { id } = payload;
+	const layer = id && levelState.selectedIds.includes(id) ? layerOf(levelState.document, id) : null;
+	if (layer) levelState.activeLayer = layer;
 }
 
 /** Select a document object. Empty clears. Not an undo step. */
@@ -230,9 +342,48 @@ export function selectLevelObject(id: string | null): void {
 	if (levelState.active) syncLevelDocument();
 }
 
-/** A click in the game's level preview. */
+/**
+ * A click on a row of the level panel: that object alone, or toggled with
+ * Shift. A row is a whole object, so an element mode ends. Not an undo step.
+ */
+export function selectLevelRow(id: string, additive = false): void {
+	if (levelState.elementMode !== 'object') {
+		levelState.elementMode = 'object';
+		levelState.selectedElements = [];
+	}
+	pickLevelObjects({ id, additive, ungroup: true });
+	syncLevelDocument();
+}
+
+/**
+ * A click in the game's level preview. Objects follow their group and Shift
+ * toggles; in an element mode the owning solids follow the elements. Not an
+ * undo step.
+ */
 export function applyLevelSelect(payload: LevelSelectPayload): void {
-	selectLevelObject(payload.id);
+	const mode = levelState.elementMode;
+	if (mode === 'object') {
+		pickLevelObjects(payload);
+	} else {
+		const elements = pickElements(levelState.document, mode, levelState.selectedElements, payload);
+		levelState.selectedElements = elements;
+		levelState.selectedIds = ownersOf(elements);
+	}
+	syncLevelDocument();
+}
+
+/**
+ * Drop the selection, objects and elements, while level mode is on.
+ *
+ * @returns Whether anything was selected.
+ */
+export function clearLevelSelection(): boolean {
+	if (!levelState.active) return false;
+	if (levelState.selectedIds.length === 0 && levelState.selectedElements.length === 0) return false;
+	levelState.selectedIds = [];
+	levelState.selectedElements = [];
+	syncLevelDocument();
+	return true;
 }
 
 const GESTURE_LABELS: Record<
@@ -275,6 +426,20 @@ export function levelGestureLabel(gesture: LevelGesture): string {
 	}
 }
 
+/** Record an edit as one undo step, then show its document and selection in `mode`. */
+function commitEdit(
+	label: string,
+	edit: LevelEdit,
+	mode: LevelElementMode = levelState.elementMode
+): void {
+	pushUndo(currentEntry(label));
+	levelState.document = edit.document;
+	levelState.elementMode = mode;
+	levelState.selectedIds = edit.selectIds;
+	levelState.selectedElements = edit.selectElements ?? [];
+	syncLevelDocument();
+}
+
 /** Apply a gesture from the game. A rejected edit syncs the current document so the ghost resets. */
 export function applyIncomingGesture(gesture: LevelGesture): void {
 	if (!levelState.active) return;
@@ -288,11 +453,55 @@ export function applyIncomingGesture(gesture: LevelGesture): void {
 		syncLevelDocument();
 		return;
 	}
-	pushUndo(currentEntry(levelGestureLabel(gesture)));
-	levelState.document = edit.document;
-	levelState.selectedIds = edit.selectIds;
-	levelState.selectedElements = edit.selectElements ?? [];
-	syncLevelDocument();
+	commitEdit(levelGestureLabel(gesture), edit);
+}
+
+/**
+ * Copy the selection `offset` away and select the copies. In an element mode
+ * the owning solids are copied, and the copies are selected as objects.
+ */
+export function duplicateLevelSelection(offset: BridgeVec3): boolean {
+	const edit = duplicateObjects(levelState.document, levelState.selectedIds, offset, createLevelId);
+	if (!edit) return false;
+	commitEdit('Duplicate', edit, 'object');
+	return true;
+}
+
+/**
+ * Cut the selected solids on the {@link LevelState.subdivideTile} grid. The
+ * pieces are selected as objects.
+ */
+export function subdivideLevelSelection(): boolean {
+	const edit = subdivideSolids(
+		levelState.document,
+		levelState.selectedIds,
+		levelState.subdivideTile,
+		createLevelId
+	);
+	if (!edit) return false;
+	commitEdit('Subdivide', edit, 'object');
+	return true;
+}
+
+/** Remove every selected object in one step. In an element mode the owning solids go. */
+export function deleteLevelSelection(): boolean {
+	const edit = deleteObjects(levelState.document, levelState.selectedIds);
+	if (!edit) return false;
+	commitEdit('Delete', edit);
+	return true;
+}
+
+/** Resize the sector grid, 1 unit at the least, as an undo step. */
+export function setLevelSectorSize(size: number): boolean {
+	const edit = resizeSectors(
+		levelState.document,
+		size,
+		levelState.selectedIds,
+		levelState.selectedElements
+	);
+	if (!edit) return false;
+	commitEdit('Sector size', edit);
+	return true;
 }
 
 /** Document as it is now, for an inspector edit that commits on blur. */
@@ -377,11 +586,15 @@ export function resetLevelEditor(): void {
 	levelState.active = false;
 	levelState.document = createLevelDocument();
 	levelState.hiddenLayers = [];
+	levelState.hiddenSectors = [];
+	levelState.showSectorTint = false;
 	levelState.activeLayer = 'solid';
 	levelState.selectedIds = [];
 	levelState.elementMode = 'object';
 	levelState.selectedElements = [];
 	levelState.placement = null;
+	levelState.drawShape = { ...DEFAULT_DRAW_SHAPE };
+	levelState.subdivideTile = DEFAULT_SUBDIVIDE_TILE;
 	undoStack.length = 0;
 	redoStack.length = 0;
 	markLevelSaved();

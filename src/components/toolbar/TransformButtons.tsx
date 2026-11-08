@@ -36,14 +36,15 @@ const TransformToolButton: Component<TransformToolButtonProps> = (props) => {
 			stage.entities.map((entity) => entity.uuid).filter((uuid): uuid is string => Boolean(uuid))
 		)
 	);
-	const levelMove = () =>
-		props.tool === 'translate' && levelStore.active && levelStore.selectedIds.length > 0;
+	const levelSelection = () =>
+		levelStore.active &&
+		(levelStore.selectedIds.length > 0 || levelStore.selectedElements.length > 0);
 
 	return (
 		<ToolbarButton
 			label={withShortcut(props.label, props.tool)}
 			selected={debugStore.tool === props.tool}
-			disabled={!target() && !levelMove()}
+			disabled={!target() && !levelSelection()}
 			onClick={() => toggleTransformTool(props.tool)}
 		>
 			{props.children}

@@ -1,11 +1,11 @@
 /**
  * Edits to a level document.
  *
- * Pure: a document and a gesture in, the next document out. The live copy
- * stays in valtio. `null` means the gesture changed nothing: an edit that
- * would leave a solid non-convex or empty, a clip that missed, a delete of an
- * unknown id. A gesture that touches several solids is all or nothing. Brush
- * math comes from the `@zylem/bridge` kernel.
+ * Pure: a document and a gesture or editor command in, the next document out.
+ * The live copy stays in valtio. `null` means the edit changed nothing: an
+ * edit that would leave a solid non-convex or empty, a clip that missed, a
+ * delete of an unknown id. An edit that touches several solids is all or
+ * nothing. Brush math comes from the `@zylem/bridge` kernel.
  */
 
 import {
@@ -15,7 +15,6 @@ import {
 	type BrushPlane,
 	type BrushSolid,
 	clipBrush,
-	compileBrush,
 	type EntityPlacement,
 	extrudeFace,
 	type LevelDocument,
@@ -23,12 +22,15 @@ import {
 	type LevelGesture,
 	type LevelLayerId,
 	type LevelTransform,
+	MAX_SUBDIVIDE_PIECES,
 	moveElements,
 	moveFaces,
 	primitiveBrushes,
 	rotateBrush,
 	scaleBrush,
+	sectorSizeOf,
 	shearFaces,
+	subdivideBrush,
 	translateBrush,
 } from '@zylem/bridge';
 
@@ -45,13 +47,6 @@ export function createLevelDocument(): LevelDocument {
 
 export function cloneLevelDocument(document: LevelDocument): LevelDocument {
 	return JSON.parse(JSON.stringify(document)) as LevelDocument;
-}
-
-/** Brushes that do not compile. The level panel lists these. */
-export function invalidSolidIds(document: LevelDocument): string[] {
-	return document.solids
-		.filter((solid) => compileBrush(solid.planes) === null)
-		.map((solid) => solid.id);
 }
 
 export function layerOf(document: LevelDocument, id: string): LevelLayerId | null {
@@ -572,9 +567,118 @@ function deleteItem(
 	id: string,
 	selectedIds: readonly string[]
 ): LevelEdit | null {
-	const solids = document.solids.filter((entry) => entry.id !== id);
-	const doodads = document.doodads.filter((entry) => entry.id !== id);
-	const entities = document.entities.filter((entry) => entry.id !== id);
+	const edit = deleteObjects(document, [id]);
+	return edit && { ...edit, selectIds: selectedIds.filter((selected) => selected !== id) };
+}
+
+function copyData<T>(value: T): T {
+	return JSON.parse(JSON.stringify(value)) as T;
+}
+
+/**
+ * Copy objects on every layer under new ids, moved by `offset`, and select the
+ * copies. The copies of one group share a new group of their own.
+ */
+export function duplicateObjects(
+	document: LevelDocument,
+	ids: readonly string[],
+	offset: BridgeVec3,
+	nextId: () => string = createLevelId
+): LevelEdit | null {
+	const wanted = new Set(ids);
+	const move: LevelTransform = { kind: 'translate', delta: offset };
+	const groups = new Map<string, string>();
+	const groupCopy = (groupId: string): string => {
+		let copy = groups.get(groupId);
+		if (!copy) {
+			copy = `group-${nextId()}`;
+			groups.set(groupId, copy);
+		}
+		return copy;
+	};
+
+	const solids: BrushSolid[] = document.solids
+		.filter((solid) => wanted.has(solid.id))
+		.map((solid) => {
+			const groupId = solid.groupId ? groupCopy(solid.groupId) : undefined;
+			return {
+				id: nextId(),
+				planes: translateBrush(solid.planes, offset),
+				...(groupId ? { groupId } : {}),
+			};
+		});
+	const doodads = document.doodads
+		.filter((doodad) => wanted.has(doodad.id))
+		.map((doodad) => {
+			const copy = copyData(doodad);
+			return { ...copy, id: nextId(), pose: transformPose(copy.pose, move) };
+		});
+	const entities = document.entities
+		.filter((entity) => wanted.has(entity.id))
+		.map((entity) => ({ ...transformEntity(copyData(entity), move), id: nextId() }));
+
+	const selectIds = [...solids, ...doodads, ...entities].map((copy) => copy.id);
+	if (selectIds.length === 0) return null;
+	return {
+		document: {
+			...document,
+			solids: [...document.solids, ...solids],
+			doodads: [...document.doodads, ...doodads],
+			entities: [...document.entities, ...entities],
+		},
+		selectIds,
+	};
+}
+
+/**
+ * Cut each listed solid on the world XZ grid and select every piece. Pieces
+ * keep the solid's group, and the first keeps its id. One solid the kernel
+ * refuses (too many pieces, or a brush that does not compile) rejects the
+ * whole edit, and so does a cut that leaves every solid whole.
+ */
+export function subdivideSolids(
+	document: LevelDocument,
+	ids: readonly string[],
+	tile: number,
+	nextId: () => string = createLevelId
+): LevelEdit | null {
+	const targets = new Set(ids);
+	const pieces = new Map<string, BrushSolid[]>();
+	let changed = false;
+	for (const solid of document.solids) {
+		if (!targets.has(solid.id)) continue;
+		const cuts = subdivideBrush(solid.planes, tile, { maxPieces: MAX_SUBDIVIDE_PIECES });
+		if (!cuts) return null;
+		if (cuts.length < 2) {
+			pieces.set(solid.id, [solid]);
+			continue;
+		}
+		changed = true;
+		pieces.set(
+			solid.id,
+			cuts.map((planes, index) => ({
+				id: index === 0 ? solid.id : nextId(),
+				planes,
+				...(solid.groupId ? { groupId: solid.groupId } : {}),
+			}))
+		);
+	}
+	if (!changed) return null;
+	return {
+		document: {
+			...document,
+			solids: document.solids.flatMap((solid) => pieces.get(solid.id) ?? [solid]),
+		},
+		selectIds: [...pieces.values()].flat().map((piece) => piece.id),
+	};
+}
+
+/** Remove every listed object, on any layer, in one edit. */
+export function deleteObjects(document: LevelDocument, ids: readonly string[]): LevelEdit | null {
+	const drop = new Set(ids);
+	const solids = document.solids.filter((entry) => !drop.has(entry.id));
+	const doodads = document.doodads.filter((entry) => !drop.has(entry.id));
+	const entities = document.entities.filter((entry) => !drop.has(entry.id));
 	if (
 		solids.length === document.solids.length &&
 		doodads.length === document.doodads.length &&
@@ -582,9 +686,23 @@ function deleteItem(
 	) {
 		return null;
 	}
+	return { document: { ...document, solids, doodads, entities }, selectIds: [] };
+}
+
+/** Resize the sector grid, 1 unit at the least. The selection passes through. */
+export function resizeSectors(
+	document: LevelDocument,
+	size: number,
+	selectedIds: readonly string[] = [],
+	selectedElements: readonly LevelElementRef[] = []
+): LevelEdit | null {
+	if (!Number.isFinite(size)) return null;
+	const next = Math.max(1, size);
+	if (sectorSizeOf(document) === next) return null;
 	return {
-		document: { ...document, solids, doodads, entities },
-		selectIds: selectedIds.filter((selected) => selected !== id),
+		document: { ...document, sectors: { size: next } },
+		selectIds: [...selectedIds],
+		selectElements: selectedElements.map(copyRef),
 	};
 }
 

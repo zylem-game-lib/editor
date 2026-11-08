@@ -4,6 +4,11 @@ import { getZylemBridge } from '@zylem/bridge';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getDebugTool, setDebugTool } from '../../src/components/entities/entities-state';
 import {
+	levelState,
+	resetLevelEditor,
+	setLevelEditorActive,
+} from '../../src/components/level/level-state';
+import {
 	catalogState,
 	setArmedType,
 	setEntityCatalog,
@@ -30,6 +35,7 @@ beforeEach(() => {
 	setArmedType(null);
 	catalogState.lastTypeId = null;
 	setDebugTool('none');
+	resetLevelEditor();
 
 	toolMessages = [];
 	addTypeMessages = [];
@@ -149,5 +155,63 @@ describe('installToolShortcuts', () => {
 		window.dispatchEvent(escapeKey());
 
 		expect(getDebugTool()).toBe('add');
+	});
+});
+
+describe('Escape in level mode', () => {
+	const face = { brushId: 'a', kind: 'face' as const, planes: [2] };
+
+	beforeEach(() => {
+		setLevelEditorActive(true);
+		levelState.selectedIds = ['a'];
+		levelState.selectedElements = [face];
+	});
+
+	it('disarms an armed tool first and keeps the selection', () => {
+		uninstall = installToolShortcuts();
+		setDebugTool('translate');
+
+		const event = escapeKey();
+		window.dispatchEvent(event);
+		expect(event.defaultPrevented).toBe(true);
+		expect(getDebugTool()).toBe('none');
+		expect(levelState.selectedIds).toEqual(['a']);
+		expect(levelState.selectedElements).toEqual([face]);
+	});
+
+	it('clears the level selection once nothing is armed', () => {
+		uninstall = installToolShortcuts();
+
+		const event = escapeKey();
+		window.dispatchEvent(event);
+		expect(event.defaultPrevented).toBe(true);
+		expect(levelState.selectedIds).toEqual([]);
+		expect(levelState.selectedElements).toEqual([]);
+
+		const idle = escapeKey();
+		window.dispatchEvent(idle);
+		expect(idle.defaultPrevented).toBe(false);
+	});
+
+	it('leaves the selection alone while level mode is off', () => {
+		uninstall = installToolShortcuts();
+		setLevelEditorActive(false);
+
+		const event = escapeKey();
+		window.dispatchEvent(event);
+		expect(event.defaultPrevented).toBe(false);
+		expect(levelState.selectedIds).toEqual(['a']);
+	});
+
+	it('leaves an open menu its Escape', () => {
+		uninstall = installToolShortcuts();
+		const menu = document.createElement('div');
+		menu.setAttribute('role', 'menu');
+		document.body.append(menu);
+
+		const event = escapeKey();
+		menu.dispatchEvent(event);
+		expect(event.defaultPrevented).toBe(false);
+		expect(levelState.selectedIds).toEqual(['a']);
 	});
 });
