@@ -12,7 +12,13 @@ import { type Component, createSignal } from 'solid-js';
 import { debugStore } from '..';
 import { debugState } from '../entities/entities-state';
 import { levelState, levelStore } from '../level/level-state';
-import { armSolidTool, armSpawnTool, armTriggerTool, returnToSelect } from './toolbar-actions';
+import {
+	armSolidTool,
+	armSpawnTool,
+	armTriggerTool,
+	returnToSelect,
+	toggleVertexMode,
+} from './toolbar-actions';
 
 const MESH_SHAPES = [
 	{ id: 'box', label: 'Box', icon: Box },
@@ -66,9 +72,9 @@ export const ClipBrushButton: Component = () => (
 export const VertexBrushButton: Component = () => (
 	<ToolbarButton
 		label="Vertex. A move that breaks the solid snaps back."
-		selected={debugStore.tool === 'vertex'}
+		selected={levelStore.elementMode === 'vertex'}
 		disabled={levelStore.selectedIds.length === 0}
-		onClick={() => armSolidTool('vertex')}
+		onClick={toggleVertexMode}
 	>
 		<Spline class="zylem-icon" />
 	</ToolbarButton>

@@ -7,6 +7,7 @@
 import type {
 	EntitySelectionPayload,
 	EntityTypeDescriptor,
+	LevelGesture,
 	SceneOperationPayload,
 } from '@zylem/bridge';
 import {
@@ -15,7 +16,6 @@ import {
 } from '../components/entities/entities-state';
 import { pushOperation } from '../components/history/history-store';
 import { applyIncomingGesture } from '../components/level/level-state';
-import type { LevelGesture } from '../components/level/level-types';
 import { setEntityCatalog } from '../components/toolbar/catalog-state';
 import { endToolAfterUse } from '../components/toolbar/toolbar-actions';
 import { notifySceneOperation } from '../host/scene-operation-hook';

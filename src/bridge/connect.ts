@@ -6,17 +6,8 @@
  * shows current config/entities immediately.
  */
 
-import { selectLevelObject } from '../components/level/level-state';
-import type { LevelGesture } from '../components/level/level-types';
+import { applyLevelSelect } from '../components/level/level-state';
 import { channel } from './channel';
-
-function onGameMessage<T>(type: string, handler: (payload: T) => void): () => void {
-	const listen = channel.on.bind(channel) as (
-		message: string,
-		handle: (payload: T) => void
-	) => () => void;
-	return listen(type, handler);
-}
 
 import {
 	applyCatalog,
@@ -76,12 +67,8 @@ export function connectEditorBridge(): () => void {
 		channel.on('game:notice', applyGameNotice),
 		channel.on('catalog:snapshot', applyCatalog),
 		channel.on('scene:operation', applySceneOperation),
-		onGameMessage<{ gesture: LevelGesture }>('level:gesture', ({ gesture }) => {
-			applyLevelGesture(gesture);
-		}),
-		onGameMessage<{ id: string | null }>('level:select', ({ id }) => {
-			selectLevelObject(id);
-		}),
+		channel.on('level:gesture', ({ gesture }) => applyLevelGesture(gesture)),
+		channel.on('level:select', applyLevelSelect),
 	];
 
 	// Rebuild the uuid index from whatever survived a previous connection.

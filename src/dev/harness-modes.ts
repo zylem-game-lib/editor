@@ -6,6 +6,7 @@
  * that do not exist yet are slots: they render with a label and do nothing.
  */
 
+import type { LevelLayerId } from '@zylem/bridge';
 import { proxy } from 'valtio/vanilla';
 import { sendDebugEnabled, sendTool } from '../bridge/commands';
 import { mirrorProxy } from '../components/common/proxy-mirror';
@@ -17,7 +18,6 @@ import {
 	setLevelEditorActive,
 	setLevelPlacement,
 } from '../components/level/level-state';
-import type { LevelLayerId } from '../components/level/level-types';
 import type { ContextAction } from '../components/toolbar/context-actions';
 import { setViewPreset, type ViewPreset, viewState } from '../components/toolbar/view-state';
 
@@ -246,8 +246,8 @@ function armedContextAction(): HarnessContextAction | null {
 			return 'draw-brush';
 		case 'clip':
 			return 'clip-brush';
-		case 'vertex':
-			return 'vertex-brush';
+		case 'shear':
+			return 'shear';
 		case 'translate':
 		case 'rotate':
 		case 'scale':

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { getZylemBridge } from '@zylem/bridge';
+import { DEFAULT_DRAW_SHAPE, frameForPlane, getZylemBridge } from '@zylem/bridge';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { applyLevelGesture, applySceneOperation } from '../../src/bridge/sync-editing';
 import { debugStore, setDebugStore } from '../../src/components/editor-store';
@@ -392,7 +392,13 @@ describe('a tool spent by what the game reports', () => {
 		setLevelEditorActive(true);
 		armSolidTool('brush');
 
-		applyLevelGesture({ kind: 'brush', min: { x: 0, y: 0, z: 0 }, max: { x: 1, y: 1, z: 1 } });
+		applyLevelGesture({
+			kind: 'primitive',
+			frame: frameForPlane({ x: 0, y: 1, z: 0 }, 0),
+			footprint: { u0: 0, v0: 0, u1: 1, v1: 1 },
+			height: 1,
+			shape: { ...DEFAULT_DRAW_SHAPE },
+		});
 
 		expect(getDebugTool()).toBe('brush');
 	});

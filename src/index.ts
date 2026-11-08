@@ -62,7 +62,7 @@ export {
 	loadLevelDocument,
 	snapshotLevelDocument,
 } from './components/level/level-state';
-export type { LevelDocument } from './components/level/level-types';
+export type { LevelDocument } from '@zylem/bridge';
 // Saving. A host turns it on with `enableSave` and listens for EDITOR_SAVE_EVENT.
 export {
 	EDITOR_SAVE_EVENT,

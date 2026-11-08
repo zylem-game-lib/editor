@@ -7,6 +7,15 @@
  * document, not the live scene.
  */
 
+import type {
+	LevelDocument,
+	LevelElementMode,
+	LevelElementRef,
+	LevelGesture,
+	LevelLayerId,
+	LevelPlacementArm,
+	LevelSelectPayload,
+} from '@zylem/bridge';
 import { proxy } from 'valtio/vanilla';
 import { sendLevelClose, sendLevelPlay, sendLevelSync } from '../../bridge/commands';
 import { mirrorProxy } from '../common/proxy-mirror';
@@ -20,16 +29,17 @@ import {
 	resetLevelIds,
 	withEntityFields,
 } from './level-document';
-import type { LevelDocument, LevelGesture, LevelLayerId, LevelPlacementArm } from './level-types';
 
-export { invalidSolidIds, layerOf } from './level-document';
 export type {
 	LevelDocument,
+	LevelElementMode,
+	LevelElementRef,
 	LevelGesture,
 	LevelLayerId,
 	LevelPlacementArm,
-	SpawnKind,
-} from './level-types';
+	LevelSpawnKind as SpawnKind,
+} from '@zylem/bridge';
+export { invalidSolidIds, layerOf } from './level-document';
 
 const MAX_LEVEL_HISTORY = 100;
 
@@ -40,6 +50,10 @@ export interface LevelState {
 	hiddenLayers: LevelLayerId[];
 	activeLayer: LevelLayerId;
 	selectedIds: string[];
+	/** What a click on a solid picks. */
+	elementMode: LevelElementMode;
+	/** Selected vertices, edges, or faces while an element mode is on. */
+	selectedElements: LevelElementRef[];
 	placement: LevelPlacementArm | null;
 	undoDepth: number;
 	redoDepth: number;
@@ -55,6 +69,7 @@ interface LevelHistoryEntry {
 	label: string;
 	document: LevelDocument;
 	selectedIds: string[];
+	selectedElements: LevelElementRef[];
 }
 
 export const levelState = proxy<LevelState>({
@@ -63,6 +78,8 @@ export const levelState = proxy<LevelState>({
 	hiddenLayers: [],
 	activeLayer: 'solid',
 	selectedIds: [],
+	elementMode: 'object',
+	selectedElements: [],
 	placement: null,
 	undoDepth: 0,
 	redoDepth: 0,
@@ -87,6 +104,30 @@ function publishHistory(): void {
 	levelState.redoDepth = redoStack.length;
 	levelState.undoLabel = undoStack[undoStack.length - 1]?.label ?? null;
 	levelState.redoLabel = redoStack[redoStack.length - 1]?.label ?? null;
+}
+
+function cloneElements(elements: readonly LevelElementRef[]): LevelElementRef[] {
+	return elements.map((element) => ({
+		brushId: element.brushId,
+		kind: element.kind,
+		planes: [...element.planes],
+	}));
+}
+
+/** The document and selection as they are now, for an undo or redo entry. */
+function currentEntry(label: string): LevelHistoryEntry {
+	return {
+		label,
+		document: cloneLevelDocument(levelState.document),
+		selectedIds: [...levelState.selectedIds],
+		selectedElements: cloneElements(levelState.selectedElements),
+	};
+}
+
+function restoreEntry(entry: LevelHistoryEntry): void {
+	levelState.document = entry.document;
+	levelState.selectedIds = entry.selectedIds;
+	levelState.selectedElements = entry.selectedElements;
 }
 
 function pushUndo(entry: LevelHistoryEntry): void {
@@ -140,9 +181,19 @@ export function syncLevelDocument(): void {
 		document: cloneLevelDocument(levelState.document),
 		hiddenLayers: [...levelState.hiddenLayers],
 		selectedIds: [...levelState.selectedIds],
+		elementMode: levelState.elementMode,
+		elements: cloneElements(levelState.selectedElements),
 		activeLayer: levelState.activeLayer,
 		placement: levelState.placement ? clonePlacement(levelState.placement) : null,
 	});
+}
+
+/** Switch what a click on a solid picks. Leaving an element mode drops the element selection. */
+export function setLevelElementMode(mode: LevelElementMode): void {
+	if (levelState.elementMode === mode) return;
+	levelState.elementMode = mode;
+	levelState.selectedElements = [];
+	syncLevelDocument();
 }
 
 /** Ask the game to spawn collision and live trigger zones from the document. */
@@ -179,16 +230,50 @@ export function selectLevelObject(id: string | null): void {
 	if (levelState.active) syncLevelDocument();
 }
 
-const GESTURE_LABELS: Record<LevelGesture['kind'], string> = {
-	brush: 'Draw brush',
+/** A click in the game's level preview. */
+export function applyLevelSelect(payload: LevelSelectPayload): void {
+	selectLevelObject(payload.id);
+}
+
+const GESTURE_LABELS: Record<
+	Exclude<LevelGesture['kind'], 'primitive' | 'element-move' | 'transform'>,
+	string
+> = {
 	clip: 'Clip brush',
-	vertex: 'Move vertex',
-	translate: 'Move',
+	'face-move': 'Move face',
+	'face-extrude': 'Extrude face',
+	shear: 'Shear face',
 	doodad: 'Place doodad',
 	spawn: 'Place spawn',
 	trigger: 'Place trigger',
 	delete: 'Delete',
 };
+
+const PRIMITIVE_LABELS = {
+	box: 'Draw box',
+	wedge: 'Draw wedge',
+	cylinder: 'Draw cylinder',
+	arch: 'Draw arch',
+};
+const ELEMENT_LABELS = { vertex: 'Move vertex', edge: 'Move edge', face: 'Move face' };
+const TRANSFORM_LABELS = { translate: 'Move', rotate: 'Rotate', scale: 'Scale' };
+
+/** The undo label for a gesture. */
+export function levelGestureLabel(gesture: LevelGesture): string {
+	switch (gesture.kind) {
+		case 'primitive':
+			return PRIMITIVE_LABELS[gesture.shape.shape];
+		case 'element-move': {
+			const kinds = new Set(gesture.elements.map((element) => element.kind));
+			const [only] = kinds;
+			return kinds.size === 1 && only ? ELEMENT_LABELS[only] : 'Move elements';
+		}
+		case 'transform':
+			return TRANSFORM_LABELS[gesture.transform.kind];
+		default:
+			return GESTURE_LABELS[gesture.kind];
+	}
+}
 
 /** Apply a gesture from the game. A rejected edit syncs the current document so the ghost resets. */
 export function applyIncomingGesture(gesture: LevelGesture): void {
@@ -203,13 +288,10 @@ export function applyIncomingGesture(gesture: LevelGesture): void {
 		syncLevelDocument();
 		return;
 	}
-	pushUndo({
-		label: GESTURE_LABELS[gesture.kind],
-		document: cloneLevelDocument(levelState.document),
-		selectedIds: [...levelState.selectedIds],
-	});
+	pushUndo(currentEntry(levelGestureLabel(gesture)));
 	levelState.document = edit.document;
 	levelState.selectedIds = edit.selectIds;
+	levelState.selectedElements = edit.selectElements ?? [];
 	syncLevelDocument();
 }
 
@@ -230,19 +312,14 @@ export function patchLevelEntity(id: string, patch: EntityFieldPatch): void {
 /** Record an inspector edit that already changed the document, if it differs from `before`. */
 export function commitLevelEdit(before: LevelDocument, label: string): void {
 	if (JSON.stringify(before) === JSON.stringify(cloneLevelDocument(levelState.document))) return;
-	pushUndo({ label, document: before, selectedIds: [...levelState.selectedIds] });
+	pushUndo({ ...currentEntry(label), document: before });
 }
 
 export function undoLevel(): boolean {
 	const entry = undoStack.pop();
 	if (!entry) return false;
-	redoStack.push({
-		label: entry.label,
-		document: cloneLevelDocument(levelState.document),
-		selectedIds: [...levelState.selectedIds],
-	});
-	levelState.document = entry.document;
-	levelState.selectedIds = entry.selectedIds;
+	redoStack.push(currentEntry(entry.label));
+	restoreEntry(entry);
 	publishHistory();
 	syncLevelDocument();
 	return true;
@@ -251,13 +328,8 @@ export function undoLevel(): boolean {
 export function redoLevel(): boolean {
 	const entry = redoStack.pop();
 	if (!entry) return false;
-	undoStack.push({
-		label: entry.label,
-		document: cloneLevelDocument(levelState.document),
-		selectedIds: [...levelState.selectedIds],
-	});
-	levelState.document = entry.document;
-	levelState.selectedIds = entry.selectedIds;
+	undoStack.push(currentEntry(entry.label));
+	restoreEntry(entry);
 	publishHistory();
 	syncLevelDocument();
 	return true;
@@ -292,6 +364,7 @@ export function loadLevelDocument(document: LevelDocument): void {
 	if (document.version !== 2) return;
 	levelState.document = cloneLevelDocument(document);
 	levelState.selectedIds = [];
+	levelState.selectedElements = [];
 	undoStack.length = 0;
 	redoStack.length = 0;
 	markLevelSaved();
@@ -306,6 +379,8 @@ export function resetLevelEditor(): void {
 	levelState.hiddenLayers = [];
 	levelState.activeLayer = 'solid';
 	levelState.selectedIds = [];
+	levelState.elementMode = 'object';
+	levelState.selectedElements = [];
 	levelState.placement = null;
 	undoStack.length = 0;
 	redoStack.length = 0;

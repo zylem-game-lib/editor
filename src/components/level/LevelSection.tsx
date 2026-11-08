@@ -1,3 +1,9 @@
+import type {
+	EntityPlacement,
+	LevelDocument,
+	LevelLayerId,
+	LevelSpawnKind as SpawnKind,
+} from '@zylem/bridge';
 import { type Component, createSignal, For, Show } from 'solid-js';
 import {
 	captureLevelEdit,
@@ -9,7 +15,6 @@ import {
 	setActiveLayer,
 	toggleLevelLayerHidden,
 } from './level-state';
-import type { EntityPlacement, LevelDocument, LevelLayerId, SpawnKind } from './level-types';
 
 const LAYERS: Array<{ id: LevelLayerId; label: string }> = [
 	{ id: 'solid', label: 'Solids' },

@@ -9,7 +9,7 @@
  * are placed from the catalog, and the entity layer adds spawns and triggers.
  */
 
-import type { LevelLayerId } from '../level/level-types';
+import type { LevelLayerId } from '@zylem/bridge';
 
 export type ContextAction =
 	| 'translate'

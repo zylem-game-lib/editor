@@ -15,7 +15,7 @@ export type DebugTools =
 	| 'add'
 	| 'brush'
 	| 'clip'
-	| 'vertex'
+	| 'shear'
 	| 'none';
 
 export interface DebugState {

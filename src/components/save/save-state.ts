@@ -10,8 +10,8 @@
  * Save button that goes nowhere.
  */
 
+import type { LevelDocument } from '@zylem/bridge';
 import { proxy, subscribe } from 'valtio/vanilla';
-
 import { mirrorProxy } from '../common/proxy-mirror';
 import {
 	historyHasUnsavedChanges,
@@ -26,7 +26,6 @@ import {
 	markLevelSaved,
 	snapshotLevelDocument,
 } from '../level/level-state';
-import type { LevelDocument } from '../level/level-types';
 import { buildStageExport, type StageExport } from '../stages/stage-export';
 
 /** What a save hands the host. Plain JSON, so it can be posted to another window. */

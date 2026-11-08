@@ -31,6 +31,7 @@ import {
 import {
 	levelState,
 	playLevelDocument,
+	setLevelElementMode,
 	setLevelPlacement,
 	syncLevelDocument,
 	toggleLevelEditor as toggleLevelMode,
@@ -256,10 +257,18 @@ export function returnToSelect(): void {
 	activateTool('select');
 }
 
-/** Arm draw, clip, or vertex on the solids layer. */
-export function armSolidTool(tool: 'brush' | 'clip' | 'vertex'): void {
+/** Arm draw, clip, or shear on the solids layer. */
+export function armSolidTool(tool: 'brush' | 'clip' | 'shear'): void {
 	levelState.activeLayer = 'solid';
 	activateTool(tool);
+}
+
+/** Pick vertices with the select tool, or go back to picking whole solids. */
+export function toggleVertexMode(): void {
+	const entering = levelState.elementMode !== 'vertex';
+	levelState.activeLayer = 'solid';
+	setLevelElementMode(entering ? 'vertex' : 'object');
+	if (entering) activateTool('select');
 }
 
 /** Arm a spawn marker on the entity layer. The click is recorded in the document. */
@@ -294,7 +303,7 @@ export function toggleLevelEditor(): void {
 	toggleLevelMode();
 	if (!leaving) return;
 	const tool = debugState.tool;
-	if (tool === 'add' || tool === 'brush' || tool === 'clip' || tool === 'vertex') {
+	if (tool === 'add' || tool === 'brush' || tool === 'clip' || tool === 'shear') {
 		activateTool('select');
 	}
 }
