@@ -25,6 +25,7 @@ import {
 	toggleLevelSectorHidden,
 	turnLevelDrawShape,
 } from '../../src/components/level/level-state';
+import { setGridVisible, transformState } from '../../src/components/transform/transform-state';
 
 let syncs: LevelSyncPayload[];
 let stopCapture: () => void = () => {};
@@ -311,5 +312,21 @@ describe('sectors', () => {
 		setLevelSectorTint(true);
 		expect(lastSync()?.showSectorTint).toBe(true);
 		expect(levelState.undoDepth).toBe(0);
+	});
+});
+
+describe('level editing grid', () => {
+	it('turns the grid on when editing starts, and leaves a later hide alone', () => {
+		setLevelEditorActive(false);
+		setGridVisible(false);
+		setLevelEditorActive(true);
+		expect(transformState.gridVisible).toBe(true);
+
+		setGridVisible(false);
+		expect(transformState.gridVisible).toBe(false);
+
+		setLevelEditorActive(false);
+		setLevelEditorActive(true);
+		expect(transformState.gridVisible).toBe(true);
 	});
 });

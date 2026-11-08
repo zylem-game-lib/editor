@@ -23,6 +23,7 @@ import {
 import { proxy } from 'valtio/vanilla';
 import { sendLevelClose, sendLevelPlay, sendLevelSync } from '../../bridge/commands';
 import { mirrorProxy } from '../common/proxy-mirror';
+import { setGridVisible } from '../transform/transform-state';
 import {
 	applyLevelGesture,
 	cloneLevelDocument,
@@ -195,7 +196,10 @@ export function levelRedoLabel(): string | null {
 	return levelState.redoLabel;
 }
 
-/** Enter or leave level mode. Entering shows the current document; it does not reseed from the stage. */
+/**
+ * Enter or leave level mode. Entering shows the current document and turns
+ * the construction grid on; it does not reseed from the stage.
+ */
 export function setLevelEditorActive(active: boolean): void {
 	if (levelState.active === active) return;
 	levelState.active = active;
@@ -204,6 +208,7 @@ export function setLevelEditorActive(active: boolean): void {
 		sendLevelClose();
 		return;
 	}
+	setGridVisible(true);
 	syncLevelDocument();
 }
 
@@ -387,7 +392,7 @@ export function clearLevelSelection(): boolean {
 }
 
 const GESTURE_LABELS: Record<
-	Exclude<LevelGesture['kind'], 'primitive' | 'element-move' | 'transform'>,
+	Exclude<LevelGesture['kind'], 'primitive' | 'element-move' | 'element-delete' | 'transform'>,
 	string
 > = {
 	clip: 'Clip brush',
@@ -419,6 +424,12 @@ export function levelGestureLabel(gesture: LevelGesture): string {
 			const [only] = kinds;
 			return kinds.size === 1 && only ? ELEMENT_LABELS[only] : 'Move elements';
 		}
+		case 'element-delete': {
+			const kind = gesture.elements[0]?.kind;
+			if (kind === 'vertex') return 'Delete vertex';
+			if (kind === 'edge') return 'Delete edge';
+			return 'Delete face';
+		}
 		case 'transform':
 			return TRANSFORM_LABELS[gesture.transform.kind];
 		default:
@@ -441,8 +452,8 @@ function commitEdit(
 }
 
 /** Apply a gesture from the game. A rejected edit syncs the current document so the ghost resets. */
-export function applyIncomingGesture(gesture: LevelGesture): void {
-	if (!levelState.active) return;
+export function applyIncomingGesture(gesture: LevelGesture): boolean {
+	if (!levelState.active) return false;
 	const edit = applyLevelGesture(
 		levelState.document,
 		gesture,
@@ -451,9 +462,10 @@ export function applyIncomingGesture(gesture: LevelGesture): void {
 	);
 	if (!edit) {
 		syncLevelDocument();
-		return;
+		return false;
 	}
 	commitEdit(levelGestureLabel(gesture), edit);
+	return true;
 }
 
 /**

@@ -1,6 +1,7 @@
 import {
 	boxBrush,
 	brushBounds,
+	compileBrush,
 	DEFAULT_DRAW_SHAPE,
 	DEFAULT_SECTOR_SIZE,
 	frameForPlane,
@@ -252,6 +253,23 @@ describe('applyLevelGesture: faces and elements', () => {
 				kind: 'element-move',
 				elements: [corner],
 				delta: { x: -0.5, y: -0.5, z: -0.5 },
+			})
+		).toBeNull();
+	});
+
+	it('deletes a corner and refuses a face that would flatten the box', () => {
+		const cut = applyLevelGesture(document, {
+			kind: 'element-delete',
+			elements: [{ brushId: 'a', kind: 'vertex', planes: [0, TOP, 4] }],
+		});
+		expect(cut?.selectIds).toEqual(['a']);
+		expect(cut?.selectElements).toEqual([]);
+		const vertices = compileBrush(cut!.document.solids[0]!.planes)!.vertices;
+		expect(vertices).toHaveLength(7);
+		expect(
+			applyLevelGesture(document, {
+				kind: 'element-delete',
+				elements: [{ brushId: 'a', kind: 'face', planes: [TOP] }],
 			})
 		).toBeNull();
 	});

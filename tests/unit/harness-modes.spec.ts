@@ -2,6 +2,7 @@
 
 import { getZylemBridge } from '@zylem/bridge';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { debugStore, setDebugStore } from '../../src/components/editor-store';
 import { getDebugTool, setDebugTool } from '../../src/components/entities/entities-state';
 import { levelState, resetLevelEditor } from '../../src/components/level/level-state';
 import {
@@ -9,10 +10,12 @@ import {
 	setArmedType,
 	setEntityCatalog,
 } from '../../src/components/toolbar/catalog-state';
+import { setViewPreset, viewState } from '../../src/components/toolbar/view-state';
 import {
 	applyHarnessMode,
 	HARNESS_MODES,
 	harnessModeProfile,
+	harnessModeState,
 	isHarnessSlot,
 } from '../../src/dev/harness-modes';
 
@@ -83,7 +86,7 @@ describe('harness modes', () => {
 				'rotate',
 				'scale',
 				'duplicate-selection',
-				'delete-selection',
+				'delete',
 				'undo',
 				'redo',
 			],
@@ -239,6 +242,29 @@ describe('applyHarnessMode', () => {
 		expect(levelState.active).toBe(false);
 		expect(getDebugTool()).toBe('none');
 		expect(toolMessages).toEqual(['none']);
+	});
+
+	it('keeps the camera and the debug flag when the mode changes', () => {
+		harnessModeState.id = null;
+		applyHarnessMode('stage-editor');
+		expect(viewState.preset).toBe('free');
+		expect(debugStore.debug).toBe(true);
+
+		setViewPreset('perspective');
+		viewState.camera = true;
+		setDebugStore('debug', false);
+		const { channel } = getZylemBridge();
+		channel.reset();
+		const debugMessages: boolean[] = [];
+		const stop = channel.on('debug:set', ({ enabled }) => debugMessages.push(enabled));
+
+		applyHarnessMode('level-builder-mesh');
+		expect(viewState.preset).toBe('perspective');
+		expect(viewState.camera).toBe(true);
+		expect(debugStore.debug).toBe(false);
+		expect(debugMessages).toEqual([]);
+		expect(levelState.active).toBe(true);
+		stop();
 	});
 
 	it('keeps a tool the next mode still shows', () => {

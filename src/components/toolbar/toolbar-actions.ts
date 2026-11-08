@@ -195,7 +195,7 @@ export function armAddTool(): boolean {
 }
 
 /** A finished click of a tool that one click spends. */
-export type ToolUse = 'place' | 'delete';
+export type ToolUse = 'place' | 'delete' | 'draw';
 
 /**
  * End Add after a placement and Delete after a deletion. The Add face keeps
@@ -215,6 +215,10 @@ export function endToolAfterUse(use: ToolUse): boolean {
 		return true;
 	}
 	if (use === 'delete' && tool === 'delete') {
+		activateTool('none');
+		return true;
+	}
+	if (use === 'draw' && tool === 'brush') {
 		activateTool('none');
 		return true;
 	}

@@ -359,8 +359,9 @@ export class ZylemEditorElement extends HTMLElement {
 	}
 
 	/**
-	 * Apply a harness mode: camera, debug, level editing, and the toolbar profile.
-	 * The gear that chooses the mode lives outside this element.
+	 * Apply a harness mode: level editing and the toolbar profile. The camera
+	 * and the debug flag stay as they are after the first mode. The gear that
+	 * chooses the mode lives outside this element.
 	 */
 	setMode(mode: HarnessModeId) {
 		applyHarnessMode(mode);

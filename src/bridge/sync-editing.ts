@@ -50,9 +50,12 @@ export function applySceneOperation(op: SceneOperationPayload): void {
 
 const PLACING_GESTURES = new Set<LevelGesture['kind']>(['doodad', 'spawn', 'trigger']);
 
-/** Apply a finished level gesture to the document, and spend the Add or Delete click that made it. */
+/** Apply a finished level gesture to the document, and spend the tool that made it. */
 export function applyLevelGesture(gesture: LevelGesture): void {
-	applyIncomingGesture(gesture);
-	if (PLACING_GESTURES.has(gesture.kind)) endToolAfterUse('place');
-	else if (gesture.kind === 'delete') endToolAfterUse('delete');
+	const kept = applyIncomingGesture(gesture);
+	if (!kept) return;
+	if (gesture.kind === 'primitive') endToolAfterUse('draw');
+	else if (PLACING_GESTURES.has(gesture.kind)) endToolAfterUse('place');
+	else if (gesture.kind === 'delete' || gesture.kind === 'element-delete')
+		endToolAfterUse('delete');
 }

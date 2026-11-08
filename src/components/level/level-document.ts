@@ -15,6 +15,7 @@ import {
 	type BrushPlane,
 	type BrushSolid,
 	clipBrush,
+	deleteBrushElements,
 	type EntityPlacement,
 	extrudeFace,
 	type LevelDocument,
@@ -225,6 +226,8 @@ export function applyLevelGesture(
 			return addTrigger(document, gesture.pose, gesture.size, nextId);
 		case 'delete':
 			return deleteItem(document, gesture.id, selectedIds);
+		case 'element-delete':
+			return deleteSolidElements(document, gesture.elements);
 		default:
 			return null;
 	}
@@ -569,6 +572,32 @@ function deleteItem(
 ): LevelEdit | null {
 	const edit = deleteObjects(document, [id]);
 	return edit && { ...edit, selectIds: selectedIds.filter((selected) => selected !== id) };
+}
+
+/** Drop the named elements and rebuild each solid. The solid stays selected. */
+function deleteSolidElements(
+	document: LevelDocument,
+	elements: readonly LevelElementRef[]
+): LevelEdit | null {
+	const byBrush = refsByBrush(elements);
+	if (byBrush.size === 0) return null;
+	const next = new Map<string, BrushPlane[]>();
+	for (const [brushId, refs] of byBrush) {
+		const solid = solidById(document, brushId);
+		const planes = solid
+			? deleteBrushElements(
+					solid.planes,
+					refs.map((ref) => ({ kind: ref.kind, planes: ref.planes }))
+				)
+			: null;
+		if (!planes) return null;
+		next.set(brushId, planes);
+	}
+	return {
+		document: withPlanes(document, next),
+		selectIds: [...byBrush.keys()],
+		selectElements: [],
+	};
 }
 
 function copyData<T>(value: T): T {

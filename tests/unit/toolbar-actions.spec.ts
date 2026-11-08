@@ -409,7 +409,7 @@ describe('a tool spent by what the game reports', () => {
 		expect(levelState.placement).toBeNull();
 	});
 
-	it('keeps a level draw tool after the brush it drew', () => {
+	it('disarms the brush once the mesh is drawn', () => {
 		setLevelEditorActive(true);
 		armSolidTool('brush');
 
@@ -421,7 +421,40 @@ describe('a tool spent by what the game reports', () => {
 			shape: { ...DEFAULT_DRAW_SHAPE },
 		});
 
+		expect(getDebugTool()).toBe('none');
+	});
+
+	it('keeps the brush when the draw does not make a solid', () => {
+		setLevelEditorActive(true);
+		armSolidTool('brush');
+
+		applyLevelGesture({
+			kind: 'primitive',
+			frame: frameForPlane({ x: 0, y: 1, z: 0 }, 0),
+			footprint: { u0: 0, v0: 0, u1: 1, v1: 1 },
+			height: 0,
+			shape: { ...DEFAULT_DRAW_SHAPE },
+		});
+
 		expect(getDebugTool()).toBe('brush');
+	});
+
+	it('disarms Delete once an element is removed, and keeps it when the edit is refused', () => {
+		setLevelEditorActive(true);
+		loadLevelDocument(levelDocument());
+		toggleTool('delete');
+
+		applyLevelGesture({
+			kind: 'element-delete',
+			elements: [{ brushId: 'a', kind: 'face', planes: [2] }],
+		});
+		expect(getDebugTool()).toBe('delete');
+
+		applyLevelGesture({
+			kind: 'element-delete',
+			elements: [{ brushId: 'a', kind: 'vertex', planes: [0, 2, 4] }],
+		});
+		expect(getDebugTool()).toBe('none');
 	});
 });
 

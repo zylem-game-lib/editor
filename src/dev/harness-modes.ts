@@ -1,9 +1,10 @@
 /**
  * Modes for the dev harness.
  *
- * The gear outside the editor picks one. Applying it sets the camera, whether
- * the editor keeps the keyboard, and which toolbar buttons are visible. Tools
- * that do not exist yet are slots: they render with a label and do nothing.
+ * The gear outside the editor picks one. Applying it chooses which toolbar
+ * buttons are visible and whether the editor keeps the keyboard. The first
+ * mode also sets the camera and the debug flag; a later mode leaves those.
+ * Tools that do not exist yet are slots: they render with a label and do nothing.
  */
 
 import type { LevelLayerId } from '@zylem/bridge';
@@ -108,7 +109,7 @@ export const HARNESS_MODES: readonly HarnessModeProfile[] = [
 		'rotate',
 		'scale',
 		'duplicate-selection',
-		'delete-selection',
+		'delete',
 	]),
 	levelBuilderMode('level-builder-navigation', 'Level Builder - Navigation', 'entity', [
 		'navmesh',
@@ -215,19 +216,25 @@ export function harnessCapturesKeys(): boolean {
 }
 
 /**
- * Apply a harness mode to the editor's camera, debug flag, level editor, and
- * toolbar. A level-builder mode opens with nothing armed. Any other mode
+ * Apply a harness mode to the level editor and the toolbar.
+ *
+ * The first mode also sets the camera and the debug flag. Changing mode
+ * leaves both where they are, so a view and a debug choice survive the
+ * switch. A level-builder mode opens with nothing armed. Any other mode
  * releases the armed tool when it has no button for it.
  */
 export function applyHarnessMode(id: HarnessModeId): void {
 	const profile = harnessModeProfile(id);
+	const opening = harnessModeState.id === null;
 	harnessModeState.id = id;
 	harnessModeState.captureKeys = profile.captureKeys;
 
-	setDebugStore('debug', profile.debug);
-	sendDebugEnabled(profile.debug);
-	viewState.camera = profile.cameraLayer;
-	setViewPreset(profile.camera);
+	if (opening) {
+		setDebugStore('debug', profile.debug);
+		sendDebugEnabled(profile.debug);
+		viewState.camera = profile.cameraLayer;
+		setViewPreset(profile.camera);
+	}
 
 	if (profile.level) resetLevelTools();
 	else releaseArmedToolOutside(profile.context);
