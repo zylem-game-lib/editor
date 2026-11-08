@@ -1,9 +1,10 @@
 /**
  * Escape-to-disarm for the editor tools.
  *
- * Placement and the gizmo modes are sticky by design — you place ten crates
- * without re-picking the crate — so there has to be a way out that is not
- * "find the button you pressed and press it again". Escape is that way out.
+ * The gizmo modes and the level draw tools stay active until another tool is
+ * chosen, and Add and Delete wait for the click that spends them, so there has
+ * to be a way out that is not "find the button you pressed and press it
+ * again". Escape is that way out.
  */
 
 import { sendAddType, sendTool } from '../../bridge/editor-bridge';

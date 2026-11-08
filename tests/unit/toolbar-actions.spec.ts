@@ -2,6 +2,7 @@
 
 import { getZylemBridge } from '@zylem/bridge';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { applyLevelGesture, applySceneOperation } from '../../src/bridge/sync-editing';
 import { debugStore, setDebugStore } from '../../src/components/editor-store';
 import {
 	debugState,
@@ -10,6 +11,7 @@ import {
 	setPaused,
 	setSelectedEntityId,
 } from '../../src/components/entities/entities-state';
+import { clearHistory } from '../../src/components/history/history-store';
 import {
 	levelState,
 	resetLevelEditor,
@@ -24,6 +26,9 @@ import {
 import {
 	armAddTool,
 	armAddType,
+	armSolidTool,
+	armSpawnTool,
+	endToolAfterUse,
 	openAddPalette,
 	registerAddPaletteOpener,
 	selectTool,
@@ -77,6 +82,7 @@ beforeEach(() => {
 afterEach(() => {
 	for (const stop of stopCapture) stop();
 	stopCapture = [];
+	clearHistory();
 });
 
 describe('toggleDebug', () => {
@@ -296,6 +302,99 @@ describe('armAddTool', () => {
 
 		expect(catalogState.armedTypeId).toBe('box');
 		expect(getDebugTool()).toBe('add');
+	});
+});
+
+describe('endToolAfterUse', () => {
+	beforeEach(() => {
+		setEntityCatalog([{ id: 'box', label: 'Box' }]);
+	});
+
+	it('disarms Add after a placement and keeps the type on the face', () => {
+		armAddType('box');
+		sent = [];
+
+		expect(endToolAfterUse('place')).toBe(true);
+		expect(getDebugTool()).toBe('none');
+		expect(catalogState.armedTypeId).toBeNull();
+		expect(catalogState.lastTypeId).toBe('box');
+		expect(sentOf('add:type:set').map((m) => m.payload)).toEqual([{ typeId: null }]);
+		expect(sentOf('tool:set').map((m) => m.payload)).toEqual([{ tool: 'none' }]);
+	});
+
+	it('drops the level placement along with Add', () => {
+		setLevelEditorActive(true);
+		armAddType('box');
+
+		endToolAfterUse('place');
+		expect(levelState.placement).toBeNull();
+	});
+
+	it('returns Delete to no tool after a deletion', () => {
+		toggleTool('delete');
+
+		expect(endToolAfterUse('delete')).toBe(true);
+		expect(getDebugTool()).toBe('none');
+	});
+
+	it('only spends the tool that made the edit', () => {
+		setDebugTool('translate');
+		expect(endToolAfterUse('delete')).toBe(false);
+		expect(endToolAfterUse('place')).toBe(false);
+		expect(getDebugTool()).toBe('translate');
+
+		toggleTool('delete');
+		expect(endToolAfterUse('place')).toBe(false);
+		expect(getDebugTool()).toBe('delete');
+	});
+});
+
+describe('a tool spent by what the game reports', () => {
+	it('disarms Add once its placement arrives as a scene operation', () => {
+		setEntityCatalog([{ id: 'box', label: 'Box' }]);
+		armAddType('box');
+
+		applySceneOperation({
+			opId: 'op-create',
+			kind: 'create',
+			label: 'Add Box',
+			entries: [{ uuid: 'entity-1' }],
+		});
+
+		expect(getDebugTool()).toBe('none');
+		expect(catalogState.armedTypeId).toBeNull();
+	});
+
+	it('returns Delete to no tool once its deletion arrives', () => {
+		toggleTool('delete');
+
+		applySceneOperation({
+			opId: 'op-delete',
+			kind: 'delete',
+			label: 'Delete entity',
+			entries: [{ uuid: 'entity-1' }],
+		});
+
+		expect(getDebugTool()).toBe('none');
+	});
+
+	it('disarms a level spawn once it is placed', () => {
+		setLevelEditorActive(true);
+		armSpawnTool();
+
+		applyLevelGesture({ kind: 'spawn', pose: { position: { x: 0, y: 0, z: 0 } } });
+
+		expect(getDebugTool()).toBe('none');
+		expect(levelState.placement).toBeNull();
+	});
+
+	it('keeps a level draw tool after the brush it drew', () => {
+		setLevelEditorActive(true);
+		armSolidTool('brush');
+
+		applyLevelGesture({ kind: 'brush', min: { x: 0, y: 0, z: 0 }, max: { x: 1, y: 1, z: 1 } });
+
+		expect(getDebugTool()).toBe('brush');
 	});
 });
 

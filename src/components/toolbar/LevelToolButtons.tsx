@@ -1,23 +1,53 @@
-import { ToolbarButton } from '@zylem/ui/components';
+import { ToolbarButton, ToolbarDropdownMenu } from '@zylem/ui/components';
 import Box from 'lucide-solid/icons/box';
+import Circle from 'lucide-solid/icons/circle';
 import Crosshair from 'lucide-solid/icons/crosshair';
+import Cylinder from 'lucide-solid/icons/cylinder';
+import Pyramid from 'lucide-solid/icons/pyramid';
 import Scissors from 'lucide-solid/icons/scissors';
 import Spline from 'lucide-solid/icons/spline';
 import SquareDashed from 'lucide-solid/icons/square-dashed';
-import type { Component } from 'solid-js';
+import Torus from 'lucide-solid/icons/torus';
+import { type Component, createSignal } from 'solid-js';
 import { debugStore } from '..';
-import { levelStore } from '../level/level-state';
-import { armSolidTool, armSpawnTool, armTriggerTool } from './toolbar-actions';
+import { debugState } from '../entities/entities-state';
+import { levelState, levelStore } from '../level/level-state';
+import { armSolidTool, armSpawnTool, armTriggerTool, returnToSelect } from './toolbar-actions';
 
-/** Draw a grid-snapped box in the Top or Side view. */
-export const DrawBrushButton: Component = () => (
-	<ToolbarButton
-		label="Draw brush. Top or Side view; the third axis is one grid step."
-		selected={debugStore.tool === 'brush'}
-		onClick={() => armSolidTool('brush')}
-	>
-		<Box class="zylem-icon" />
-	</ToolbarButton>
+const MESH_SHAPES = [
+	{ id: 'box', label: 'Box', icon: Box },
+	{ id: 'wedge', label: 'Wedge', icon: Pyramid },
+	{ id: 'cylinder', label: 'Cylinder', icon: Cylinder },
+	{ id: 'arch', label: 'Arch', icon: Torus },
+] as const;
+
+const TRIGGER_SHAPES = [
+	{ id: 'box', label: 'Box', icon: SquareDashed },
+	{ id: 'sphere', label: 'Sphere', icon: Circle },
+	{ id: 'cylinder', label: 'Cylinder', icon: Cylinder },
+] as const;
+
+const [meshShape, setMeshShape] = createSignal<(typeof MESH_SHAPES)[number]['id']>('box');
+const [triggerShape, setTriggerShape] = createSignal<(typeof TRIGGER_SHAPES)[number]['id']>('box');
+
+/**
+ * Mesh brush. Box draws the existing grid-snapped solid. The other shapes are
+ * listed and remembered, and they do not arm a tool.
+ */
+export const MeshBrushMenu: Component = () => (
+	<ToolbarDropdownMenu
+		items={MESH_SHAPES}
+		value={meshShape()}
+		onChange={(id) => {
+			const shape = id as (typeof MESH_SHAPES)[number]['id'];
+			setMeshShape(shape);
+			if (shape === 'box') {
+				armSolidTool('brush');
+				return;
+			}
+			if (debugState.tool === 'brush') returnToSelect();
+		}}
+	/>
 );
 
 /** Split the selected brush with two clicks. */
@@ -47,7 +77,7 @@ export const VertexBrushButton: Component = () => (
 /** Place a player, enemy, or item marker. The kind is edited in the level panel. */
 export const AddSpawnButton: Component = () => (
 	<ToolbarButton
-		label="Add spawn"
+		label="Spawn point"
 		selected={debugStore.tool === 'add' && levelStore.placement?.kind === 'spawn'}
 		onClick={() => armSpawnTool()}
 	>
@@ -55,13 +85,24 @@ export const AddSpawnButton: Component = () => (
 	</ToolbarButton>
 );
 
-/** Place a named trigger volume. Callbacks stay in game code, bound by that name. */
-export const AddTriggerButton: Component = () => (
-	<ToolbarButton
-		label="Add trigger"
-		selected={debugStore.tool === 'add' && levelStore.placement?.kind === 'trigger'}
-		onClick={() => armTriggerTool()}
-	>
-		<SquareDashed class="zylem-icon" />
-	</ToolbarButton>
+/**
+ * Trigger point. Box places the current cube volume. Sphere and Cylinder are
+ * listed and remembered, and they do not arm a tool.
+ */
+export const TriggerMenu: Component = () => (
+	<ToolbarDropdownMenu
+		items={TRIGGER_SHAPES}
+		value={triggerShape()}
+		onChange={(id) => {
+			const shape = id as (typeof TRIGGER_SHAPES)[number]['id'];
+			setTriggerShape(shape);
+			if (shape === 'box') {
+				armTriggerTool();
+				return;
+			}
+			if (debugState.tool === 'add' && levelState.placement?.kind === 'trigger') {
+				returnToSelect();
+			}
+		}}
+	/>
 );

@@ -7,8 +7,8 @@
  */
 export const addPaletteCSS = `
 /*
- * The toolbar is its own window: one row on a top or bottom dock. A side dock
- * is two columns, headed by the window controls.
+ * The toolbar is its own window: one row on a top or bottom dock. Free, a
+ * grab header of window controls sits above two columns of tool buttons.
  */
 .zylem-toolbar {
 	flex-wrap: nowrap;
@@ -45,41 +45,62 @@ export const addPaletteCSS = `
 	cursor: grab;
 	user-select: none;
 	touch-action: none;
+	/* Stay at the button row's height while docked, so a collapsed strip can shrink. */
+	height: max-content;
+	align-self: flex-start;
 	/* Keep the measured strip at its content size instead of shrinking into
 	   the dock slot, so the zone thickness can grow to match the buttons. */
 	flex-shrink: 0;
 }
 
+/* Free toolbar: grab header, then a two-column tool grid. */
 .zylem-chrome-inline--column {
-	display: grid;
-	grid-template-columns: repeat(2, 34px);
-	gap: 0.5rem;
-	align-content: start;
-	justify-items: stretch;
-	align-self: flex-start;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
 	width: max-content;
-	max-height: 100%;
+	max-height: calc(100vh - 24px);
 	min-height: 0;
 	overflow-x: hidden;
 	overflow-y: auto;
+	/* Extra vertical room so the buttons clear the rounded window corners,
+	   with more space under the last row. */
+	padding: 12px 8px 18px;
 }
 
-/* Let the window controls and tool buttons share one two-column grid. */
-.zylem-chrome-inline--column .floating-panel-controls,
-.zylem-chrome-inline--column .floating-panel-controls > span,
-.zylem-chrome-inline--column .zylem-window-controls,
-.zylem-chrome-inline--column .zylem-toolbar,
+.zylem-chrome-inline:not(.zylem-chrome-inline--column) .floating-panel-controls {
+	margin-left: auto;
+}
+
+/* The header is the drag handle. Controls sit in one row across the window. */
+.zylem-chrome-inline--column .floating-panel-controls {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	align-self: stretch;
+	gap: 6px;
+	width: 100%;
+	margin: 0;
+	padding: 2px 0 8px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+	cursor: grab;
+}
+
+.zylem-chrome-inline--column .floating-panel-controls:active {
+	cursor: grabbing;
+}
+
+.zylem-chrome-inline--column .zylem-toolbar {
+	display: grid;
+	grid-template-columns: repeat(2, 34px);
+	gap: 0.5rem;
+	justify-content: center;
+}
+
 .zylem-chrome-inline--column .zylem-toolbar-group {
 	display: contents;
-}
-
-.zylem-chrome-inline--column .zylem-window-control {
-	width: 34px;
-	height: 34px;
-	position: sticky;
-	top: 0;
-	z-index: 1;
-	background: rgba(8, 22, 38, 0.92);
 }
 
 .zylem-chrome-inline--column .zylem-toolbar-divider {
@@ -120,19 +141,37 @@ export const addPaletteCSS = `
 
 /* ── Transform inspector ─────────────────────────────────────────────────── */
 
-.zylem-transform-row {
-	display: grid;
-	grid-template-columns: 54px repeat(3, minmax(0, 1fr));
-	gap: 5px;
-	align-items: center;
-	margin-bottom: 5px;
+/*
+ * X, Y, and Z stack. Three fields side by side are narrower than a value like
+ * -1.50 once the stepper sits inside the input, so each axis takes the row.
+ */
+.zylem-property-value.zylem-transform-axes {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	overflow: visible;
+	white-space: normal;
 }
 
-.zylem-transform-row__label {
+.zylem-transform-axis {
+	display: grid;
+	grid-template-columns: 12px minmax(0, 1fr);
+	gap: 4px;
+	align-items: center;
+	min-width: 0;
+}
+
+.zylem-transform-axis > span {
 	font-size: 10px;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
+	font-family: var(--zylem-font-family-mono);
 	opacity: 0.65;
+}
+
+.zylem-property-value.zylem-transform-axes .zylem-field-root,
+.zylem-property-value.zylem-transform-axes .zylem-numberfield-group,
+.zylem-property-value.zylem-transform-axes .zylem-numberfield-input {
+	width: 100%;
+	min-width: 0;
 }
 
 .zylem-transform-row__field {
@@ -168,13 +207,6 @@ export const addPaletteCSS = `
 	padding-top: 8px;
 	border-top: 1px solid rgba(255, 255, 255, 0.08);
 	font-size: 11px;
-}
-
-.zylem-transform-snap label {
-	display: inline-flex;
-	gap: 5px;
-	align-items: center;
-	cursor: pointer;
 }
 
 .zylem-transform-hint {

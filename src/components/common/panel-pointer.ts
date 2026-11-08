@@ -12,17 +12,17 @@ export interface PanelPointerDocking {
 	dockedSide: Accessor<DockSide | null>;
 	hideDockPreview: () => void;
 	showDockPreview: (side: DockSide, index: number) => void;
-	getLiveSize: () => PanelSize;
-	detectDockSide: (x: number, y: number, width: number, height: number) => DockSide | null;
+	detectDockSide: (clientX: number, clientY: number) => DockSide | null;
 	detectDockIndex: (side: DockSide, clientX: number, clientY: number) => number;
-	beginDragGhost: (
-		clientX: number,
-		clientY: number
+	beginDrag: (
+		grabX: number,
+		grabY: number
 	) => {
 		position: PanelPosition;
 		size: PanelSize;
 	};
-	endDragGhost: () => void;
+	clampDragPosition: (x: number, y: number) => PanelPosition;
+	endDrag: () => void;
 	beginResize: (direction: string | null) => { size: PanelSize; mode: ResizeMode };
 	resizeDockThickness: (startThickness: number, deltaX: number, deltaY: number) => void;
 	applyDockPreview: () => { side: DockSide; index: number } | null;
@@ -107,33 +107,21 @@ export function createPanelPointer(options: PanelPointerOptions) {
 
 	const handlePointerMove = (event: PointerEvent) => {
 		if (isDragging) {
-			let deltaX = event.clientX - dragStartPos.x;
-			let deltaY = event.clientY - dragStartPos.y;
+			const deltaX = event.clientX - dragStartPos.x;
+			const deltaY = event.clientY - dragStartPos.y;
 
 			if (Math.abs(deltaX) > DRAG_THRESHOLD || Math.abs(deltaY) > DRAG_THRESHOLD) {
 				if (!hasMoved) {
 					hasMoved = true;
-					// Every move happens through the small ghost, docked or not.
-					const fitted = docking.beginDragGhost(event.clientX, event.clientY);
-					dragStartPos = { x: event.clientX, y: event.clientY };
+					// Placed from the press point, so the movement since then still applies.
+					const fitted = docking.beginDrag(dragStartPos.x, dragStartPos.y);
 					panelStartPos = { ...fitted.position };
 					panelStartSize = { ...fitted.size };
-					deltaX = 0;
-					deltaY = 0;
 				}
 			}
 
 			if (hasMoved) {
-				const proposedX = panelStartPos.x + deltaX;
-				const proposedY = panelStartPos.y + deltaY;
-				const liveSize = docking.getLiveSize();
-
-				const dockSide = docking.detectDockSide(
-					proposedX,
-					proposedY,
-					liveSize.width,
-					liveSize.height
-				);
+				const dockSide = docking.detectDockSide(event.clientX, event.clientY);
 				if (dockSide) {
 					docking.showDockPreview(
 						dockSide,
@@ -143,7 +131,7 @@ export function createPanelPointer(options: PanelPointerOptions) {
 					docking.hideDockPreview();
 				}
 
-				setPosition(clampPosition(proposedX, proposedY, liveSize.width, liveSize.height));
+				setPosition(docking.clampDragPosition(panelStartPos.x + deltaX, panelStartPos.y + deltaY));
 			}
 		} else if (isResizing && resizeDirection) {
 			const deltaX = event.clientX - dragStartPos.x;
@@ -195,9 +183,7 @@ export function createPanelPointer(options: PanelPointerOptions) {
 			if (docking.applyDockPreview()) {
 				// Docking state and callbacks are handled by the shared controller.
 			} else {
-				// Drop the ghost: restores the pre-drag size and commits
-				// position/size through the controller callbacks.
-				docking.endDragGhost();
+				docking.endDrag();
 			}
 		}
 

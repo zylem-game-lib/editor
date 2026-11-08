@@ -16,9 +16,13 @@
  *
  * Undo and redo keep Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z from `history-shortcuts`,
  * behind their own option; they are listed here so the tooltips can show them.
+ *
+ * Cmd/Ctrl+S saves, but only once a host has turned saving on. Until then it
+ * stays the browser's.
  */
 
 import { isEditableTarget } from '../history/history-shortcuts';
+import { canSave, requestSave, saveState } from '../save/save-state';
 import {
 	armAddTool,
 	openAddPalette,
@@ -56,6 +60,7 @@ export const TOOLBAR_SHORTCUTS = {
 	undo: { key: 'z', mod: true },
 	redo: { key: 'z', mod: true, shift: true },
 	playback: { key: 'Enter', mod: true },
+	save: { key: 's', mod: true },
 } as const satisfies Record<string, ShortcutChord>;
 
 export type ToolbarShortcutId = keyof typeof TOOLBAR_SHORTCUTS;
@@ -74,6 +79,7 @@ const TOOLBAR_ACTIONS = [
 	'snap',
 	'grid',
 	'playback',
+	'save',
 ] as const satisfies readonly ToolbarShortcutId[];
 
 export type ToolbarAction = (typeof TOOLBAR_ACTIONS)[number];
@@ -180,6 +186,10 @@ export function runToolbarAction(action: ToolbarAction): boolean {
 		case 'playback':
 			togglePlayback();
 			return true;
+		case 'save':
+			if (!canSave()) return false;
+			void requestSave();
+			return true;
 	}
 }
 
@@ -231,7 +241,14 @@ export function installToolbarShortcuts(options: ToolbarShortcutOptions = {}): (
 	const onKeyDown = (event: KeyboardEvent) => {
 		const action = classifyToolbarShortcut(event);
 		if (!action) return;
-		if (isEditableTarget(event) || isOverlayTarget(event)) return;
+		if (action === 'save') {
+			// The browser's until a host turns saving on. A chord cannot be typed, so
+			// once it is on it saves from a text field or a menu too, where the
+			// browser would otherwise open its Save Page dialog.
+			if (!saveState.enabled) return;
+		} else if (isEditableTarget(event) || isOverlayTarget(event)) {
+			return;
+		}
 		if (!isActive()) return;
 
 		/*

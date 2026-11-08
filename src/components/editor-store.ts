@@ -8,13 +8,17 @@ import { createStore } from 'solid-js/store';
 import { subscribe } from 'valtio/vanilla';
 import {
 	createEmptyDockRegistry,
+	DOCK_SIDES,
 	type DockPanelId,
 	type DockRegistry,
 	type DockSide,
 	findDockedSide,
 	insertIntoZone,
+	MAIN_PANEL_ID,
 	normalizeDockRegistry,
+	placeInDock,
 	removeFromZones,
+	repairDockRegistry,
 	TOOLBAR_PANEL_ID,
 	TOOLBAR_STRIP_THICKNESS,
 } from './common/dock-layout';
@@ -24,9 +28,7 @@ import { type DebugTools, debugState } from './entities/entities-state';
 const STORAGE_KEY = 'zylem-editor-state';
 
 /** Registry id of the main editor panel; detached sections use their panel id. */
-export const MAIN_PANEL_ID = 'main';
-
-export { TOOLBAR_PANEL_ID };
+export { MAIN_PANEL_ID, TOOLBAR_PANEL_ID };
 
 // Default panel order
 const DEFAULT_PANEL_ORDER = [
@@ -252,9 +254,13 @@ export const isPanelDetached = (panelId: string): boolean => {
 
 // Dock registry actions. Rects are derived from this by `computeDockLayout`,
 // so moving a panel between zones relayouts every other docked panel too.
-export const dockPanelToSide = (panelId: DockPanelId, side: DockSide, index?: number) => {
-	setDebugStore('docks', insertIntoZone(debugStore.docks, panelId, side, index));
+/** Place a window in a zone it is allowed to use. An illegal pair leaves the registry alone. */
+export const dockPanelToSide = (panelId: DockPanelId, side: DockSide, index?: number): boolean => {
+	const placement = placeInDock(debugStore.docks, panelId, side, index);
+	if (placement.registry === debugStore.docks) return false;
+	setDebugStore('docks', placement.registry);
 	persistState();
+	return true;
 };
 
 export const undockPanelFromSides = (panelId: DockPanelId) => {
@@ -275,23 +281,19 @@ export const getDockedSide = (panelId: DockPanelId): DockSide | null =>
 const BUILTIN_DOCK_DEFAULTS: EditorDockDefaults = {
 	top: [TOOLBAR_PANEL_ID],
 	right: [MAIN_PANEL_ID],
-	bottom: ['console'],
+	single: ['console'],
 };
 
 /** Host docks keep their edges. A missing toolbar is added on top. */
 const withToolbarDock = (defaults: EditorDockDefaults): EditorDockDefaults => {
-	const placed = (['left', 'right', 'top', 'bottom'] as const).some((side) =>
-		defaults[side]?.includes(TOOLBAR_PANEL_ID)
-	);
+	const placed = DOCK_SIDES.some((side) => defaults[side]?.includes(TOOLBAR_PANEL_ID));
 	if (placed) return defaults;
 	return { ...defaults, top: [TOOLBAR_PANEL_ID, ...(defaults.top ?? [])] };
 };
 
 /** A host that omits the main panel still gets it on the right. */
 const withMainDock = (defaults: EditorDockDefaults): EditorDockDefaults => {
-	const placed = (['left', 'right', 'top', 'bottom'] as const).some((side) =>
-		defaults[side]?.includes(MAIN_PANEL_ID)
-	);
+	const placed = DOCK_SIDES.some((side) => defaults[side]?.includes(MAIN_PANEL_ID));
 	if (placed) return defaults;
 	return { ...defaults, right: [MAIN_PANEL_ID, ...(defaults.right ?? [])] };
 };
@@ -310,16 +312,15 @@ const withToolbarStripThickness = (docks: DockRegistry): DockRegistry => {
  * Seed a host's preferred dock layout the first time the editor runs.
  *
  * Sections named here are pulled out of the accordion first, since only a
- * detached section can hold a dock slot. Guarded by `dockDefaultsApplied` so a
- * returning user's own layout is never overwritten. The toolbar is always
- * included: a host that omits it gets the toolbar on top.
+ * detached section can hold a dock slot. A section listed on an old edge is
+ * repaired into `single`. Guarded by `dockDefaultsApplied` so a returning
+ * user's own layout is never overwritten. The toolbar is always included: a
+ * host that omits it gets the toolbar on top.
  */
 const hasSavedLayout = (): boolean => {
 	if (debugStore.panelPosition) return true;
 	if (Object.keys(debugStore.detachedPanels).length > 0) return true;
-	return (['left', 'right', 'top', 'bottom'] as const).some(
-		(side) => debugStore.docks[side].panels.length > 0
-	);
+	return DOCK_SIDES.some((side) => debugStore.docks[side].panels.length > 0);
 };
 
 export const applyDefaultDocks = (defaults: EditorDockDefaults | undefined) => {
@@ -337,7 +338,7 @@ export const applyDefaultDocks = (defaults: EditorDockDefaults | undefined) => {
 	const resolved = withMainDock(withToolbarDock(defaults ?? BUILTIN_DOCK_DEFAULTS));
 	let docks = createEmptyDockRegistry();
 
-	for (const side of ['left', 'right', 'top', 'bottom'] as const) {
+	for (const side of DOCK_SIDES) {
 		for (const panelId of resolved[side] ?? []) {
 			if (panelId !== MAIN_PANEL_ID && panelId !== TOOLBAR_PANEL_ID && !isPanelDetached(panelId)) {
 				setDebugStore('detachedPanels', panelId, {
@@ -354,7 +355,9 @@ export const applyDefaultDocks = (defaults: EditorDockDefaults | undefined) => {
 		}
 	}
 
-	setDebugStore('docks', withToolbarStripThickness(docks));
+	// Repair after insert so a host `bottom: ['console']` lands in `single`
+	// without releasing a bottom toolbar the host also asked for.
+	setDebugStore('docks', withToolbarStripThickness(repairDockRegistry(docks)));
 	setDebugStore('dockDefaultsApplied', true);
 	setDebugStore('toolbarSeeded', true);
 	persistState();
@@ -372,7 +375,7 @@ export const seedToolbarDock = () => {
 
 	if (!findDockedSide(debugStore.docks, TOOLBAR_PANEL_ID)) {
 		const docks = withToolbarStripThickness(
-			insertIntoZone(debugStore.docks, TOOLBAR_PANEL_ID, 'top', 0)
+			placeInDock(debugStore.docks, TOOLBAR_PANEL_ID, 'top').registry
 		);
 		setDebugStore('docks', docks);
 	}

@@ -6,11 +6,7 @@ import { toggleDebug } from './toolbar-actions';
 import { withShortcut } from './toolbar-shortcuts';
 
 export const DebugButton: Component = () => (
-	<ToolbarButton
-		label={withShortcut('Debug', 'debug')}
-		selected={debugStore.debug}
-		onClick={toggleDebug}
-	>
+	<ToolbarButton label={withShortcut('Debug', 'debug')} on={debugStore.debug} onClick={toggleDebug}>
 		<Bug class="zylem-icon" />
 	</ToolbarButton>
 );

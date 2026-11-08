@@ -10,13 +10,20 @@ import { EditorProvider } from '../components/EditorContext';
 import type { EditorDockDefaults } from '../components/editor-store';
 import { entityPreviewCSS } from '../components/entities/entity-preview.css';
 import { installHistoryShortcuts } from '../components/history/history-shortcuts';
+import {
+	connectSaveTracking,
+	EDITOR_SAVE_EVENT,
+	type EditorSave,
+	type EditorSaveEventDetail,
+	setSaveEnabled,
+} from '../components/save/save-state';
 import { addPaletteCSS } from '../components/toolbar/add-palette.css';
 import { installToolShortcuts } from '../components/toolbar/tool-shortcuts';
 import { installToolbarShortcuts } from '../components/toolbar/toolbar-shortcuts';
 import { installTransformToolGuard } from '../components/toolbar/transform-tool-guard';
-import { applyHarnessMode, harnessCapturesKeys, type HarnessModeId } from '../dev/harness-modes';
 import { connectViewState } from '../components/toolbar/view-state';
 import { connectTransformState } from '../components/transform/transform-state';
+import { applyHarnessMode, type HarnessModeId, harnessCapturesKeys } from '../dev/harness-modes';
 
 /**
  * Configuration options for the ZylemEditorElement
@@ -70,22 +77,34 @@ export interface ZylemEditorConfig {
 	enableEscapeShortcut?: boolean;
 	/**
 	 * Whether the toolbar's keys are installed: Q/W/E/R for the tools, A to arm
-	 * placement, X for delete, D/S/G for debug, snap and grid, and Cmd/Ctrl+Enter
-	 * for play/pause. They are live while the editor panel is open, whether the
-	 * simulation is playing or paused, and are stopped before the game's own key
-	 * bindings see them; with the panel closed the keys are the game's.
+	 * placement, X for delete, D/S/G for debug, snap and grid, Cmd/Ctrl+Enter for
+	 * play/pause, and Cmd/Ctrl+S to save when `enableSave` is on. They are live
+	 * while the editor panel is open, whether the simulation is playing or
+	 * paused, and are stopped before the game's own key bindings see them; with
+	 * the panel closed the keys are the game's.
 	 *
 	 * Disable it to bind the keys yourself; the actions are exported as
 	 * `selectTool`, `selectTransformTool`, `togglePlayback` and friends.
 	 * @default true
 	 */
 	enableToolbarShortcuts?: boolean;
+	/**
+	 * Whether the toolbar shows Save and Cmd/Ctrl+S saves. Each save fires
+	 * `zylem-editor-save` (`EDITOR_SAVE_EVENT`) on this element with the stage
+	 * and level document; the host stores them. Also set by the `enable-save`
+	 * attribute. Off by default, so a host that never listens shows no Save.
+	 * @default false
+	 */
+	enableSave?: boolean;
 }
 
 const normalizeLauncherMode = (value: unknown): EditorLauncherMode =>
 	value === 'hidden' ? 'hidden' : 'floating';
 
-/** Tolerant parse so a malformed attribute degrades to "no defaults". */
+/**
+ * Tolerant parse so a malformed attribute degrades to "no defaults".
+ * `single` is the section band; a section listed on `bottom` is repaired later.
+ */
 const normalizeDockDefaults = (value: unknown): EditorDockDefaults | undefined => {
 	let source = value;
 	if (typeof source === 'string') {
@@ -190,12 +209,19 @@ export class ZylemEditorElement extends HTMLElement {
 	 * Observed attributes for the web component
 	 */
 	static get observedAttributes() {
-		return ['include-styles', 'launcher-mode', 'default-docks'];
+		return ['include-styles', 'launcher-mode', 'default-docks', 'enable-save'];
 	}
 
-	attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
+	attributeChangedCallback(name: string, _oldValue: string | null, newValue: string | null) {
 		if (name === 'include-styles') {
 			this._config.includeStyles = newValue !== 'false';
+			return;
+		}
+
+		if (name === 'enable-save') {
+			// Removing the attribute turns saving off; `enable-save="false"` does too.
+			this._config.enableSave = newValue !== null && newValue !== 'false';
+			if (this._initialized) setSaveEnabled(this._config.enableSave);
 			return;
 		}
 
@@ -243,6 +269,7 @@ export class ZylemEditorElement extends HTMLElement {
 			// The gizmo mode buttons hide with the selection, so an active tool has to
 			// be released with it or it becomes unreachable.
 			installTransformToolGuard(),
+			this.connectSaving(),
 		];
 
 		// Add bundled styles unless explicitly disabled
@@ -272,6 +299,38 @@ export class ZylemEditorElement extends HTMLElement {
 			),
 			div
 		);
+	}
+
+	private connectSaving(): () => void {
+		setSaveEnabled(this._config.enableSave === true);
+		const disconnect = connectSaveTracking((save) => this.dispatchSave(save));
+		return () => {
+			disconnect();
+			setSaveEnabled(false);
+		};
+	}
+
+	/** Fire the save event and wait for whatever the listeners handed to `waitUntil`. */
+	private async dispatchSave(save: EditorSave): Promise<void> {
+		const pending: PromiseLike<unknown>[] = [];
+		let dispatching = true;
+		this.dispatchEvent(
+			new CustomEvent<EditorSaveEventDetail>(EDITOR_SAVE_EVENT, {
+				bubbles: true,
+				composed: true,
+				detail: {
+					save,
+					waitUntil: (promise) => {
+						if (!dispatching) {
+							throw new Error('waitUntil() must be called while the save event is dispatched.');
+						}
+						pending.push(promise);
+					},
+				},
+			})
+		);
+		dispatching = false;
+		await Promise.all(pending);
 	}
 
 	openPanel() {

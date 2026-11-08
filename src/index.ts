@@ -63,6 +63,16 @@ export {
 	snapshotLevelDocument,
 } from './components/level/level-state';
 export type { LevelDocument } from './components/level/level-types';
+// Saving. A host turns it on with `enableSave` and listens for EDITOR_SAVE_EVENT.
+export {
+	EDITOR_SAVE_EVENT,
+	type EditorSave,
+	type EditorSaveEventDetail,
+	requestSave,
+	type SaveState,
+	type SaveStatus,
+	saveState,
+} from './components/save/save-state';
 export {
 	buildStageExport,
 	copyStageExport,

@@ -1,5 +1,4 @@
 import { LayerProvider } from '@zylem/ui/components';
-import Eye from 'lucide-solid/icons/eye';
 import PanelTop from 'lucide-solid/icons/panel-top';
 import {
 	type Component,
@@ -13,6 +12,7 @@ import {
 } from 'solid-js';
 import { render } from 'solid-js/web';
 import {
+	allowedDockSides,
 	applyDefaultDocks,
 	computeDockLayout,
 	type DockPanelId,
@@ -58,9 +58,10 @@ export interface EditorController {
 	/** Whether either editor window is showing; collapsed still counts, closed does not. */
 	isPanelOpen: () => boolean;
 	/**
-	 * Dock a panel to a viewport edge, or pass `null` to float it.
-	 * Defaults to the main editor panel; any other id is a section, which is
-	 * detached from the accordion first.
+	 * Dock a window, or pass `null` to float it.
+	 * The toolbar accepts `top` and `bottom`, the main panel `left` and `right`,
+	 * and a section `single`. Any other pair is ignored. A section is detached
+	 * from the accordion before it takes the band.
 	 */
 	dockPanel: (side: DockSide | null, panelId?: DockPanelId) => void;
 }
@@ -167,11 +168,6 @@ export const Editor: Component<EditorProps> = (props) => {
 		if (levelStore.active) setPanelOpen(true);
 	});
 
-	// Neither debug nor build: the panel closes. One of them still on leaves a manual close alone.
-	createEffect(() => {
-		if (!debugStore.debug && !levelStore.active) setPanelOpen(false);
-	});
-
 	const closeEditor = () => {
 		setToolbarOpen(false);
 		setPanelOpen(false);
@@ -257,6 +253,8 @@ export const Editor: Component<EditorProps> = (props) => {
 		togglePanel: toggleEditor,
 		isPanelOpen: editorOpen,
 		dockPanel: (side, panelId = MAIN_PANEL_ID) => {
+			if (side !== null && !allowedDockSides(panelId).includes(side)) return;
+
 			if (panelId === TOOLBAR_PANEL_ID) {
 				setToolbarOpen(true);
 				setToolbarDockRequest((previous) => ({
@@ -269,8 +267,7 @@ export const Editor: Component<EditorProps> = (props) => {
 
 			if (panelId === MAIN_PANEL_ID) {
 				// The panel owns the undock/restore path, so route through it.
-				// With neither debug nor build on, the window stays closed; the request applies on the next open.
-				if (sidePanelAllowed()) setPanelOpen(true);
+				setPanelOpen(true);
 				setPanelDockRequest((previous) => ({
 					side,
 					nonce: (previous?.nonce ?? 0) + 1,
@@ -337,25 +334,18 @@ export const Editor: Component<EditorProps> = (props) => {
 						collapsed={debugStore.toolbarCollapsed}
 						onCollapsedChange={setToolbarCollapsed}
 						onClose={() => setToolbarOpen(false)}
-						onRestoreSibling={
-							panelOpen() || !sidePanelAllowed() ? undefined : () => setPanelOpen(true)
-						}
-						restoreSiblingLabel="Show panels"
-						restoreSiblingIcon={<Eye size={11} strokeWidth={2.5} aria-hidden="true" />}
 						dockRequest={toolbarDockRequest}
 					>
 						{(body) => (
 							<Toolbar
-								orientation={
-									body.dockedSide() === 'left' || body.dockedSide() === 'right' ? 'column' : 'row'
-								}
-								dockedSide={body.dockedSide}
-								onDock={body.onDock}
+								orientation={body.dockedSide() ? 'row' : 'column'}
+								panelsOpen={panelOpen()}
+								onTogglePanels={() => setPanelOpen(!panelOpen())}
 							/>
 						)}
 					</FloatingPanel>
 				</Show>
-				<Show when={panelOpen() && sidePanelAllowed()}>
+				<Show when={panelOpen()}>
 					<FloatingPanel
 						panelId={MAIN_PANEL_ID}
 						label="Panels"

@@ -10,6 +10,12 @@ import {
 	setPaused,
 	setSelectedEntityId,
 } from '../../src/components/entities/entities-state';
+import { clearHistory, pushOperation } from '../../src/components/history/history-store';
+import {
+	connectSaveTracking,
+	type EditorSave,
+	setSaveEnabled,
+} from '../../src/components/save/save-state';
 import { stageState } from '../../src/components/stages/stage-state';
 import {
 	catalogState,
@@ -138,6 +144,12 @@ describe('classifyToolbarShortcut', () => {
 		expect(classifyToolbarShortcut(keydown({ key: 'b' }))).toBe('build');
 		expect(classifyToolbarShortcut(keydown({ key: 's' }))).toBe('snap');
 		expect(classifyToolbarShortcut(keydown({ key: 'g' }))).toBe('grid');
+	});
+
+	it('maps save to the S chord and leaves bare S to snap', () => {
+		expect(classifyToolbarShortcut(keydown({ key: 's', metaKey: true }))).toBe('save');
+		expect(classifyToolbarShortcut(keydown({ key: 's', ctrlKey: true }))).toBe('save');
+		expect(classifyToolbarShortcut(keydown({ key: 's' }))).toBe('snap');
 	});
 
 	it('maps play/pause to the Enter chord only', () => {
@@ -426,6 +438,40 @@ describe('installToolbarShortcuts', () => {
 
 		expect(press({ key: 'w', metaKey: true })).toBe(false);
 		expect(getDebugTool()).toBe('none');
+	});
+
+	it('leaves Cmd/Ctrl+S to the browser until a host turns saving on', () => {
+		uninstall = installToolbarShortcuts();
+
+		expect(press({ key: 's', metaKey: true })).toBe(false);
+		expect(transformState.enabled).toBe(true);
+	});
+
+	it('saves on Cmd/Ctrl+S once saving is on, from a text field too', () => {
+		const saves: EditorSave[] = [];
+		clearHistory();
+		stopCapture.push(
+			connectSaveTracking(async (save) => {
+				saves.push(save);
+			}),
+			() => setSaveEnabled(false)
+		);
+		setSaveEnabled(true);
+		uninstall = installToolbarShortcuts();
+
+		// Claimed with nothing to save, like any shortcut whose button is disabled.
+		expect(press({ key: 's', metaKey: true })).toBe(true);
+		expect(saves).toHaveLength(0);
+
+		pushOperation({ opId: 'moved', kind: 'transform', label: 'Move crate', entries: [] });
+		const input = document.createElement('input');
+		document.body.append(input);
+		const event = keydown({ key: 's', ctrlKey: true });
+		input.dispatchEvent(event);
+
+		expect(event.defaultPrevented).toBe(true);
+		expect(saves).toHaveLength(1);
+		expect(transformState.enabled).toBe(true);
 	});
 
 	it('installs nothing when disabled', () => {

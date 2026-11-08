@@ -19,7 +19,7 @@ import { subscribe } from 'valtio/vanilla';
  * snapshot throws on the next update. `structuredClone` is out too — it rejects
  * proxy objects outright.
  */
-function copy<T>(value: T): T {
+export function copy<T>(value: T): T {
 	if (Array.isArray(value)) {
 		return value.map((entry) => copy(entry)) as unknown as T;
 	}

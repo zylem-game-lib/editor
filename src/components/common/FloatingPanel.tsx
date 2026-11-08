@@ -1,6 +1,14 @@
 import { useLayer } from '@zylem/ui/components';
-import { type Component, createEffect, createSignal, onCleanup, onMount, Show } from 'solid-js';
-import { debugStore, MAIN_PANEL_ID, setDockThickness, TOOLBAR_PANEL_ID } from '../editor-store';
+import {
+	type Component,
+	createEffect,
+	createSignal,
+	onCleanup,
+	onMount,
+	Show,
+	untrack,
+} from 'solid-js';
+import { debugStore, MAIN_PANEL_ID, setDockThickness } from '../editor-store';
 import { isHorizontalSide } from './dock-layout';
 import type { DockRequest, FloatingPanelBody, FloatingPanelProps } from './floating-panel-types';
 import { PANEL_RANK } from './layer-ranks';
@@ -14,7 +22,7 @@ export type { DockRequest, FloatingPanelBody, FloatingPanelProps };
 /**
  * FloatingPanel - A draggable and resizable container component.
  * Can be moved by dragging the title bar and resized from edges/corners.
- * Dragging it past a viewport edge docks it; see `panel-docking`.
+ * Dragging it to a viewport edge docks it; see `panel-docking`.
  */
 export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 	const layer = useLayer('panel', PANEL_RANK.mainPanel);
@@ -48,6 +56,7 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 		panelRef: () => panelRef,
 		onPositionCommit: (nextPosition) => props.onMove?.(nextPosition),
 		onSizeCommit: (nextSize) => props.onResize?.(nextSize),
+		hugContent: !!props.hugContent,
 	});
 
 	const pointer = createPanelPointer({
@@ -64,7 +73,9 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 	createEffect(() => {
 		const request = props.dockRequest?.();
 		if (!request || (request.panelId && request.panelId !== panelId)) return;
-		docking.dockTo(request.side);
+		// dockTo reads the registry. Tracking that here would re-apply this
+		// request on every later layout change, including a release.
+		untrack(() => docking.dockTo(request.side));
 	});
 
 	onMount(() => {
@@ -96,17 +107,16 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 		window.removeEventListener('pointerup', pointer.handlePointerUp);
 	});
 
-	const useAutoWidth = () => !docking.isMoving() && !!props.hugContent && !docking.dockedSide();
+	const useAutoWidth = () => !!props.hugContent && !docking.dockedSide();
 	const sideDocked = () => {
 		const side = docking.dockedSide();
 		return side === 'left' || side === 'right';
 	};
 	const useAutoHeight = () =>
-		!docking.isMoving() &&
-		(useAutoWidth() ||
-			(isCollapsed() && !props.fitDockThickness) ||
-			(docking.isAutoHeight() && !docking.dockedSide()) ||
-			(!!props.fitDockThickness && sideDocked()));
+		useAutoWidth() ||
+		(isCollapsed() && !props.fitDockThickness) ||
+		(docking.isAutoHeight() && !docking.dockedSide()) ||
+		(!!props.fitDockThickness && sideDocked());
 	const renderBody = () =>
 		typeof props.children === 'function'
 			? props.children({
@@ -135,16 +145,6 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 				// The editor overlay root is pointer-events: none; re-enable
 				// interaction for the panel itself.
 				'pointer-events': 'auto',
-				// While being moved the panel is just a transparent outline.
-				...(docking.isMoving()
-					? {
-							background: 'transparent',
-							'backdrop-filter': 'none',
-							'-webkit-backdrop-filter': 'none',
-							'box-shadow': 'none',
-							border: '2px solid var(--zylem-color-primary, #61a6e8)',
-						}
-					: {}),
 			}}
 		>
 			<DockPreviewOverlay rect={docking.getDockPreviewRect()} rank={PANEL_RANK.mainDockPreview} />
@@ -154,14 +154,13 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 				title={props.title}
 				hideTitle={props.hideTitle}
 				dockedSide={docking.dockedSide}
-				isMoving={docking.isMoving}
 				isCollapsed={isCollapsed}
 				onCollapse={props.collapsible ? toggleCollapse : undefined}
 				onClose={props.onClose}
 				onRestoreSibling={props.onRestoreSibling}
 				restoreSiblingLabel={props.restoreSiblingLabel}
 				restoreSiblingIcon={props.restoreSiblingIcon}
-				dockInChrome={panelId !== TOOLBAR_PANEL_ID}
+				panelId={panelId}
 				onDock={(side) => docking.dockTo(side)}
 				onTitlePointerDown={pointer.handleTitleBarPointerDown}
 				onChromeRef={(element) => {

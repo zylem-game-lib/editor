@@ -25,6 +25,7 @@ export type ContextAction =
 	| 'clip-brush'
 	| 'vertex-brush'
 	| 'add-doodad'
+	| 'add-object'
 	| 'add-spawn'
 	| 'add-trigger'
 	| 'delete'

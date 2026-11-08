@@ -5,11 +5,13 @@
  */
 
 import { createContext, type JSX, onCleanup, useContext } from 'solid-js';
-import { createStore, reconcile } from 'solid-js/store';
+import { createStore, reconcile, unwrap } from 'solid-js/store';
 import { subscribe } from 'valtio/vanilla';
-import type { StageStateInterface } from '../types';
+import type { BaseEntityInterface, StageStateInterface } from '../types';
+import { copy } from './common/proxy-mirror';
 import { type DebugState, debugState } from './entities/entities-state';
 import { type GameState, gameState } from './game/game-state';
+import { createEntityMirror } from './stages/entity-mirror';
 import { stageState } from './stages/stage-state';
 
 export interface EditorContextValue {
@@ -31,7 +33,13 @@ export function EditorProvider(props: EditorProviderProps) {
 	// Create SolidJS stores from valtio proxies
 	const [debug, setDebug] = createStore<DebugState>({ ...debugState });
 	const [game, setGame] = createStore<GameState>({ ...gameState });
-	const [stage, setStage] = createStore<StageStateInterface>({ ...stageState });
+	// The entity list starts as a copy: a store holding the live valtio array
+	// would have the reconcile below write straight into it.
+	const [stage, setStage] = createStore<StageStateInterface>({
+		...stageState,
+		entities: copy(stageState.entities),
+	});
+	const mirrorEntities = createEntityMirror<Partial<BaseEntityInterface>>();
 
 	// Sync valtio → SolidJS
 	const unsubDebug = subscribe(debugState, () => {
@@ -106,7 +114,10 @@ export function EditorProvider(props: EditorProviderProps) {
 		// Key by uuid so reconcile matches entities by identity rather than
 		// array position; without it, removing one entity re-diffs every entry
 		// after it.
-		setStage('entities', reconcile(stageState.entities, { key: 'uuid' }));
+		setStage(
+			'entities',
+			reconcile(mirrorEntities(stageState.entities, unwrap(stage.entities)), { key: 'uuid' })
+		);
 	});
 
 	onCleanup(() => {

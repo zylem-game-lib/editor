@@ -1,28 +1,33 @@
 import { ToolbarButton } from '@zylem/ui/components';
 import Box from 'lucide-solid/icons/box';
+import BrickWall from 'lucide-solid/icons/brick-wall';
 import Image from 'lucide-solid/icons/image';
 import Link from 'lucide-solid/icons/link';
-import Map from 'lucide-solid/icons/map';
-import Pentagon from 'lucide-solid/icons/pentagon';
+import MapIcon from 'lucide-solid/icons/map';
+import MoveRight from 'lucide-solid/icons/move-right';
+import Paintbrush from 'lucide-solid/icons/paintbrush';
 import RectangleHorizontal from 'lucide-solid/icons/rectangle-horizontal';
 import Shield from 'lucide-solid/icons/shield';
-import { type Accessor, type Component, For, Show } from 'solid-js';
-import { DockMenu } from '../common/DockMenu';
-import type { DockSide } from '../common/dock-layout';
+import SplinePointer from 'lucide-solid/icons/spline-pointer';
+import SprayCan from 'lucide-solid/icons/spray-can';
+import Square from 'lucide-solid/icons/square';
+import UnfoldHorizontal from 'lucide-solid/icons/unfold-horizontal';
+import { type Component, For, Show } from 'solid-js';
 import {
+	HARNESS_SLOT_LABELS,
 	type HarnessContextAction,
 	type HarnessMainAction,
 	type HarnessSlotId,
-	HARNESS_SLOT_LABELS,
 	harnessModeProfile,
 	harnessModeStore,
 	isHarnessSlot,
 } from '../../dev/harness-modes';
 import { debugStore } from '../editor-store';
 import { levelStore } from '../level/level-state';
+import { saveStore } from '../save/save-state';
 import { AddButton } from './AddButton';
 import { BuildButton } from './BuildButton';
-import { CameraButton } from './CameraButton';
+import { CameraMenu } from './CameraMenu';
 import { contextActionStartsGroup, contextToolbarActions } from './context-actions';
 import { DebugButton } from './DebugButton';
 import { DeleteButton } from './DeleteButton';
@@ -30,12 +35,14 @@ import { GridButton, SnapButton } from './GridButton';
 import { RedoButton, UndoButton } from './HistoryButtons';
 import {
 	AddSpawnButton,
-	AddTriggerButton,
 	ClipBrushButton,
-	DrawBrushButton,
+	MeshBrushMenu,
+	TriggerMenu,
 	VertexBrushButton,
 } from './LevelToolButtons';
+import { PanelsButton } from './PanelsButton';
 import { PlayPauseButton } from './PlayPauseButton';
+import { SaveButton } from './SaveButton';
 import { SelectButton } from './SelectButton';
 import { RotateButton, ScaleButton, TranslateButton } from './TransformButtons';
 import {
@@ -49,36 +56,52 @@ import { viewStore } from './view-state';
 
 const DEFAULT_MAIN: readonly HarnessMainAction[] = ['select', 'build', 'camera', 'debug', 'play'];
 
-/** Exclusive editing stays Select. The other main buttons are layers or session toggles. */
-export const MainToolbar: Component<{
-	dockedSide: Accessor<DockSide | null>;
-	onDock: (side: DockSide) => void;
-}> = (props) => {
-	const tools = (): readonly HarnessMainAction[] => {
-		const id = harnessModeStore.id;
-		if (!id) return DEFAULT_MAIN;
-		return harnessModeProfile(id).main ?? DEFAULT_MAIN;
-	};
-	const show = (action: HarnessMainAction) => tools().includes(action);
+const mainActions = (): readonly HarnessMainAction[] => {
+	const id = harnessModeStore.id;
+	if (!id) return DEFAULT_MAIN;
+	return harnessModeProfile(id).main ?? DEFAULT_MAIN;
+};
 
+/** First in every mode, so Save stays put whatever the mode's profile lists. */
+const SaveGroup: Component = () => (
+	<Show when={saveStore.enabled}>
+		<div class="zylem-toolbar-group">
+			<SaveButton />
+		</div>
+		<Show when={mainActions().length > 0}>
+			<span class="zylem-toolbar-divider" />
+		</Show>
+	</Show>
+);
+
+const MainActionButton: Component<{ action: HarnessMainAction }> = (props) => {
+	switch (props.action) {
+		case 'select':
+			return <SelectButton />;
+		case 'build':
+			return <BuildButton />;
+		case 'camera':
+			return <CameraMenu />;
+		case 'debug':
+			return <DebugButton />;
+		case 'play':
+			return <PlayPauseButton />;
+	}
+};
+
+export interface MainToolbarProps {
+	panelsOpen: boolean;
+	onTogglePanels: () => void;
+}
+
+/** Exclusive editing stays Select. The other main buttons are layers or session toggles. */
+export const MainToolbar: Component<MainToolbarProps> = (props) => {
 	return (
 		<div class="zylem-toolbar-group">
-			<Show when={show('select')}>
-				<SelectButton />
+			<For each={mainActions()}>{(action) => <MainActionButton action={action} />}</For>
+			<Show when={mainActions().length > 0}>
+				<PanelsButton open={props.panelsOpen} onToggle={props.onTogglePanels} />
 			</Show>
-			<Show when={show('build')}>
-				<BuildButton />
-			</Show>
-			<Show when={show('camera')}>
-				<CameraButton />
-			</Show>
-			<Show when={show('debug')}>
-				<DebugButton />
-			</Show>
-			<Show when={show('play')}>
-				<PlayPauseButton />
-			</Show>
-			<DockMenu dockedSide={props.dockedSide} onDock={props.onDock} variant="toolbar" />
 		</div>
 	);
 };
@@ -107,17 +130,19 @@ const ContextActionButton: Component<{ action: HarnessContextAction }> = (props)
 		case 'grid':
 			return <GridButton />;
 		case 'draw-brush':
-			return <DrawBrushButton />;
+			return <MeshBrushMenu />;
 		case 'clip-brush':
 			return <ClipBrushButton />;
 		case 'vertex-brush':
 			return <VertexBrushButton />;
 		case 'add-doodad':
 			return <AddButton label="Add doodad" />;
+		case 'add-object':
+			return <AddButton label="Add object" />;
 		case 'add-spawn':
 			return <AddSpawnButton />;
 		case 'add-trigger':
-			return <AddTriggerButton />;
+			return <TriggerMenu />;
 		case 'delete':
 			return <DeleteButton />;
 		case 'snap':
@@ -130,9 +155,15 @@ const ContextActionButton: Component<{ action: HarnessContextAction }> = (props)
 };
 
 const SLOT_ICONS: Record<HarnessSlotId, Component<{ class?: string }>> = {
-	navmesh: Map,
+	navmesh: MapIcon,
 	decal: Image,
-	'map-mesh': Pentagon,
+	edge: SplinePointer,
+	face: Square,
+	shear: UnfoldHorizontal,
+	'uv-brush': Paintbrush,
+	splat: SprayCan,
+	'directional-vector': MoveRight,
+	'obstacle-brush': BrickWall,
 	'place-hud': RectangleHorizontal,
 	'bind-variable': Link,
 	geometry: Box,
@@ -150,11 +181,24 @@ const HarnessSlotButton: Component<{ slot: HarnessSlotId }> = (props) => {
 };
 
 function actionStartsGroup(action: HarnessContextAction): boolean {
-	return (
-		isHarnessSlot(action)
-			? action === 'navmesh' || action === 'place-hud' || action === 'geometry'
-			: contextActionStartsGroup(action)
-	);
+	// Stage Editor keeps Snap with the gizmos, then groups Add and Undo.
+	if (harnessModeStore.id === 'stage-editor') {
+		return action === 'add-object' || action === 'undo';
+	}
+	// Level Builder: grid, then the mode's tools, then undo. Decoration also
+	// groups Move with Rotate and Scale.
+	if (harnessModeStore.id === 'level-builder-mesh') {
+		return action === 'draw-brush' || action === 'undo';
+	}
+	if (harnessModeStore.id === 'level-builder-navigation') {
+		return action === 'navmesh' || action === 'undo';
+	}
+	if (harnessModeStore.id === 'level-builder-decoration') {
+		return action === 'uv-brush' || action === 'translate' || action === 'undo';
+	}
+	return isHarnessSlot(action)
+		? action === 'navmesh' || action === 'place-hud' || action === 'geometry'
+		: contextActionStartsGroup(action);
 }
 
 /** One row. A harness mode uses its profile; otherwise layers append their actions. */
@@ -191,14 +235,14 @@ export const ContextToolbar: Component = () => {
 };
 
 /**
- * One strip. Top and bottom docks lay the buttons out in a row. A side dock
- * lays them in two columns, under the window controls that head those columns.
+ * One strip. A top or bottom dock lays the buttons out in a row. Free, they
+ * fill two columns under the window controls.
  */
-export const Toolbar: Component<{
-	orientation?: 'row' | 'column';
-	dockedSide: Accessor<DockSide | null>;
-	onDock: (side: DockSide) => void;
-}> = (props) => {
+export const Toolbar: Component<
+	MainToolbarProps & {
+		orientation?: 'row' | 'column';
+	}
+> = (props) => {
 	return (
 		<div
 			class="zylem-toolbar"
@@ -206,7 +250,8 @@ export const Toolbar: Component<{
 				'zylem-toolbar--vertical': (props.orientation ?? 'row') === 'column',
 			}}
 		>
-			<MainToolbar dockedSide={props.dockedSide} onDock={props.onDock} />
+			<SaveGroup />
+			<MainToolbar panelsOpen={props.panelsOpen} onTogglePanels={props.onTogglePanels} />
 			<ContextToolbar />
 		</div>
 	);

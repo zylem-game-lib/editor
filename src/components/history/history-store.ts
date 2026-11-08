@@ -40,12 +40,24 @@ export interface HistoryState {
 	undoStack: SceneOperationPayload[];
 	/** Operations that have been undone, newest last. */
 	redoStack: SceneOperationPayload[];
+	/**
+	 * {@link historyHead} at the last save. `null` is the stage as loaded, so a
+	 * fresh stage starts out saved.
+	 */
+	savedOpId: string | null;
 }
 
 export const historyState = proxy<HistoryState>({
 	undoStack: [],
 	redoStack: [],
+	savedOpId: null,
 });
+
+/**
+ * The last operation the depth cap dropped. Undo stops after it, so an empty
+ * stack means "after this", not "the stage as loaded".
+ */
+let undoFloor: string | null = null;
 
 /** Solid-reactive view of {@link historyState}, for components. */
 export const historyStore = mirrorProxy(historyState, { key: 'opId' });
@@ -82,11 +94,26 @@ export function redoLabel(): string | null {
 export function pushOperation(op: SceneOperationPayload): void {
 	historyState.undoStack.push(op);
 	if (historyState.undoStack.length > MAX_HISTORY_DEPTH) {
-		historyState.undoStack.shift();
+		undoFloor = historyState.undoStack.shift()?.opId ?? undoFloor;
 	}
 	if (historyState.redoStack.length) {
 		historyState.redoStack = [];
 	}
+}
+
+/** The operation the scene is at: the last one applied, or `null` for the stage as loaded. */
+export function historyHead(): string | null {
+	return historyState.undoStack[historyState.undoStack.length - 1]?.opId ?? undoFloor;
+}
+
+/** Record the scene at `head` as saved. Defaults to where it is now. */
+export function markHistorySaved(head: string | null = historyHead()): void {
+	historyState.savedOpId = head;
+}
+
+/** Whether the scene has moved off its saved point. Undoing back to it reads as saved. */
+export function historyHasUnsavedChanges(): boolean {
+	return historyHead() !== historyState.savedOpId;
 }
 
 /** Revert the most recent operation. Level mode rewinds the document, not the live scene. */
@@ -112,9 +139,12 @@ export function redo(): boolean {
 /**
  * Drop all history. Called on a fresh stage snapshot, because the entities the
  * stack refers to are gone and replaying an entry would either do nothing or
- * hit an unrelated entity that happens to share a uuid.
+ * hit an unrelated entity that happens to share a uuid. The fresh stage is the
+ * new saved point.
  */
 export function clearHistory(): void {
 	historyState.undoStack = [];
 	historyState.redoStack = [];
+	historyState.savedOpId = null;
+	undoFloor = null;
 }

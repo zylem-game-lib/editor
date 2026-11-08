@@ -1,23 +1,22 @@
 import { Tooltip, WindowControls } from '@zylem/ui/components';
 import { type Accessor, type Component, type JSX, Show } from 'solid-js';
-import { DockMenu } from './DockMenu';
-import type { DockSide } from './dock-layout';
+import type { DockPanelId, DockSide } from './dock-layout';
+import { dockSideFromWindow, toWindowDock, windowDockOptions } from './window-dock';
 
 export interface PanelChromeProps {
 	chrome: 'bar' | 'inline';
 	title?: string | undefined;
 	hideTitle?: boolean | undefined;
 	dockedSide: Accessor<DockSide | null>;
-	isMoving: Accessor<boolean>;
 	isCollapsed: Accessor<boolean>;
 	onCollapse?: (() => void) | undefined;
 	onClose?: (() => void) | undefined;
 	onRestoreSibling?: (() => void) | undefined;
 	restoreSiblingLabel?: string | undefined;
 	restoreSiblingIcon?: JSX.Element | undefined;
-	onDock: (side: DockSide) => void;
-	/** When false, the dock control is rendered by the body (the toolbar). */
-	dockInChrome?: boolean;
+	onDock: (side: DockSide | null) => void;
+	/** Registry id, so the dock switch only offers zones this window can use. */
+	panelId: DockPanelId;
 	onTitlePointerDown: (event: PointerEvent) => void;
 	onChromeRef?: ((element: HTMLDivElement) => void) | undefined;
 	body: () => JSX.Element;
@@ -25,13 +24,16 @@ export interface PanelChromeProps {
 
 /** Title bar or inline strip, including the window controls. */
 export const PanelChrome: Component<PanelChromeProps> = (props) => {
-	const stacked = () => {
-		const side = props.dockedSide();
-		return side === 'left' || side === 'right';
-	};
+	// Free, the toolbar is two columns. A top or bottom dock stays one row.
+	const stacked = () => props.chrome === 'inline' && props.dockedSide() === null;
 
 	const headerControls = () => (
-		<div class="floating-panel-controls" data-no-drag>
+		<div
+			class="floating-panel-controls"
+			// Free mode uses this block as the grab header. Buttons still
+			// decline the drag. A docked strip keeps the whole cluster still.
+			data-no-drag={stacked() ? undefined : ''}
+		>
 			<Show when={props.onRestoreSibling !== undefined}>
 				<span style={{ display: 'inline-flex', flex: 'none' }}>
 					<Tooltip content={props.restoreSiblingLabel ?? ''} placement="bottom">
@@ -50,10 +52,14 @@ export const PanelChrome: Component<PanelChromeProps> = (props) => {
 					</Tooltip>
 				</span>
 			</Show>
-			<Show when={props.dockInChrome !== false}>
-				<DockMenu dockedSide={props.dockedSide} onDock={props.onDock} />
-			</Show>
 			<WindowControls
+				dock={toWindowDock(props.dockedSide())}
+				dockOptions={windowDockOptions(props.panelId)}
+				onDock={(position) => {
+					const side = dockSideFromWindow(props.panelId, position);
+					if (position !== 'float' && side === null) return;
+					props.onDock(side);
+				}}
 				collapsed={props.isCollapsed()}
 				onCollapse={props.onCollapse}
 				onClose={props.onClose}
@@ -77,7 +83,6 @@ export const PanelChrome: Component<PanelChromeProps> = (props) => {
 							'user-select': 'none',
 							'touch-action': 'none',
 							'border-radius': props.dockedSide() ? '0' : undefined,
-							visibility: props.isMoving() ? 'hidden' : undefined,
 						}}
 						onPointerDown={props.onTitlePointerDown}
 					>
@@ -93,7 +98,6 @@ export const PanelChrome: Component<PanelChromeProps> = (props) => {
 							overflow: 'hidden',
 							display: 'flex',
 							'flex-direction': 'column',
-							visibility: props.isMoving() ? 'hidden' : undefined,
 						}}
 					>
 						{props.body()}
@@ -107,9 +111,8 @@ export const PanelChrome: Component<PanelChromeProps> = (props) => {
 				classList={{ 'zylem-chrome-inline--column': stacked() }}
 				style={{
 					// A docked top or bottom strip stretches so the controls sit
-					// on the far end. Floating and side docks hug the buttons.
+					// on the far end. Free, the grid hugs the buttons.
 					width: !stacked() && props.dockedSide() ? '100%' : 'max-content',
-					visibility: props.isMoving() ? 'hidden' : undefined,
 				}}
 				onPointerDown={props.onTitlePointerDown}
 			>

@@ -11,6 +11,13 @@ export interface HarnessGear {
 	setMode(id: HarnessModeId): void;
 }
 
+/** Build number shown as a non-interactive row in the mode menu. */
+export interface HarnessBuildLabel {
+	label: string;
+	/** Package versions, shown when the row is hovered. */
+	title?: string;
+}
+
 const GEAR_STYLE = `
 .harness-mode {
 	position: fixed;
@@ -43,7 +50,7 @@ const GEAR_STYLE = `
 	bottom: 44px;
 	display: flex;
 	flex-direction: column;
-	min-width: 180px;
+	min-width: 240px;
 	margin: 0;
 	padding: 4px;
 	list-style: none;
@@ -62,6 +69,7 @@ const GEAR_STYLE = `
 	background: transparent;
 	color: inherit;
 	text-align: left;
+	white-space: nowrap;
 	cursor: pointer;
 }
 .harness-mode__item:hover {
@@ -69,6 +77,19 @@ const GEAR_STYLE = `
 }
 .harness-mode__item[aria-checked='true'] {
 	background: rgba(61, 214, 140, 0.16);
+}
+.harness-mode__rule {
+	height: 1px;
+	margin: 4px 6px;
+	background: rgba(255, 255, 255, 0.12);
+}
+.harness-mode__version {
+	padding: 6px 10px;
+	color: rgba(232, 238, 246, 0.62);
+	font-size: 12px;
+	letter-spacing: 0.04em;
+	cursor: default;
+	user-select: none;
 }
 `;
 
@@ -79,7 +100,11 @@ const GEAR_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" st
  */
 export function mountHarnessGear(
 	parent: HTMLElement,
-	options: { initial: HarnessModeId; apply: (id: HarnessModeId) => void }
+	options: {
+		initial: HarnessModeId;
+		apply: (id: HarnessModeId) => void;
+		build?: HarnessBuildLabel;
+	}
 ): HarnessGear {
 	const style = document.createElement('style');
 	style.textContent = GEAR_STYLE;
@@ -115,6 +140,17 @@ export function mountHarnessGear(
 		});
 		items.set(mode.id, item);
 		menu.appendChild(item);
+	}
+
+	if (options.build?.label) {
+		const rule = document.createElement('div');
+		rule.className = 'harness-mode__rule';
+		rule.setAttribute('role', 'separator');
+		const version = document.createElement('div');
+		version.className = 'harness-mode__version';
+		version.textContent = options.build.label;
+		if (options.build.title) version.title = options.build.title;
+		menu.append(rule, version);
 	}
 
 	function setMode(id: HarnessModeId) {

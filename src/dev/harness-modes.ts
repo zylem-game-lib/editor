@@ -11,14 +11,22 @@ import { sendDebugEnabled, sendTool } from '../bridge/commands';
 import { mirrorProxy } from '../components/common/proxy-mirror';
 import { setDebugStore } from '../components/editor-store';
 import { debugState, setDebugTool } from '../components/entities/entities-state';
-import { levelState, setLevelEditorActive } from '../components/level/level-state';
+import {
+	levelState,
+	setActiveLayer,
+	setLevelEditorActive,
+	setLevelPlacement,
+} from '../components/level/level-state';
+import type { LevelLayerId } from '../components/level/level-types';
 import type { ContextAction } from '../components/toolbar/context-actions';
-import { setViewPreset, viewState, type ViewPreset } from '../components/toolbar/view-state';
+import { setViewPreset, type ViewPreset, viewState } from '../components/toolbar/view-state';
 
 export type HarnessModeId =
 	| 'game-preview'
 	| 'stage-editor'
-	| 'level-builder'
+	| 'level-builder-mesh'
+	| 'level-builder-navigation'
+	| 'level-builder-decoration'
 	| 'hud-view'
 	| 'entity-editor';
 
@@ -29,7 +37,13 @@ export type HarnessMainAction = 'select' | 'build' | 'camera' | 'debug' | 'play'
 export type HarnessSlotId =
 	| 'navmesh'
 	| 'decal'
-	| 'map-mesh'
+	| 'edge'
+	| 'face'
+	| 'shear'
+	| 'uv-brush'
+	| 'splat'
+	| 'directional-vector'
+	| 'obstacle-brush'
 	| 'place-hud'
 	| 'bind-variable'
 	| 'geometry'
@@ -47,6 +61,8 @@ export interface HarnessModeProfile {
 	level: boolean;
 	/** When false, toolbar shortcuts leave the keyboard to the game. */
 	captureKeys: boolean;
+	/** Document layer a level-builder mode edits. Null for every other mode. */
+	layer: LevelLayerId | null;
 	/**
 	 * Main-row buttons. `null` keeps today's row (select, build, camera, debug, play).
 	 */
@@ -57,14 +73,6 @@ export interface HarnessModeProfile {
 	context: HarnessContextAction[] | null;
 }
 
-const VIEW_ACTIONS: HarnessContextAction[] = [
-	'view-game',
-	'view-side',
-	'view-top',
-	'view-isometric',
-	'view-free',
-];
-
 export const HARNESS_MODES: readonly HarnessModeProfile[] = [
 	{
 		id: 'game-preview',
@@ -74,45 +82,46 @@ export const HARNESS_MODES: readonly HarnessModeProfile[] = [
 		debug: false,
 		level: false,
 		captureKeys: false,
-		main: ['play'],
+		layer: null,
+		main: [],
 		context: [],
 	},
 	{
 		id: 'stage-editor',
 		label: 'Stage Editor',
 		camera: 'free',
-		cameraLayer: true,
+		cameraLayer: false,
 		debug: true,
 		level: false,
 		captureKeys: true,
-		main: null,
-		context: null,
+		layer: null,
+		main: ['debug', 'select', 'camera'],
+		context: ['translate', 'rotate', 'scale', 'snap', 'add-object', 'delete', 'undo', 'redo'],
 	},
-	{
-		id: 'level-builder',
-		label: 'Level Builder',
-		camera: 'top',
-		cameraLayer: true,
-		debug: true,
-		level: true,
-		captureKeys: true,
-		main: ['select'],
-		context: [
-			...VIEW_ACTIONS,
-			'draw-brush',
-			'clip-brush',
-			'vertex-brush',
-			'add-spawn',
-			'add-trigger',
-			'delete',
-			'navmesh',
-			'decal',
-			'map-mesh',
-			'snap',
-			'undo',
-			'redo',
-		],
-	},
+	levelBuilderMode('level-builder-mesh', 'Level Builder - Mesh', 'solid', [
+		'draw-brush',
+		'clip-brush',
+		'vertex-brush',
+		'edge',
+		'face',
+		'shear',
+	]),
+	levelBuilderMode('level-builder-navigation', 'Level Builder - Navigation', 'entity', [
+		'navmesh',
+		'add-spawn',
+		'add-trigger',
+		'directional-vector',
+		'obstacle-brush',
+		'delete',
+	]),
+	levelBuilderMode('level-builder-decoration', 'Level Builder - Decoration', 'doodad', [
+		'uv-brush',
+		'decal',
+		'splat',
+		'translate',
+		'rotate',
+		'scale',
+	]),
 	{
 		id: 'hud-view',
 		label: 'HUD View',
@@ -121,7 +130,8 @@ export const HARNESS_MODES: readonly HarnessModeProfile[] = [
 		debug: false,
 		level: false,
 		captureKeys: false,
-		main: ['select'],
+		layer: null,
+		main: ['select', 'camera'],
 		context: ['place-hud', 'bind-variable'],
 	},
 	{
@@ -132,17 +142,43 @@ export const HARNESS_MODES: readonly HarnessModeProfile[] = [
 		debug: true,
 		level: false,
 		captureKeys: true,
-		main: ['select'],
+		layer: null,
+		main: ['select', 'camera'],
 		context: ['translate', 'rotate', 'scale', 'geometry', 'collision'],
 	},
 ];
 
-const LEVEL_TOOLS = new Set(['add', 'brush', 'clip', 'vertex']);
+/** Level Builder shares one header. The tools between grid and undo differ. */
+function levelBuilderMode(
+	id: HarnessModeId,
+	label: string,
+	layer: LevelLayerId,
+	tools: HarnessContextAction[]
+): HarnessModeProfile {
+	return {
+		id,
+		label,
+		camera: 'top',
+		cameraLayer: false,
+		debug: true,
+		level: true,
+		captureKeys: true,
+		layer,
+		main: ['debug', 'select', 'camera'],
+		context: ['snap', 'grid', ...tools, 'undo', 'redo'],
+	};
+}
 
 export const HARNESS_SLOT_LABELS: Record<HarnessSlotId, string> = {
-	navmesh: 'Navigation mesh',
+	navmesh: 'Navigation brush',
 	decal: 'Environment decal',
-	'map-mesh': 'Map mesh',
+	edge: 'Edge',
+	face: 'Face',
+	shear: 'Shear',
+	'uv-brush': 'UV brush',
+	splat: 'Splat',
+	'directional-vector': 'Directional vector',
+	'obstacle-brush': 'Obstacle brush',
 	'place-hud': 'Place HUD',
 	'bind-variable': 'Bind variable',
 	geometry: 'Geometry',
@@ -150,7 +186,7 @@ export const HARNESS_SLOT_LABELS: Record<HarnessSlotId, string> = {
 };
 
 export function isHarnessSlot(action: string): action is HarnessSlotId {
-	return Object.prototype.hasOwnProperty.call(HARNESS_SLOT_LABELS, action);
+	return Object.hasOwn(HARNESS_SLOT_LABELS, action);
 }
 
 export function harnessModeProfile(id: HarnessModeId): HarnessModeProfile {
@@ -188,12 +224,53 @@ export function applyHarnessMode(id: HarnessModeId): void {
 	viewState.camera = profile.cameraLayer;
 	setViewPreset(profile.camera);
 
-	if (profile.level) {
-		levelState.activeLayer = 'solid';
+	if (profile.level && profile.layer) {
+		if (levelState.active) setActiveLayer(profile.layer);
+		else levelState.activeLayer = profile.layer;
 	}
 	setLevelEditorActive(profile.level);
-	if (!profile.level && LEVEL_TOOLS.has(debugState.tool as string)) {
-		setDebugTool('select');
-		sendTool('select');
+	releaseArmedToolOutside(profile.context);
+}
+
+/**
+ * The toolbar action the current tool corresponds to.
+ *
+ * Select and the idle tool have no context button, so they stay put when the
+ * mode changes. Add maps through the armed placement: a spawn is not the stage
+ * Add button.
+ */
+function armedContextAction(): HarnessContextAction | null {
+	const tool = debugState.tool;
+	switch (tool) {
+		case 'brush':
+			return 'draw-brush';
+		case 'clip':
+			return 'clip-brush';
+		case 'vertex':
+			return 'vertex-brush';
+		case 'translate':
+		case 'rotate':
+		case 'scale':
+		case 'delete':
+			return tool;
+		case 'add': {
+			const kind = levelState.placement?.kind;
+			if (kind === 'spawn') return 'add-spawn';
+			if (kind === 'trigger') return 'add-trigger';
+			if (kind === 'doodad') return 'add-doodad';
+			return 'add-object';
+		}
+		default:
+			return null;
 	}
+}
+
+/** Return to Select when the armed tool is absent from the mode being applied. */
+function releaseArmedToolOutside(context: readonly HarnessContextAction[] | null): void {
+	if (!context) return;
+	const armed = armedContextAction();
+	if (!armed || context.includes(armed)) return;
+	setDebugTool('select');
+	sendTool('select');
+	setLevelPlacement(null);
 }

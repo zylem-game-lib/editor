@@ -17,11 +17,13 @@ import {
 	undockPanelFromSides,
 } from '../editor-store';
 import {
+	allowedDockSides,
 	clampThickness,
 	computeDockLayout,
 	type DockPanelId,
 	type DockRect,
 	type DockSide,
+	dockSideAtPointer,
 	dockSlotIndex,
 	findDockedSide,
 	innerEdgeFor,
@@ -30,10 +32,8 @@ import {
 } from './dock-layout';
 import { viewportSize } from './viewport';
 
-const SNAP_PREVIEW_THRESHOLD = 24;
-
-/** Fixed footprint every panel shrinks to while it is being moved. */
-const GHOST_SIZE: PanelSize = { width: 320, height: 240 };
+/** Where a window goes when it is released from a dock and has never floated. */
+const FREE_FALLBACK_POSITION: PanelPosition = { x: 12, y: 12 };
 
 export type { DockRect, DockSide } from './dock-layout';
 
@@ -72,6 +72,12 @@ interface CreatePanelDockingOptions {
 	panelRef: Accessor<HTMLDivElement | undefined>;
 	onPositionCommit?: (position: PanelPosition) => void;
 	onSizeCommit?: (size: PanelSize) => void;
+	/**
+	 * The floating window wraps its content, as the toolbar does. Its free
+	 * footprint differs from the docked strip and is only known once it has
+	 * laid out.
+	 */
+	hugContent?: boolean;
 }
 
 /**
@@ -89,6 +95,11 @@ export function createPanelDocking(options: CreatePanelDockingOptions) {
 		width: options.initialSize.width,
 		height: options.initialSize.height,
 	});
+	// A docked window's position signal is the dock rect, so the last place it
+	// floated has to be remembered separately. Null means it has never floated.
+	const [freePosition, setFreePosition] = createSignal<PanelPosition | null>(
+		findDockedSide(debugStore.docks, options.panelId) ? null : options.position()
+	);
 	const [dockPreview, setDockPreview] = createSignal<DockPreviewState>({
 		visible: false,
 		side: null,
@@ -101,9 +112,7 @@ export function createPanelDocking(options: CreatePanelDockingOptions) {
 
 	const dockRect = createMemo<DockRect | null>(() => {
 		if (!dockedSide()) return null;
-		const layout = computeDockLayout(debugStore.docks, viewportSize(), {
-			minSlotExtent: 0,
-		});
+		const layout = computeDockLayout(debugStore.docks, viewportSize());
 		return layout[options.panelId] ?? null;
 	});
 
@@ -129,11 +138,10 @@ export function createPanelDocking(options: CreatePanelDockingOptions) {
 	const [isAutoHeightSignal, setIsAutoHeight] = createSignal(true);
 	const isAutoHeight = () => !isDocked() && isAutoHeightSignal();
 
-	/** True while the panel is dragged as a small ghost; drives the ghost look. */
+	/** True while the panel is being dragged. */
 	const [isMoving, setIsMoving] = createSignal(false);
-	// Whether the panel should go back to hugging its content once the ghost
-	// is dropped; captured at drag start.
-	let ghostRestoreAutoHeight = true;
+	/** An undock this hook started, so the release effect does not settle twice. */
+	let localUndock = false;
 
 	const showDockPreview = (side: DockSide, index: number) => {
 		setDockPreview({ visible: true, side, index });
@@ -151,6 +159,12 @@ export function createPanelDocking(options: CreatePanelDockingOptions) {
 		const panelElement = options.panelRef();
 		if (panelElement) {
 			const rect = panelElement.getBoundingClientRect();
+			// Undocking the toolbar happens in this same pointer event, so the
+			// element can still be the full docked strip. Use the free-float
+			// footprint until it has laid out.
+			if (options.hugContent && isMoving() && rect.width > 220) {
+				return { width: 96, height: 160 };
+			}
 			return { width: rect.width, height: rect.height };
 		}
 		return options.size();
@@ -199,19 +213,11 @@ export function createPanelDocking(options: CreatePanelDockingOptions) {
 		};
 	};
 
-	/** The side whose edge the panel has been dragged past, if any. */
-	const detectDockSide = (x: number, y: number, width: number, height: number): DockSide | null => {
-		const viewport = viewportSize();
-		const overflows: Array<{ side: DockSide; amount: number }> = [
-			{ side: 'left', amount: Math.max(0, -x) },
-			{ side: 'right', amount: Math.max(0, x + width - viewport.width) },
-			{ side: 'top', amount: Math.max(0, -y) },
-			{ side: 'bottom', amount: Math.max(0, y + height - viewport.height) },
-		];
+	const allowedSides = () => allowedDockSides(options.panelId);
 
-		const best = overflows.reduce((a, b) => (b.amount > a.amount ? b : a));
-		return best.amount >= SNAP_PREVIEW_THRESHOLD ? best.side : null;
-	};
+	/** The zone whose viewport edge the pointer has reached, if this window may use it. */
+	const detectDockSide = (pointerX: number, pointerY: number): DockSide | null =>
+		dockSideAtPointer(options.panelId, { x: pointerX, y: pointerY }, viewportSize());
 
 	/** Slot the panel would drop into on `side`, from the pointer position. */
 	const detectDockIndex = (side: DockSide, pointerX: number, pointerY: number): number =>
@@ -224,65 +230,73 @@ export function createPanelDocking(options: CreatePanelDockingOptions) {
 		);
 
 	/**
-	 * Start moving the panel: shrink it to the fixed ghost footprint (keeping
-	 * the grab point under the pointer), undock it if needed, and remember
-	 * what to restore on drop. The small ghost is what makes free placement
-	 * possible — a full-size panel overflows viewport edges almost anywhere,
-	 * which is what used to trigger accidental docking.
+	 * Keep a moving window entirely on screen at the size it is showing, so
+	 * it can be dropped where it is without jumping.
 	 */
-	const beginDragGhost = (pointerX: number, pointerY: number): FittedPanel => {
-		const currentPos = options.position();
-		const currentSize = getLiveSize();
-		if (isDocked()) {
-			// A docked panel restores the size it had before docking.
-			ghostRestoreAutoHeight = true;
-		} else {
-			rememberUndockedSize(currentSize);
-			ghostRestoreAutoHeight = isAutoHeightSignal();
-		}
-
-		const ghost = clampSizeToViewport(GHOST_SIZE.width, GHOST_SIZE.height);
-		const pointerRatioX =
-			currentSize.width > 0
-				? Math.max(0, Math.min(1, (pointerX - currentPos.x) / currentSize.width))
-				: 0;
-		const pointerRatioY =
-			currentSize.height > 0
-				? Math.max(0, Math.min(1, (pointerY - currentPos.y) / currentSize.height))
-				: 0;
-		const fitted = fitPanelToViewport(
-			pointerX - ghost.width * pointerRatioX,
-			pointerY - ghost.height * pointerRatioY,
-			ghost.width,
-			ghost.height
-		);
-
-		undockPanelFromSides(options.panelId);
-		options.setSize(fitted.size);
-		options.setPosition(fitted.position);
-		setIsAutoHeight(false);
-		setIsMoving(true);
-		hideDockPreview();
-		return fitted;
+	const clampDragPosition = (x: number, y: number): PanelPosition => {
+		const viewport = viewportSize();
+		const live = getLiveSize();
+		return {
+			x: Math.max(0, Math.min(x, viewport.width - live.width)),
+			y: Math.max(0, Math.min(y, viewport.height - live.height)),
+		};
 	};
 
 	/**
-	 * Drop the ghost without docking: restore the remembered floating size at
-	 * the drop position and commit the result.
+	 * Start moving the panel from the point it was grabbed. A floating panel
+	 * moves exactly as it is. A docked one comes out at the size it last
+	 * floated at, with the grab point kept at the same place along its title bar.
 	 */
-	const endDragGhost = (): FittedPanel => {
+	const beginDrag = (grabX: number, grabY: number): FittedPanel => {
+		const currentPos = options.position();
+		const currentSize = getLiveSize();
+		const wasDocked = isDocked();
+		if (!wasDocked) {
+			rememberUndockedSize(currentSize);
+			setFreePosition(currentPos);
+		}
+
+		// Set before undocking so a release effect does not treat the drag as an eviction.
+		setIsMoving(true);
+		undockPanelFromSides(options.panelId);
+		hideDockPreview();
+		if (!wasDocked) {
+			return { position: currentPos, size: currentSize };
+		}
+
+		if (options.hugContent) {
+			// The docked strip becomes the free column. Keep its grab header
+			// under the pointer instead of leaving it at the dock's origin.
+			const fitted = fitPanelToViewport(grabX - 47, grabY - 36, 96, 48);
+			options.setPosition(fitted.position);
+			return { position: fitted.position, size: currentSize };
+		}
+
 		const preferred = undockedSize();
 		const restored = clampSizeToViewport(preferred.width, preferred.height);
-		const currentPos = options.position();
-		const fitted = fitPanelToViewport(currentPos.x, currentPos.y, restored.width, restored.height);
+		const grabRatioX =
+			currentSize.width > 0
+				? Math.max(0, Math.min(1, (grabX - currentPos.x) / currentSize.width))
+				: 0;
+		options.setSize(restored);
+		setIsAutoHeight(true);
+		// The clamp measures the element, so it has to run after the resize above.
+		const position = clampDragPosition(grabX - restored.width * grabRatioX, currentPos.y);
+		options.setPosition(position);
+		return { position, size: restored };
+	};
 
-		options.setSize(fitted.size);
-		options.setPosition(fitted.position);
-		setIsAutoHeight(ghostRestoreAutoHeight);
+	/** Drop the panel without docking it and commit where it landed. */
+	const endDrag = (): FittedPanel => {
+		const currentPos = options.position();
+		const position = clampDragPosition(currentPos.x, currentPos.y);
+		const size = options.size();
+		options.setPosition(position);
+		setFreePosition(position);
 		setIsMoving(false);
-		options.onSizeCommit?.(fitted.size);
-		options.onPositionCommit?.(fitted.position);
-		return fitted;
+		options.onSizeCommit?.(size);
+		options.onPositionCommit?.(position);
+		return { position, size };
 	};
 
 	/**
@@ -301,6 +315,7 @@ export function createPanelDocking(options: CreatePanelDockingOptions) {
 		}
 
 		if (side) {
+			localUndock = true;
 			undockPanelFromSides(options.panelId);
 		}
 		const currentSize = getLiveSize();
@@ -319,7 +334,8 @@ export function createPanelDocking(options: CreatePanelDockingOptions) {
 
 		const horizontal = isHorizontalSide(side);
 		const delta = horizontal ? deltaX : deltaY;
-		// Left and top grow away from their edge; right and bottom grow toward it.
+		// Left and top grow with the pointer. Right, bottom, and the single band
+		// grow against it, because their inner edge faces the other way.
 		const signed = side === 'left' || side === 'top' ? delta : -delta;
 		const minThickness = horizontal ? options.minSize.width : options.minSize.height;
 		const next = clampThickness(
@@ -333,6 +349,7 @@ export function createPanelDocking(options: CreatePanelDockingOptions) {
 	};
 
 	const clearDockedSide = () => {
+		localUndock = true;
 		undockPanelFromSides(options.panelId);
 	};
 
@@ -341,31 +358,40 @@ export function createPanelDocking(options: CreatePanelDockingOptions) {
 		const preview = dockPreview();
 		if (!preview.visible || !preview.side) return null;
 
-		if (!isDocked()) {
-			rememberUndockedSize(options.size());
-		}
-
-		dockPanelToSide(options.panelId, preview.side, preview.index);
-		setIsAutoHeight(false);
+		const placed = dockPanelToSide(options.panelId, preview.side, preview.index);
 		setIsMoving(false);
 		hideDockPreview();
+		if (!placed) {
+			endDrag();
+			return null;
+		}
+		setIsAutoHeight(false);
 		return { side: preview.side, index: preview.index };
 	};
 
-	const restoreUndockedPanel = (): FittedPanel => {
+	/**
+	 * Float the window at its last free position, or the top-left margin when
+	 * it has never floated. `local` marks an undock this hook started, so the
+	 * release effect does not settle the same window a second time.
+	 */
+	const settleFloating = (local: boolean): FittedPanel => {
+		if (local) localUndock = true;
 		const preferred = undockedSize();
 		const restored = clampSizeToViewport(preferred.width, preferred.height);
-		const currentPos = options.position();
-		const fitted = fitPanelToViewport(currentPos.x, currentPos.y, restored.width, restored.height);
+		const origin = freePosition() ?? FREE_FALLBACK_POSITION;
+		const fitted = fitPanelToViewport(origin.x, origin.y, restored.width, restored.height);
 
 		undockPanelFromSides(options.panelId);
 		options.setSize(fitted.size);
 		options.setPosition(fitted.position);
+		setFreePosition(fitted.position);
 		setIsAutoHeight(true);
 		options.onSizeCommit?.(fitted.size);
 		options.onPositionCommit?.(fitted.position);
 		return fitted;
 	};
+
+	const restoreUndockedPanel = (): FittedPanel => settleFloating(true);
 
 	/** Imperative dock command, for host APIs and toolbar buttons. */
 	const dockTo = (side: DockSide | null) => {
@@ -373,12 +399,31 @@ export function createPanelDocking(options: CreatePanelDockingOptions) {
 			if (isDocked()) restoreUndockedPanel();
 			return;
 		}
+		if (!allowedSides().includes(side)) return;
 		if (!isDocked()) {
 			rememberUndockedSize(options.size());
+			setFreePosition(options.position());
 		}
 		dockPanelToSide(options.panelId, side);
 		setIsAutoHeight(false);
 	};
+
+	// Someone else took this window's zone (a section releasing the bottom
+	// toolbar, or a new section replacing the one in the band). The registry
+	// update alone would leave the stretched dock rect in place.
+	let previousSide: DockSide | null = untrack(() => dockedSide());
+	createEffect(() => {
+		const side = dockedSide();
+		const previous = previousSide;
+		previousSide = side;
+		if (previous === null || side !== null) return;
+		if (localUndock) {
+			localUndock = false;
+			return;
+		}
+		if (untrack(isMoving)) return;
+		untrack(() => settleFloating(false));
+	});
 
 	/**
 	 * Keep a floating panel inside a resized viewport. Docked panels need no
@@ -404,6 +449,7 @@ export function createPanelDocking(options: CreatePanelDockingOptions) {
 			options.setPosition(fitted.position);
 			options.onPositionCommit?.(fitted.position);
 		}
+		setFreePosition(fitted.position);
 	};
 
 	// One shared viewport signal replaces the per-panel resize listeners.
@@ -424,8 +470,9 @@ export function createPanelDocking(options: CreatePanelDockingOptions) {
 		getDockPreviewRect,
 		detectDockSide,
 		detectDockIndex,
-		beginDragGhost,
-		endDragGhost,
+		beginDrag,
+		clampDragPosition,
+		endDrag,
 		isMoving,
 		clampSizeToViewport,
 		fitPanelToViewport,

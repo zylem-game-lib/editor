@@ -1,6 +1,7 @@
 /**
  * Game→editor sync: the editing session. Selection, the entity catalog the
- * Add tool offers, and committed scene operations (the undo stack).
+ * Add tool offers, committed scene operations (the undo stack), and finished
+ * level gestures.
  */
 
 import type {
@@ -13,7 +14,10 @@ import {
 	noteTouchedEntity,
 } from '../components/entities/entities-state';
 import { pushOperation } from '../components/history/history-store';
+import { applyIncomingGesture } from '../components/level/level-state';
+import type { LevelGesture } from '../components/level/level-types';
 import { setEntityCatalog } from '../components/toolbar/catalog-state';
+import { endToolAfterUse } from '../components/toolbar/toolbar-actions';
 import { notifySceneOperation } from '../host/scene-operation-hook';
 
 export function applyEntitySelection(selection: EntitySelectionPayload): void {
@@ -40,4 +44,15 @@ export function applySceneOperation(op: SceneOperationPayload): void {
 	}
 	pushOperation(op);
 	notifySceneOperation(op);
+	if (op.kind === 'create') endToolAfterUse('place');
+	else if (op.kind === 'delete') endToolAfterUse('delete');
+}
+
+const PLACING_GESTURES = new Set<LevelGesture['kind']>(['doodad', 'spawn', 'trigger']);
+
+/** Apply a finished level gesture to the document, and spend the Add or Delete click that made it. */
+export function applyLevelGesture(gesture: LevelGesture): void {
+	applyIncomingGesture(gesture);
+	if (PLACING_GESTURES.has(gesture.kind)) endToolAfterUse('place');
+	else if (gesture.kind === 'delete') endToolAfterUse('delete');
 }

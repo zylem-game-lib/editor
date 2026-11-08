@@ -9,8 +9,8 @@ import { withShortcut } from './toolbar-shortcuts';
 /** Show or hide the game's construction-plane grid. */
 export const GridButton: Component = () => (
 	<ToolbarButton
-		label={withShortcut(transformStore.gridVisible ? 'Hide grid' : 'Show grid', 'grid')}
-		selected={transformStore.gridVisible}
+		label={withShortcut('Show grid', 'grid')}
+		on={transformStore.gridVisible}
 		onClick={toggleGrid}
 	>
 		<Grid3x3 class="zylem-icon" />
@@ -23,8 +23,8 @@ export const GridButton: Component = () => (
  */
 export const SnapButton: Component = () => (
 	<ToolbarButton
-		label={withShortcut(transformStore.enabled ? 'Snapping on' : 'Snapping off', 'snap')}
-		selected={transformStore.enabled}
+		label={withShortcut('Snap to grid', 'snap')}
+		on={transformStore.enabled}
 		onClick={toggleSnap}
 	>
 		<Magnet class="zylem-icon" />

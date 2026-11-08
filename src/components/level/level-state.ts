@@ -76,6 +76,12 @@ export const levelStore = mirrorProxy(levelState);
 const undoStack: LevelHistoryEntry[] = [];
 const redoStack: LevelHistoryEntry[] = [];
 
+/** Every edit replaces the document object, so its JSON only changes when the object does. */
+let fingerprintedDocument: LevelDocument | null = null;
+let documentFingerprint = '';
+/** {@link levelDocumentFingerprint} at the last save or load. */
+let savedFingerprint = JSON.stringify(levelState.document);
+
 function publishHistory(): void {
 	levelState.undoDepth = undoStack.length;
 	levelState.redoDepth = redoStack.length;
@@ -262,13 +268,33 @@ export function snapshotLevelDocument(): LevelSnapshot {
 	return { document: cloneLevelDocument(levelState.document) };
 }
 
-/** Replace the document. Drops undo. Syncs when level mode is on. */
+/** The document as JSON, for comparing against the saved one. */
+export function levelDocumentFingerprint(): string {
+	if (levelState.document !== fingerprintedDocument) {
+		fingerprintedDocument = levelState.document;
+		documentFingerprint = JSON.stringify(levelState.document);
+	}
+	return documentFingerprint;
+}
+
+/** Record the document with this fingerprint as saved. Defaults to the document as it is now. */
+export function markLevelSaved(fingerprint: string = levelDocumentFingerprint()): void {
+	savedFingerprint = fingerprint;
+}
+
+/** Whether the document differs from the saved one. Undoing back to it reads as saved. */
+export function levelHasUnsavedChanges(): boolean {
+	return levelDocumentFingerprint() !== savedFingerprint;
+}
+
+/** Replace the document. Drops undo. Syncs when level mode is on. The loaded document counts as saved. */
 export function loadLevelDocument(document: LevelDocument): void {
 	if (document.version !== 2) return;
 	levelState.document = cloneLevelDocument(document);
 	levelState.selectedIds = [];
 	undoStack.length = 0;
 	redoStack.length = 0;
+	markLevelSaved();
 	publishHistory();
 	if (levelState.active) syncLevelDocument();
 }
@@ -283,6 +309,7 @@ export function resetLevelEditor(): void {
 	levelState.placement = null;
 	undoStack.length = 0;
 	redoStack.length = 0;
+	markLevelSaved();
 	publishHistory();
 	resetLevelIds();
 }

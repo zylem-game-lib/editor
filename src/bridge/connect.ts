@@ -6,7 +6,7 @@
  * shows current config/entities immediately.
  */
 
-import { applyIncomingGesture, selectLevelObject } from '../components/level/level-state';
+import { selectLevelObject } from '../components/level/level-state';
 import type { LevelGesture } from '../components/level/level-types';
 import { channel } from './channel';
 
@@ -18,7 +18,12 @@ function onGameMessage<T>(type: string, handler: (payload: T) => void): () => vo
 	return listen(type, handler);
 }
 
-import { applyCatalog, applyEntitySelection, applySceneOperation } from './sync-editing';
+import {
+	applyCatalog,
+	applyEntitySelection,
+	applyLevelGesture,
+	applySceneOperation,
+} from './sync-editing';
 import {
 	applyEntityRemoved,
 	applyEntityUpsert,
@@ -72,7 +77,7 @@ export function connectEditorBridge(): () => void {
 		channel.on('catalog:snapshot', applyCatalog),
 		channel.on('scene:operation', applySceneOperation),
 		onGameMessage<{ gesture: LevelGesture }>('level:gesture', ({ gesture }) => {
-			applyIncomingGesture(gesture);
+			applyLevelGesture(gesture);
 		}),
 		onGameMessage<{ id: string | null }>('level:select', ({ id }) => {
 			selectLevelObject(id);

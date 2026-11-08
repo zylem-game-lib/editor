@@ -150,8 +150,8 @@ export function toggleTransformTool(tool: TransformTool): boolean {
 
 /**
  * Arm placement with a catalog type and the role those new entries are tagged
- * with. Arming an armed tool leaves it armed — Escape is the way out — so
- * placing ten of something is one arm and ten clicks.
+ * with. Arming an armed tool leaves it armed. The placement itself disarms it
+ * (see `endToolAfterUse`), and Escape backs out without placing.
  *
  * @returns `false` when the catalog has no such type.
  */
@@ -191,6 +191,33 @@ export function armAddTool(): boolean {
 	return descriptor ? armAddType(descriptor.id) : false;
 }
 
+/** A finished click of a tool that one click spends. */
+export type ToolUse = 'place' | 'delete';
+
+/**
+ * End Add after a placement and Delete after a deletion. The Add face keeps
+ * showing the type it placed, so pressing it again places another.
+ *
+ * Only the tool that made the edit is spent: a keyboard delete while Move is
+ * active leaves Move alone.
+ *
+ * @returns `true` when the tool changed.
+ */
+export function endToolAfterUse(use: ToolUse): boolean {
+	const tool = debugState.tool;
+	if (use === 'place' && tool === 'add') {
+		setArmedType(null);
+		sendAddType(null);
+		activateTool('none');
+		return true;
+	}
+	if (use === 'delete' && tool === 'delete') {
+		activateTool('none');
+		return true;
+	}
+	return false;
+}
+
 /*
  * The Add palette is component-owned UI rather than store state, so the
  * shortcut reaches it through a callback the button registers while mounted.
@@ -222,6 +249,11 @@ export function toggleSnap(): void {
 
 export function toggleGrid(): void {
 	setGridVisible(!transformState.gridVisible);
+}
+
+/** Select, and drop a placement the previous tool left armed. */
+export function returnToSelect(): void {
+	activateTool('select');
 }
 
 /** Arm draw, clip, or vertex on the solids layer. */

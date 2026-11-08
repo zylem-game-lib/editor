@@ -136,14 +136,21 @@ export interface MountZylemEditorOptions extends EditorStateBridgeOptions {
 	 */
 	launcherMode?: EditorLauncherMode;
 	/**
-	 * Dock layout to seed on first run, keyed by viewport edge. `'toolbar'` is
-	 * the tool strip, `'main'` is the panel container, and any other id is a
-	 * section such as `'console'`. A host that omits the toolbar still gets it
-	 * on top. Ignored once the user has a saved layout.
+	 * Dock layout to seed on first run.
+	 *
+	 * `'toolbar'` sits on `top` or `bottom`. `'main'` sits on `left` or `right`.
+	 * A section such as `'console'` sits in `single`, the full-width band above
+	 * the bottom edge. A section a host still lists on `bottom` is read as
+	 * `single`. Listing both a bottom toolbar and a section keeps them stacked;
+	 * docking a section into `single` later releases a bottom toolbar. A host
+	 * that omits the toolbar still gets it on top. Ignored once the user has a
+	 * saved layout.
 	 *
 	 * @example
 	 * ```ts
-	 * mountZylemEditor({ defaultDocks: { top: ['toolbar'], right: ['main'] } });
+	 * mountZylemEditor({
+	 *   defaultDocks: { top: ['toolbar'], right: ['main'], single: ['console'] },
+	 * });
 	 * ```
 	 */
 	defaultDocks?: EditorDockDefaults;
@@ -156,7 +163,11 @@ export interface MountZylemEditorOptions extends EditorStateBridgeOptions {
 
 export interface MountedZylemEditor extends EditorStateBridge {
 	element: ZylemEditorElement;
-	/** Dock a panel to a viewport edge, or pass `null` to float it again. */
+	/**
+	 * Dock a window, or pass `null` to float it.
+	 * The toolbar accepts `top` and `bottom`, the main panel `left` and `right`,
+	 * and a section `single`. Any other pair is ignored.
+	 */
 	dockPanel(side: DockSide | null, panelId?: DockPanelId): void;
 }
 

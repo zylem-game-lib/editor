@@ -3,12 +3,17 @@
 import { getZylemBridge } from '@zylem/bridge';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+	debugState,
 	getDebugTool,
 	setDebugTool,
 	setSelectedEntityId,
+	setSelectedEntityIds,
 } from '../../src/components/entities/entities-state';
+import { levelState, selectLevelObject } from '../../src/components/level/level-state';
 import {
+	endSelectAfterPick,
 	installTransformToolGuard,
+	promoteSelectToTransform,
 	releaseOrphanedTransformTool,
 } from '../../src/components/toolbar/transform-tool-guard';
 
@@ -26,6 +31,9 @@ beforeEach(() => {
 	channel.reset();
 	setDebugTool('none');
 	setSelectedEntityId(null);
+	debugState.hoveredEntityId = null;
+	levelState.active = false;
+	levelState.selectedIds = [];
 
 	toolMessages = [];
 	stopCapture = [channel.on('tool:set', ({ tool }) => toolMessages.push(tool))];
@@ -69,7 +77,135 @@ describe('releaseOrphanedTransformTool', () => {
 	});
 });
 
+describe('promoteSelectToTransform', () => {
+	it('switches Select to Move once an entity is selected', () => {
+		setDebugTool('select');
+		setSelectedEntityId('entity-1');
+
+		expect(promoteSelectToTransform()).toBe(true);
+		expect(getDebugTool()).toBe('translate');
+		expect(toolMessages).toEqual(['translate']);
+	});
+
+	it('switches Select to Move for several entities', () => {
+		setDebugTool('select');
+		setSelectedEntityIds(['entity-1', 'entity-2']);
+
+		expect(promoteSelectToTransform()).toBe(true);
+		expect(getDebugTool()).toBe('translate');
+	});
+
+	it('stays on Select while nothing is selected', () => {
+		setDebugTool('select');
+
+		expect(promoteSelectToTransform()).toBe(false);
+		expect(getDebugTool()).toBe('select');
+		expect(toolMessages).toEqual([]);
+	});
+
+	it('does not steal another tool', () => {
+		setSelectedEntityId('entity-1');
+		setDebugTool('rotate');
+
+		expect(promoteSelectToTransform()).toBe(false);
+		expect(getDebugTool()).toBe('rotate');
+	});
+});
+
+describe('endSelectAfterPick', () => {
+	it('leaves no tool once the selection is empty', () => {
+		setDebugTool('select');
+
+		expect(endSelectAfterPick()).toBe(true);
+		expect(getDebugTool()).toBe('none');
+		expect(toolMessages).toEqual(['none']);
+	});
+
+	it('leaves other tools alone', () => {
+		setDebugTool('delete');
+
+		expect(endSelectAfterPick()).toBe(false);
+		expect(getDebugTool()).toBe('delete');
+		expect(toolMessages).toEqual([]);
+	});
+});
+
+describe('ending Select after one pick', () => {
+	it('keeps Select when it is pressed over an existing selection', async () => {
+		setSelectedEntityId('entity-1');
+		uninstall = installTransformToolGuard();
+
+		setDebugTool('select');
+		await settle();
+
+		// Pressing Select is not a pick, so it stays to choose something else.
+		expect(getDebugTool()).toBe('select');
+		expect(toolMessages).toEqual([]);
+	});
+
+	it('hands off to Move on the next pick', async () => {
+		setSelectedEntityId('entity-1');
+		uninstall = installTransformToolGuard();
+		setDebugTool('select');
+		await settle();
+
+		setSelectedEntityId('entity-2');
+		await settle();
+
+		expect(getDebugTool()).toBe('translate');
+		expect(toolMessages).toEqual(['translate']);
+	});
+
+	it('leaves no tool when the pick clears the selection', async () => {
+		setSelectedEntityId('entity-1');
+		uninstall = installTransformToolGuard();
+		setDebugTool('select');
+		await settle();
+
+		setSelectedEntityId(null);
+		await settle();
+
+		expect(getDebugTool()).toBe('none');
+		expect(toolMessages).toEqual(['none']);
+	});
+
+	it('ignores hover, which the game reports alongside the selection', async () => {
+		uninstall = installTransformToolGuard();
+		setDebugTool('select');
+		await settle();
+
+		debugState.hoveredEntityId = 'entity-1';
+		await settle();
+
+		expect(getDebugTool()).toBe('select');
+	});
+
+	it('hands off to Move when a level object is picked', async () => {
+		levelState.active = true;
+		uninstall = installTransformToolGuard();
+		setDebugTool('select');
+		await settle();
+
+		selectLevelObject('brush-1');
+		await settle();
+
+		expect(getDebugTool()).toBe('translate');
+		expect(toolMessages).toEqual(['translate']);
+	});
+});
+
 describe('installTransformToolGuard', () => {
+	it('promotes Select when a selection arrives', async () => {
+		setDebugTool('select');
+		uninstall = installTransformToolGuard();
+
+		setSelectedEntityId('entity-1');
+		await settle();
+
+		expect(getDebugTool()).toBe('translate');
+		expect(toolMessages).toEqual(['translate']);
+	});
+
 	it('releases the tool when the selection is cleared', async () => {
 		setSelectedEntityId('entity-1');
 		setDebugTool('rotate');

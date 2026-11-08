@@ -9,6 +9,7 @@ export const DeleteButton: Component = () => (
 	<ToolbarButton
 		label={withShortcut('Delete', 'delete')}
 		selected={debugStore.tool === 'delete'}
+		danger
 		onClick={() => toggleTool('delete')}
 	>
 		<Trash class="zylem-icon" />

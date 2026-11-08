@@ -14,6 +14,7 @@ import { type Component, createSignal, type JSX, onCleanup, onMount } from 'soli
 import { isHorizontalSide } from '../common/dock-layout';
 import { PANEL_RANK } from '../common/layer-ranks';
 import { createPanelDocking, DockPreviewOverlay, type ResizeMode } from '../common/panel-docking';
+import { dockSideFromWindow, toWindowDock, windowDockOptions } from '../common/window-dock';
 import {
 	bringPanelToFront,
 	clearDragState,
@@ -65,17 +66,17 @@ export const DetachedPanel: Component<DetachedPanelProps> = (props) => {
 		showDockPreview,
 		hideDockPreview,
 		rememberUndockedSize,
-		getLiveSize,
 		getDockPreviewRect,
 		detectDockSide,
 		detectDockIndex,
-		beginDragGhost,
-		endDragGhost,
-		isMoving,
+		beginDrag,
+		clampDragPosition,
+		endDrag,
 		clampSizeToViewport,
 		beginResize,
 		resizeDockThickness,
 		applyDockPreview,
+		dockTo,
 	} = createPanelDocking({
 		panelId: props.panelId,
 		initialSize: initialPanelSize,
@@ -95,6 +96,10 @@ export const DetachedPanel: Component<DetachedPanelProps> = (props) => {
 	};
 
 	const handleTitleBarPointerDown = (e: PointerEvent) => {
+		const target = e.target;
+		if (target instanceof Element && target.closest('button, a, input, textarea, select')) {
+			return;
+		}
 		isDragging = true;
 		hasMoved = false;
 		hideDockPreview();
@@ -107,6 +112,7 @@ export const DetachedPanel: Component<DetachedPanelProps> = (props) => {
 		if (e.pointerType === 'mouse') {
 			e.preventDefault();
 		}
+		e.stopPropagation();
 	};
 
 	const handleResizePointerDown = (direction: ResizeDirection) => (e: PointerEvent) => {
@@ -131,33 +137,22 @@ export const DetachedPanel: Component<DetachedPanelProps> = (props) => {
 
 	const handlePointerMove = (e: PointerEvent) => {
 		if (isDragging) {
-			let deltaX = e.clientX - dragStartPos.x;
-			let deltaY = e.clientY - dragStartPos.y;
+			const deltaX = e.clientX - dragStartPos.x;
+			const deltaY = e.clientY - dragStartPos.y;
 
 			if (Math.abs(deltaX) > DRAG_THRESHOLD || Math.abs(deltaY) > DRAG_THRESHOLD) {
 				if (!hasMoved) {
 					hasMoved = true;
 					setDraggingPanel(props.panelId);
-					// Every move happens through the small ghost, docked or not.
-					const fitted = beginDragGhost(e.clientX, e.clientY);
-					dragStartPos = { x: e.clientX, y: e.clientY };
+					// Placed from the press point, so the movement since then still applies.
+					const fitted = beginDrag(dragStartPos.x, dragStartPos.y);
 					panelStartPos = { ...fitted.position };
 					panelStartSize = { ...fitted.size };
-					deltaX = 0;
-					deltaY = 0;
 				}
 			}
 
 			if (hasMoved) {
-				const proposedX = panelStartPos.x + deltaX;
-				const proposedY = panelStartPos.y + deltaY;
-				const currentSize = getLiveSize();
-				const dockSide = detectDockSide(
-					proposedX,
-					proposedY,
-					currentSize.width,
-					currentSize.height
-				);
+				const dockSide = detectDockSide(e.clientX, e.clientY);
 
 				if (dockSide) {
 					showDockPreview(dockSide, detectDockIndex(dockSide, e.clientX, e.clientY));
@@ -166,11 +161,7 @@ export const DetachedPanel: Component<DetachedPanelProps> = (props) => {
 					hideDockPreview();
 				}
 
-				const newPos = {
-					x: Math.max(0, Math.min(proposedX, window.innerWidth - 100)),
-					y: Math.max(0, Math.min(proposedY, window.innerHeight - 50)),
-				};
-				setPosition(newPos);
+				setPosition(clampDragPosition(panelStartPos.x + deltaX, panelStartPos.y + deltaY));
 
 				// Check if over the main editor panel and determine drop index
 				if (!dockSide) {
@@ -262,9 +253,7 @@ export const DetachedPanel: Component<DetachedPanelProps> = (props) => {
 					// The panel unmounts when it reattaches to the accordion.
 					reattachPanel(props.panelId, dropIndex);
 				} else {
-					// Drop the ghost: restores the pre-drag size and commits
-					// position/size through the controller callbacks.
-					endDragGhost();
+					endDrag();
 				}
 			}
 		}
@@ -322,16 +311,6 @@ export const DetachedPanel: Component<DetachedPanelProps> = (props) => {
 				// The editor overlay root is pointer-events: none; re-enable
 				// interaction for the panel itself.
 				'pointer-events': 'auto',
-				// While being moved the panel is just a transparent outline.
-				...(isMoving()
-					? {
-							background: 'transparent',
-							'backdrop-filter': 'none',
-							'-webkit-backdrop-filter': 'none',
-							'box-shadow': 'none',
-							border: '2px solid var(--zylem-color-primary, #61a6e8)',
-						}
-					: {}),
 			}}
 		>
 			<DockPreviewOverlay rect={getDockPreviewRect()} rank={() => rank() + 1} />
@@ -343,18 +322,24 @@ export const DetachedPanel: Component<DetachedPanelProps> = (props) => {
 				style={{
 					'touch-action': 'none',
 					'border-radius': dockedSide() ? '0' : undefined,
-					visibility: isMoving() ? 'hidden' : undefined,
 				}}
 			>
 				<span class="floating-panel-title">{getPanelTitle(props.panelId)}</span>
-				<WindowControls onClose={handleClose} closeLabel="Dock back to panel" />
+				<WindowControls
+					dock={toWindowDock(dockedSide())}
+					dockOptions={windowDockOptions(props.panelId)}
+					onDock={(position) => {
+						const side = dockSideFromWindow(props.panelId, position);
+						if (position !== 'float' && side === null) return;
+						dockTo(side);
+					}}
+					onClose={handleClose}
+					closeLabel="Dock back to panel"
+				/>
 			</div>
 
 			{/* Content area */}
-			<div
-				class="detached-panel-content floating-panel-content"
-				style={{ visibility: isMoving() ? 'hidden' : undefined }}
-			>
+			<div class="detached-panel-content floating-panel-content">
 				{renderPanelContent(props.panelId)}
 			</div>
 

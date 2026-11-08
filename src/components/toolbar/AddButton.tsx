@@ -21,9 +21,9 @@ interface AddButtonProps {
  * The Add tool: a palette of entity types plus an armed placement mode.
  *
  * Split interaction, because choosing what to place and placing it are separate
- * jobs. The chevron half opens the palette; the button face toggles the armed
- * state for whatever is already chosen, so placing ten boxes is one pick and ten
- * clicks rather than ten trips through the menu.
+ * jobs. The chevron half opens the palette; the button face arms whatever was
+ * chosen last, so placing another box is a press and a click rather than a trip
+ * through the menu. Each placement disarms the tool.
  *
  * The palette's entries are game-owned — they arrive as `catalog:snapshot` — so a
  * host that registers its own entity types game-side gets them here for free.
