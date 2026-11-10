@@ -143,4 +143,13 @@ export {
 	type SceneOperationListener,
 } from './host/scene-operation-hook';
 export type { ZylemEditorConfig } from './web-components/zylem-editor';
-export { registerZylemEditor, ZylemEditorElement } from './web-components/zylem-editor';
+export {
+	EDITOR_DISMISS_EVENT,
+	registerZylemEditor,
+	ZylemEditorElement,
+} from './web-components/zylem-editor';
+export {
+	type HarnessModeApplyOptions,
+	type HarnessModeId,
+	HARNESS_MODES,
+} from './dev/harness-modes';

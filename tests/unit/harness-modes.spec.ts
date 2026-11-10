@@ -38,19 +38,20 @@ describe('harness modes', () => {
 		]);
 	});
 
-	it('gives Game Preview the game camera and no toolbar tools', () => {
+	it('gives Game Preview play, debug, and the game camera', () => {
 		expect(harnessModeProfile('game-preview')).toMatchObject({
+			label: 'Game Preview',
 			camera: 'game',
 			debug: false,
 			level: false,
 			captureKeys: false,
 			layer: null,
-			main: [],
+			main: ['play', 'debug'],
 			context: [],
 		});
 	});
 
-	it('gives Stage Editor debug, select, a camera menu, and the stage tools', () => {
+	it('gives Stage Editor debug, select, a camera menu, play, and the stage tools', () => {
 		expect(harnessModeProfile('stage-editor')).toMatchObject({
 			camera: 'free',
 			cameraLayer: false,
@@ -58,14 +59,14 @@ describe('harness modes', () => {
 			level: false,
 			captureKeys: true,
 			layer: null,
-			main: ['debug', 'select', 'camera'],
+			main: ['debug', 'select', 'camera', 'play'],
 			context: ['translate', 'rotate', 'scale', 'snap', 'add-object', 'delete', 'undo', 'redo'],
 		});
 	});
 
-	it('gives Level Builder - Mesh the solid layer and the geometry tools', () => {
+	it('gives Level Mesh the solid layer and the geometry tools', () => {
 		expect(harnessModeProfile('level-builder-mesh')).toMatchObject({
-			label: 'Level Builder - Mesh',
+			label: 'Level Mesh',
 			camera: 'top',
 			cameraLayer: false,
 			debug: true,
@@ -100,9 +101,9 @@ describe('harness modes', () => {
 		expect(isHarnessSlot('navmesh')).toBe(true);
 	});
 
-	it('gives Level Builder - Navigation the entity layer and the game tools', () => {
+	it('gives Map Navigation the entity layer and the game tools', () => {
 		expect(harnessModeProfile('level-builder-navigation')).toMatchObject({
-			label: 'Level Builder - Navigation',
+			label: 'Map Navigation',
 			layer: 'entity',
 			main: ['debug', 'select', 'camera'],
 			context: [
@@ -120,9 +121,9 @@ describe('harness modes', () => {
 		});
 	});
 
-	it('gives Level Builder - Decoration the doodad layer and the look tools', () => {
+	it('gives Decorations the doodad layer and the look tools', () => {
 		expect(harnessModeProfile('level-builder-decoration')).toMatchObject({
-			label: 'Level Builder - Decoration',
+			label: 'Decorations',
 			layer: 'doodad',
 			main: ['debug', 'select', 'camera'],
 			context: [
@@ -152,14 +153,16 @@ describe('harness modes', () => {
 		}
 	});
 
-	it('gives HUD View and Entity Editor their slots', () => {
+	it('gives HUD View and Entity Inspector their slots', () => {
 		expect(harnessModeProfile('hud-view')).toMatchObject({
+			label: 'HUD View',
 			camera: 'game',
 			captureKeys: false,
 			layer: null,
 			main: ['select', 'camera'],
 			context: ['place-hud', 'bind-variable'],
 		});
+		expect(harnessModeProfile('entity-editor').label).toBe('Entity Inspector');
 		expect(harnessModeProfile('entity-editor').context).toEqual([
 			'translate',
 			'rotate',
@@ -265,6 +268,32 @@ describe('applyHarnessMode', () => {
 		expect(debugMessages).toEqual([]);
 		expect(levelState.active).toBe(true);
 		stop();
+	});
+
+	it('forces the game camera and debug off for the hidden fallback', () => {
+		harnessModeState.id = null;
+		applyHarnessMode('stage-editor');
+		expect(viewState.preset).toBe('free');
+		expect(debugStore.debug).toBe(true);
+
+		applyHarnessMode('game-preview', { resetView: true });
+		expect(harnessModeState.id).toBe('game-preview');
+		expect(harnessModeState.captureKeys).toBe(false);
+		expect(viewState.preset).toBe('game');
+		expect(viewState.camera).toBe(false);
+		expect(debugStore.debug).toBe(false);
+	});
+
+	it('leaves the camera and debug flag when Game Preview is selected', () => {
+		harnessModeState.id = null;
+		applyHarnessMode('stage-editor');
+		setViewPreset('perspective');
+		setDebugStore('debug', true);
+
+		applyHarnessMode('game-preview');
+		expect(viewState.preset).toBe('perspective');
+		expect(debugStore.debug).toBe(true);
+		expect(harnessModeState.captureKeys).toBe(false);
 	});
 
 	it('keeps a tool the next mode still shows', () => {

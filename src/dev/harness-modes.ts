@@ -1,10 +1,11 @@
 /**
- * Modes for the dev harness.
+ * Modes for the dev harness and the creator toolbox.
  *
- * The gear outside the editor picks one. Applying it chooses which toolbar
- * buttons are visible and whether the editor keeps the keyboard. The first
- * mode also sets the camera and the debug flag; a later mode leaves those.
- * Tools that do not exist yet are slots: they render with a label and do nothing.
+ * The gear outside the editor, and the creator's Modes tiles, pick one.
+ * Applying it chooses which toolbar buttons are visible and whether the editor
+ * keeps the keyboard. The first mode also sets the camera and the debug flag;
+ * a later mode leaves those, unless the caller asks to reset the view. Tools
+ * that do not exist yet are slots: they render with a label and do nothing.
  */
 
 import type { LevelLayerId } from '@zylem/bridge';
@@ -82,7 +83,7 @@ export const HARNESS_MODES: readonly HarnessModeProfile[] = [
 		level: false,
 		captureKeys: false,
 		layer: null,
-		main: [],
+		main: ['play', 'debug'],
 		context: [],
 	},
 	{
@@ -94,10 +95,10 @@ export const HARNESS_MODES: readonly HarnessModeProfile[] = [
 		level: false,
 		captureKeys: true,
 		layer: null,
-		main: ['debug', 'select', 'camera'],
+		main: ['debug', 'select', 'camera', 'play'],
 		context: ['translate', 'rotate', 'scale', 'snap', 'add-object', 'delete', 'undo', 'redo'],
 	},
-	levelBuilderMode('level-builder-mesh', 'Level Builder - Mesh', 'solid', [
+	levelBuilderMode('level-builder-mesh', 'Level Mesh', 'solid', [
 		'draw-brush',
 		'clip-brush',
 		'vertex-brush',
@@ -111,7 +112,7 @@ export const HARNESS_MODES: readonly HarnessModeProfile[] = [
 		'duplicate-selection',
 		'delete',
 	]),
-	levelBuilderMode('level-builder-navigation', 'Level Builder - Navigation', 'entity', [
+	levelBuilderMode('level-builder-navigation', 'Map Navigation', 'entity', [
 		'navmesh',
 		'add-spawn',
 		'add-trigger',
@@ -119,7 +120,7 @@ export const HARNESS_MODES: readonly HarnessModeProfile[] = [
 		'obstacle-brush',
 		'delete',
 	]),
-	levelBuilderMode('level-builder-decoration', 'Level Builder - Decoration', 'doodad', [
+	levelBuilderMode('level-builder-decoration', 'Decorations', 'doodad', [
 		'uv-brush',
 		'decal',
 		'splat',
@@ -141,7 +142,7 @@ export const HARNESS_MODES: readonly HarnessModeProfile[] = [
 	},
 	{
 		id: 'entity-editor',
-		label: 'Entity Editor',
+		label: 'Entity Inspector',
 		camera: 'free',
 		cameraLayer: false,
 		debug: true,
@@ -153,7 +154,7 @@ export const HARNESS_MODES: readonly HarnessModeProfile[] = [
 	},
 ];
 
-/** Level Builder shares one header. The tools between grid and undo differ. */
+/** Level builders share one profile. The tools between grid and undo differ. */
 function levelBuilderMode(
 	id: HarnessModeId,
 	label: string,
@@ -215,21 +216,30 @@ export function harnessCapturesKeys(): boolean {
 	return harnessModeState.captureKeys;
 }
 
+export interface HarnessModeApplyOptions {
+	/**
+	 * Set this mode's camera and debug flag even when a mode is already
+	 * applied. The hidden Game Preview fallback uses this. Selecting Game
+	 * Preview does not.
+	 */
+	resetView?: boolean;
+}
+
 /**
  * Apply a harness mode to the level editor and the toolbar.
  *
  * The first mode also sets the camera and the debug flag. Changing mode
  * leaves both where they are, so a view and a debug choice survive the
- * switch. A level-builder mode opens with nothing armed. Any other mode
- * releases the armed tool when it has no button for it.
+ * switch, unless `resetView` is set. A level-builder mode opens with nothing
+ * armed. Any other mode releases the armed tool when it has no button for it.
  */
-export function applyHarnessMode(id: HarnessModeId): void {
+export function applyHarnessMode(id: HarnessModeId, options?: HarnessModeApplyOptions): void {
 	const profile = harnessModeProfile(id);
 	const opening = harnessModeState.id === null;
 	harnessModeState.id = id;
 	harnessModeState.captureKeys = profile.captureKeys;
 
-	if (opening) {
+	if (opening || options?.resetView) {
 		setDebugStore('debug', profile.debug);
 		sendDebugEnabled(profile.debug);
 		viewState.camera = profile.cameraLayer;

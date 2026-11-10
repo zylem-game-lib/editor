@@ -23,7 +23,15 @@ import { installToolbarShortcuts } from '../components/toolbar/toolbar-shortcuts
 import { installTransformToolGuard } from '../components/toolbar/transform-tool-guard';
 import { connectViewState } from '../components/toolbar/view-state';
 import { connectTransformState } from '../components/transform/transform-state';
-import { applyHarnessMode, type HarnessModeId, harnessCapturesKeys } from '../dev/harness-modes';
+import {
+	applyHarnessMode,
+	type HarnessModeApplyOptions,
+	type HarnessModeId,
+	harnessCapturesKeys,
+} from '../dev/harness-modes';
+
+/** Fired on `<zylem-editor>` when Game Preview's toolbar close dismisses the editor. */
+export const EDITOR_DISMISS_EVENT = 'zylem-editor-dismiss';
 
 /**
  * Configuration options for the ZylemEditorElement
@@ -294,6 +302,11 @@ export class ZylemEditorElement extends HTMLElement {
 						onControllerReady={(controller) => {
 							this.controller = controller;
 						}}
+						onDismiss={() => {
+							this.dispatchEvent(
+								new CustomEvent(EDITOR_DISMISS_EVENT, { bubbles: true, composed: true })
+							);
+						}}
 					/>
 				</EditorProvider>
 			),
@@ -360,11 +373,12 @@ export class ZylemEditorElement extends HTMLElement {
 
 	/**
 	 * Apply a harness mode: level editing and the toolbar profile. The camera
-	 * and the debug flag stay as they are after the first mode. The gear that
-	 * chooses the mode lives outside this element.
+	 * and the debug flag stay as they are after the first mode, unless
+	 * `resetView` is set. The gear and the creator toolbox that choose the mode
+	 * live outside this element.
 	 */
-	setMode(mode: HarnessModeId) {
-		applyHarnessMode(mode);
+	setMode(mode: HarnessModeId, options?: HarnessModeApplyOptions) {
+		applyHarnessMode(mode, options);
 	}
 
 	/**

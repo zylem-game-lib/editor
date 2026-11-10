@@ -6,6 +6,8 @@ export interface AppProps {
 	launcherMode?: EditorLauncherMode | undefined;
 	defaultDocks?: EditorDockDefaults | undefined;
 	onControllerReady?: ((controller: EditorController | null) => void) | undefined;
+	/** Game Preview's toolbar close. The host hides the editor. */
+	onDismiss?: (() => void) | undefined;
 }
 
 const App: Component<AppProps> = (props) => {
@@ -14,6 +16,7 @@ const App: Component<AppProps> = (props) => {
 			launcherMode={props.launcherMode}
 			defaultDocks={props.defaultDocks}
 			onControllerReady={props.onControllerReady}
+			onDismiss={props.onDismiss}
 		/>
 	);
 };

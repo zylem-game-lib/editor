@@ -11,6 +11,7 @@ import {
 	Show,
 } from 'solid-js';
 import { render } from 'solid-js/web';
+import { harnessModeStore } from '../dev/harness-modes';
 import {
 	allowedDockSides,
 	applyDefaultDocks,
@@ -71,6 +72,8 @@ interface EditorProps {
 	/** First-run dock layout; ignored once the user has their own. */
 	defaultDocks?: EditorDockDefaults | undefined;
 	onControllerReady?: ((controller: EditorController | null) => void) | undefined;
+	/** Game Preview's toolbar close. Other modes have no toolbar close button. */
+	onDismiss?: (() => void) | undefined;
 }
 
 const getViewportFittedPanelLayout = (
@@ -333,7 +336,14 @@ export const Editor: Component<EditorProps> = (props) => {
 						collapsible
 						collapsed={debugStore.toolbarCollapsed}
 						onCollapsedChange={setToolbarCollapsed}
-						onClose={() => setToolbarOpen(false)}
+						onClose={
+							harnessModeStore.id === 'game-preview'
+								? () => {
+										closeEditor();
+										props.onDismiss?.();
+									}
+								: undefined
+						}
 						dockRequest={toolbarDockRequest}
 					>
 						{(body) => (

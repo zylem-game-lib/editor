@@ -65,9 +65,9 @@ const mainActions = (): readonly HarnessMainAction[] => {
 	return harnessModeProfile(id).main ?? DEFAULT_MAIN;
 };
 
-/** First in every mode, so Save stays put whatever the mode's profile lists. */
+/** First in every mode except Game Preview, which hides Save. */
 const SaveGroup: Component = () => (
-	<Show when={saveStore.enabled}>
+	<Show when={saveStore.enabled && harnessModeStore.id !== 'game-preview'}>
 		<div class="zylem-toolbar-group">
 			<SaveButton />
 		</div>
