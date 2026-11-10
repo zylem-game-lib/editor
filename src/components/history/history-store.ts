@@ -116,6 +116,24 @@ export function historyHasUnsavedChanges(): boolean {
 	return historyHead() !== historyState.savedOpId;
 }
 
+/**
+ * Operations still applied that landed after the last save.
+ *
+ * Undone operations sit on the redo stack and are left out, so a save does not
+ * write them back. When the saved operation itself was undone, nothing still
+ * applied is newer than that save.
+ */
+export function unsavedOperations(): SceneOperationPayload[] {
+	const saved = historyState.savedOpId;
+	const stack = historyState.undoStack;
+	if (saved === null) return [...stack];
+	const index = stack.findIndex((op) => op.opId === saved);
+	if (index !== -1) return stack.slice(index + 1);
+	// The depth cap dropped the saved operation. Everything still stacked is newer.
+	if (undoFloor === saved) return [...stack];
+	return [];
+}
+
 /** Revert the most recent operation. Level mode rewinds the document, not the live scene. */
 export function undo(): boolean {
 	if (isLevelEditorActive()) return undoLevel();

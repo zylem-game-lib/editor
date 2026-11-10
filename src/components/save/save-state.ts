@@ -10,7 +10,7 @@
  * Save button that goes nowhere.
  */
 
-import type { LevelDocument } from '@zylem/bridge';
+import type { LevelDocument, SceneOperationPayload } from '@zylem/bridge';
 import { proxy, subscribe } from 'valtio/vanilla';
 import { mirrorProxy } from '../common/proxy-mirror';
 import {
@@ -18,6 +18,7 @@ import {
 	historyHead,
 	historyState,
 	markHistorySaved,
+	unsavedOperations,
 } from '../history/history-store';
 import {
 	levelDocumentFingerprint,
@@ -34,6 +35,11 @@ export interface EditorSave {
 	saveId: string;
 	/** Stage settings and every entity's pose, as Export Stage writes them. */
 	stage: StageExport;
+	/**
+	 * Scene operations still applied since the last save. Creates carry the
+	 * catalog id. Undone operations are not included.
+	 */
+	operations: SceneOperationPayload[];
 	/** The Level Builder document. Empty if the level was never edited. */
 	level: LevelDocument;
 }
@@ -105,6 +111,7 @@ function buildEditorSave(): EditorSave {
 	return {
 		saveId: `save-${Date.now().toString(36)}-${saveCount}`,
 		stage: buildStageExport(),
+		operations: unsavedOperations(),
 		level: snapshotLevelDocument().document,
 	};
 }

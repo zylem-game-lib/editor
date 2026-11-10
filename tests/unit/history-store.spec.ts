@@ -5,8 +5,10 @@ import {
 	canUndo,
 	clearHistory,
 	historyState,
+	markHistorySaved,
 	MAX_HISTORY_DEPTH,
 	pushOperation,
+	unsavedOperations,
 	redo,
 	redoLabel,
 	undo,
@@ -184,6 +186,28 @@ describe('history depth', () => {
 		// The game keeps 200 detached entities, so every uuid still reachable
 		// from a full history stack is still restorable.
 		expect(MAX_HISTORY_DEPTH).toBeLessThan(200);
+	});
+});
+
+describe('unsavedOperations', () => {
+	it('returns everything applied since the stage loaded', () => {
+		pushOperation(operation('a'));
+		pushOperation(operation('b'));
+		expect(unsavedOperations().map((op) => op.opId)).toEqual(['a', 'b']);
+	});
+
+	it('omits operations from the last save, and omits operations that were undone', () => {
+		pushOperation(operation('a'));
+		pushOperation(operation('b'));
+		markHistorySaved();
+		pushOperation(operation('c'));
+		expect(unsavedOperations().map((op) => op.opId)).toEqual(['c']);
+
+		undo();
+		expect(unsavedOperations()).toEqual([]);
+
+		undo();
+		expect(unsavedOperations()).toEqual([]);
 	});
 });
 
