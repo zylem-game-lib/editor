@@ -7,7 +7,7 @@ settings:
 overrides:
   '@types/three': 0.187.0
   three: 0.187.0
-  '@zylem/bridge': ^0.9.8
+  '@zylem/bridge': ^0.9.9
 
 importers:
 
@@ -20,11 +20,11 @@ importers:
         specifier: ^0.14.0
         version: 0.14.10(solid-js@1.9.15)
       '@zylem/bridge':
-        specifier: ^0.9.8
-        version: 0.9.8
-      '@zylem/ui':
         specifier: ^0.9.9
-        version: 0.9.9(solid-js@1.9.15)
+        version: 0.9.9
+      '@zylem/ui':
+        specifier: ^0.9.10
+        version: 0.9.10(solid-js@1.9.15)
       lucide-solid:
         specifier: ^1.48.0
         version: 1.48.0(solid-js@1.9.15)
@@ -45,11 +45,11 @@ importers:
         specifier: npm:typescript@7.0.2
         version: typescript@7.0.2
       '@zylem/behaviors':
-        specifier: ^0.8.12
-        version: 0.8.12(three@0.187.0)
+        specifier: ^0.8.13
+        version: 0.8.13(three@0.187.0)
       '@zylem/game-lib':
-        specifier: ^0.9.8
-        version: 0.9.8(howler@2.2.4)(nanoid@3.3.18)(playcanvas@2.23.3)(three@0.187.0)(valtio@2.3.2)
+        specifier: ^0.9.9
+        version: 0.9.9(howler@2.2.4)(nanoid@3.3.18)(playcanvas@2.23.3)(three@0.187.0)(valtio@2.3.2)
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -1114,29 +1114,29 @@ packages:
   '@webgpu/types@0.1.74':
     resolution: {integrity: sha512-lgiI4hbuLcI9unnm2cL/tvCaQU45dp0xcLWJh5uB/9MBGvIA4F8XIk7nSiBeg+K4xWGYwgZKn80LmERI5CxoTA==}
 
-  '@zylem/behaviors@0.8.12':
-    resolution: {integrity: sha512-zSuyIkdJgn/5x0p/qsbbP/GxnDKE3EkpmEos5qPi/sclei+RoS9wSY7unIq4i+N8n7JJugkDnDzCgQLBZOjDDw==}
+  '@zylem/behaviors@0.8.13':
+    resolution: {integrity: sha512-NZqsf+ijgfLt74669yK/XrGDliyy96Sb2RRYA5D98HJL6G+9m79lzylLOCpeKNHm4AMMWqs5/FUag6VN7iHI3Q==}
     engines: {node: '>=22.12.0', pnpm: '>=10.32.1'}
     peerDependencies:
       three: 0.187.0
 
-  '@zylem/bridge@0.9.8':
-    resolution: {integrity: sha512-spTjlKcmuhmBlHVucSgQ/jXSLHawTHFwCUYPJXDTtoK1aC8ZkMtxfC+F6ZcT9YMNC4psvR04bbq/sYRgff8vcw==}
+  '@zylem/bridge@0.9.9':
+    resolution: {integrity: sha512-ox66i3uXnxu34kpPQbbHxmV2QJhrOlyfagyLlU9SZTlVSo5sia70XkJF7WwCAm3B54N9KzLZlAHV3qYY3uXftw==}
 
-  '@zylem/game-lib@0.9.8':
-    resolution: {integrity: sha512-JiHGC0uMwhiKJ0v/g7oFrTNI2naS6ECivw6P2X3OXNKJeAYrE5QXy+g82h5xWpjNzLxAxNvZdaMQsRAtM1F4FQ==}
+  '@zylem/game-lib@0.9.9':
+    resolution: {integrity: sha512-kUOZTCH8jS1dFEUzOj+5qUNaYo/Xtozdn5BpQ+cdWBNxcqpXQuPTb0WLR/N2g7HG3JA73hRoJVnrbiz1pb3Hmw==}
     peerDependencies:
       howler: ^2.2.4
       nanoid: ^5.1.5
       three: 0.187.0
       valtio: ^2.1.7
 
-  '@zylem/runtime@0.8.14':
-    resolution: {integrity: sha512-7bjpp4ohh6gthca0y7hVpib17UkME2+d23pvRxnWLgC+UV98BaFMJvgq2TAvWJGGo94Zb86h4Gn1/W1DR6jJIg==}
+  '@zylem/runtime@0.8.15':
+    resolution: {integrity: sha512-sJHfMkdpejRoU/zSvqRYNBkbtIJirqTX3lcu4Qkp27xYnsbNN8Bi0Wm99peCG8OtcSNSDuJfgFuq8pBDU4ZgDQ==}
     engines: {node: '>=20.10.0'}
 
-  '@zylem/ui@0.9.9':
-    resolution: {integrity: sha512-XasIlQAHgUihytcRxZL+nU/JvwdSj7VjoxkPnvXKMRVNPQa0QXIVjjstwVtepjs2OKspUTYawSlvmegwYbbQOg==}
+  '@zylem/ui@0.9.10':
+    resolution: {integrity: sha512-EaQSHQLSJsyZCyw4ERp8wcJYynhIGYbpw/H2netk71lPgslE4L2hU5JlP6afuKUmeKB6XdZzfRVR62jEux7N5Q==}
     engines: {node: '>=22.12.0', pnpm: '>=10.32.1'}
     peerDependencies:
       solid-js: ^1.9.9
@@ -2619,10 +2619,10 @@ snapshots:
   '@webgpu/types@0.1.74':
     optional: true
 
-  '@zylem/behaviors@0.8.12(three@0.187.0)':
+  '@zylem/behaviors@0.8.13(three@0.187.0)':
     dependencies:
       '@dgreenheck/three-pinata': 2.0.1(three@0.187.0)
-      '@zylem/runtime': 0.8.14
+      '@zylem/runtime': 0.8.15
       comlink: 4.4.2
       three: 0.187.0
       typescript-fsm: 1.6.0
@@ -2631,15 +2631,15 @@ snapshots:
       - '@types/react'
       - react
 
-  '@zylem/bridge@0.9.8': {}
+  '@zylem/bridge@0.9.9': {}
 
-  '@zylem/game-lib@0.9.8(howler@2.2.4)(nanoid@3.3.18)(playcanvas@2.23.3)(three@0.187.0)(valtio@2.3.2)':
+  '@zylem/game-lib@0.9.9(howler@2.2.4)(nanoid@3.3.18)(playcanvas@2.23.3)(three@0.187.0)(valtio@2.3.2)':
     dependencies:
       '@dgreenheck/three-pinata': 2.0.1(three@0.187.0)
       '@sinclair/typebox': 0.34.52
       '@types/howler': 2.2.13
-      '@zylem/behaviors': 0.8.12(three@0.187.0)
-      '@zylem/bridge': 0.9.8
+      '@zylem/behaviors': 0.8.13(three@0.187.0)
+      '@zylem/bridge': 0.9.9
       comlink: 4.4.2
       howler: 2.2.4
       idb-keyval: 6.3.0
@@ -2658,9 +2658,9 @@ snapshots:
       - react
       - supports-color
 
-  '@zylem/runtime@0.8.14': {}
+  '@zylem/runtime@0.8.15': {}
 
-  '@zylem/ui@0.9.9(solid-js@1.9.15)':
+  '@zylem/ui@0.9.10(solid-js@1.9.15)':
     dependencies:
       '@kobalte/core': 0.13.13(solid-js@1.9.15)
       '@vanilla-extract/css': 1.21.3
