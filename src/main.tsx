@@ -60,6 +60,6 @@ mountHarnessGear(root, {
 
 // Started after both elements are mounted: the game element sizes the renderer
 // from its own bounds when `game` is assigned. Stage Editor then turns debug
-// and the free camera on.
+// on and leaves the game camera in place.
 bootstrapHarnessGame(game);
 editor.setMode('stage-editor');

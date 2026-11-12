@@ -89,7 +89,7 @@ export const HARNESS_MODES: readonly HarnessModeProfile[] = [
 	{
 		id: 'stage-editor',
 		label: 'Stage Editor',
-		camera: 'free',
+		camera: 'game',
 		cameraLayer: false,
 		debug: true,
 		level: false,

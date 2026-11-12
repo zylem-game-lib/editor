@@ -55,8 +55,9 @@ export type ElementMode = Exclude<LevelElementMode, 'object'>;
 /**
  * Debug mode on or off, in the editor and the game.
  *
- * Turning it on latches the free camera. The game copies the gameplay camera
- * onto that view and switches to it. Turning it off leaves the camera alone.
+ * Turning it on selects the free camera. The game copies the gameplay camera
+ * onto that view the first time it is shown, and leaves a later visit where
+ * it was. Turning debug off leaves the camera alone.
  */
 export function toggleDebug(): void {
 	const enabled = !debugStore.debug;

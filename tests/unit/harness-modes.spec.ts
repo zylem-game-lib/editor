@@ -53,7 +53,7 @@ describe('harness modes', () => {
 
 	it('gives Stage Editor debug, select, a camera menu, play, and the stage tools', () => {
 		expect(harnessModeProfile('stage-editor')).toMatchObject({
-			camera: 'free',
+			camera: 'game',
 			cameraLayer: false,
 			debug: true,
 			level: false,
@@ -250,7 +250,7 @@ describe('applyHarnessMode', () => {
 	it('keeps the camera and the debug flag when the mode changes', () => {
 		harnessModeState.id = null;
 		applyHarnessMode('stage-editor');
-		expect(viewState.preset).toBe('free');
+		expect(viewState.preset).toBe('game');
 		expect(debugStore.debug).toBe(true);
 
 		setViewPreset('perspective');
@@ -273,9 +273,10 @@ describe('applyHarnessMode', () => {
 	it('forces the game camera and debug off for the hidden fallback', () => {
 		harnessModeState.id = null;
 		applyHarnessMode('stage-editor');
-		expect(viewState.preset).toBe('free');
+		expect(viewState.preset).toBe('game');
 		expect(debugStore.debug).toBe(true);
 
+		setViewPreset('free');
 		applyHarnessMode('game-preview', { resetView: true });
 		expect(harnessModeState.id).toBe('game-preview');
 		expect(harnessModeState.captureKeys).toBe(false);
