@@ -48,8 +48,8 @@ importers:
         specifier: ^0.8.13
         version: 0.8.13(three@0.187.0)
       '@zylem/game-lib':
-        specifier: ^0.9.9
-        version: 0.9.9(howler@2.2.4)(nanoid@3.3.18)(playcanvas@2.23.3)(three@0.187.0)(valtio@2.3.2)
+        specifier: ^0.9.10
+        version: 0.9.10(howler@2.2.4)(nanoid@3.3.18)(playcanvas@2.23.3)(three@0.187.0)(valtio@2.3.2)
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -1123,8 +1123,8 @@ packages:
   '@zylem/bridge@0.9.9':
     resolution: {integrity: sha512-ox66i3uXnxu34kpPQbbHxmV2QJhrOlyfagyLlU9SZTlVSo5sia70XkJF7WwCAm3B54N9KzLZlAHV3qYY3uXftw==}
 
-  '@zylem/game-lib@0.9.9':
-    resolution: {integrity: sha512-kUOZTCH8jS1dFEUzOj+5qUNaYo/Xtozdn5BpQ+cdWBNxcqpXQuPTb0WLR/N2g7HG3JA73hRoJVnrbiz1pb3Hmw==}
+  '@zylem/game-lib@0.9.10':
+    resolution: {integrity: sha512-+WQIUAjOatj5xEO8ollXDdYUCqj986rKiTGHoh8JAc7NkxM34cxWLBqASa4l6wUs929RV7d5XaP5BPrwueYdlA==}
     peerDependencies:
       howler: ^2.2.4
       nanoid: ^5.1.5
@@ -2633,7 +2633,7 @@ snapshots:
 
   '@zylem/bridge@0.9.9': {}
 
-  '@zylem/game-lib@0.9.9(howler@2.2.4)(nanoid@3.3.18)(playcanvas@2.23.3)(three@0.187.0)(valtio@2.3.2)':
+  '@zylem/game-lib@0.9.10(howler@2.2.4)(nanoid@3.3.18)(playcanvas@2.23.3)(three@0.187.0)(valtio@2.3.2)':
     dependencies:
       '@dgreenheck/three-pinata': 2.0.1(three@0.187.0)
       '@sinclair/typebox': 0.34.52
