@@ -12,6 +12,8 @@
  * click — and the mirrors lag the proxies by a microtask.
  */
 
+import { resetNavigationTool } from '../navigation/navigation-state';
+
 import type { BrushShape, LevelElementMode } from '@zylem/bridge';
 import { snapshot } from 'valtio/vanilla';
 import {
@@ -63,6 +65,7 @@ export function toggleDebug(): void {
 	const enabled = !debugStore.debug;
 	setDebugStore('debug', enabled);
 	sendDebugEnabled(enabled);
+	if (!enabled) resetNavigationTool();
 	if (enabled) setViewPreset('free');
 }
 
@@ -73,6 +76,7 @@ export function toggleDebug(): void {
  * spawn, or trigger.
  */
 function activateTool(tool: DebugTools): void {
+	resetNavigationTool();
 	setDebugTool(tool);
 	sendTool(tool);
 	if (tool !== 'add') setLevelPlacement(null);
@@ -168,6 +172,7 @@ export function armAddType(typeId: string): boolean {
 	// Snapshotted: the props cross the bridge into the game, which should not
 	// receive a live handle on the editor's store.
 	sendAddType(descriptor.id, props);
+	resetNavigationTool();
 	setDebugTool('add');
 	sendTool('add');
 	if (levelState.active) {
@@ -351,6 +356,7 @@ export function duplicateSelection(): boolean {
  * drifted is brought back into line.
  */
 export function resetLevelTools(): void {
+	resetNavigationTool();
 	if (catalogState.armedTypeId !== null) {
 		setArmedType(null);
 		sendAddType(null);
@@ -366,6 +372,7 @@ export function armSpawnTool(): void {
 	levelState.activeLayer = 'entity';
 	setArmedType(null);
 	sendAddType(null);
+	resetNavigationTool();
 	setDebugTool('add');
 	sendTool('add');
 	setLevelPlacement({ kind: 'spawn' });
@@ -376,6 +383,7 @@ export function armTriggerTool(): void {
 	levelState.activeLayer = 'entity';
 	setArmedType(null);
 	sendAddType(null);
+	resetNavigationTool();
 	setDebugTool('add');
 	sendTool('add');
 	setLevelPlacement({ kind: 'trigger', size: { x: 2, y: 2, z: 2 } });
@@ -404,6 +412,7 @@ export function toggleLevelEditor(): void {
 
 /** Pause or resume the simulation, in the editor and the game. */
 export function togglePlayback(): void {
+	resetNavigationTool();
 	const paused = !debugState.paused;
 	setPaused(paused);
 	sendPlayback(paused);

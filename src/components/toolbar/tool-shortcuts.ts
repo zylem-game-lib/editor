@@ -13,6 +13,7 @@ import { sendAddType, sendTool } from '../../bridge/editor-bridge';
 import { getDebugTool, setDebugTool } from '../entities/entities-state';
 import { isEditableTarget } from '../history/history-shortcuts';
 import { clearLevelSelection, setLevelPlacement } from '../level/level-state';
+import { navigationState, resetNavigationTool } from '../navigation/navigation-state';
 import { catalogState, setArmedType } from './catalog-state';
 import { isOverlayTarget } from './toolbar-shortcuts';
 
@@ -26,7 +27,9 @@ export interface ToolShortcutOptions {
 export function disarmTools(): boolean {
 	const hadTool = getDebugTool() !== 'none';
 	const hadType = catalogState.armedTypeId !== null;
-	if (!hadTool && !hadType) return false;
+	const hadNavigationTool = navigationState.tool !== 'none';
+	if (!hadTool && !hadType && !hadNavigationTool) return false;
+	if (hadNavigationTool) resetNavigationTool();
 
 	if (hadType) {
 		setArmedType(null);

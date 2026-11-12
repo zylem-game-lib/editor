@@ -9,6 +9,7 @@
 
 import {
 	type BridgeVec3,
+	type LevelNavigation,
 	type BrushShape,
 	DEFAULT_DRAW_SHAPE,
 	type LevelDocument,
@@ -616,4 +617,16 @@ export function resetLevelEditor(): void {
 
 function clonePlacement(placement: LevelPlacementArm): LevelPlacementArm {
 	return JSON.parse(JSON.stringify(placement)) as LevelPlacementArm;
+}
+
+/** Navigation authoring and baked bytes travel with level saves and history. */
+export function setLevelNavigation(navigation: LevelNavigation, label = 'Edit navigation'): void {
+	commitEdit(label, {
+		document: {
+			...cloneLevelDocument(levelState.document),
+			navigation: JSON.parse(JSON.stringify(navigation)),
+		},
+		selectIds: [...levelState.selectedIds],
+		selectElements: cloneElements(levelState.selectedElements),
+	});
 }

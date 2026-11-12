@@ -3,6 +3,8 @@
  * entity list, thumbnails, and the undo history together.
  */
 
+import { resetNavigationState } from '../components/navigation/navigation-state';
+
 import type { StageSnapshotPayload } from '@zylem/bridge';
 import { clearEntityThumbnails } from '../components/entities/thumbnail-store';
 import { clearHistory } from '../components/history/history-store';
@@ -10,6 +12,7 @@ import { stageState } from '../components/stages/stage-state';
 import { adoptInlineThumbnails, replaceEntities } from './sync-entities';
 
 export function applyStageSnapshot(snapshot: StageSnapshotPayload): void {
+	if (stageState.config?.id !== snapshot.stage?.id) resetNavigationState();
 	if (snapshot.stage) {
 		stageState.config = {
 			id: snapshot.stage.id,

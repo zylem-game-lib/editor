@@ -8,6 +8,8 @@
  * that do not exist yet are slots: they render with a label and do nothing.
  */
 
+import { resetNavigationTool } from '../components/navigation/navigation-state';
+
 import type { LevelLayerId } from '@zylem/bridge';
 import { proxy } from 'valtio/vanilla';
 import { sendDebugEnabled, sendTool } from '../bridge/commands';
@@ -176,12 +178,12 @@ function levelBuilderMode(
 }
 
 export const HARNESS_SLOT_LABELS: Record<HarnessSlotId, string> = {
-	navmesh: 'Navigation brush',
+	navmesh: 'Bake navmesh',
 	decal: 'Environment decal',
 	'uv-brush': 'UV brush',
 	splat: 'Splat',
-	'directional-vector': 'Directional vector',
-	'obstacle-brush': 'Obstacle brush',
+	'directional-vector': 'Traversal link',
+	'obstacle-brush': 'Obstacle volume',
 	'place-hud': 'Place HUD',
 	'bind-variable': 'Bind variable',
 	geometry: 'Geometry',
@@ -234,6 +236,7 @@ export interface HarnessModeApplyOptions {
  * armed. Any other mode releases the armed tool when it has no button for it.
  */
 export function applyHarnessMode(id: HarnessModeId, options?: HarnessModeApplyOptions): void {
+	resetNavigationTool();
 	const profile = harnessModeProfile(id);
 	const opening = harnessModeState.id === null;
 	harnessModeState.id = id;

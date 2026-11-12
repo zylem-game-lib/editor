@@ -22,7 +22,7 @@ export function isPanelVisible(id: string, state: PanelVisibility): boolean {
 	if (id === 'game-config' || id === 'stage-config' || id === 'console') return true;
 	if (id === 'transform') return TRANSFORM_TOOLS.has(state.tool);
 	if (id === 'entities' || id === 'bridge') return state.debug;
-	if (id === 'level') return state.build;
+	if (id === 'level' || id === 'navigation') return state.build;
 	return false;
 }
 

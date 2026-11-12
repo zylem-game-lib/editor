@@ -3,6 +3,8 @@
  * Defines all available panels and their components.
  */
 
+import { NavigationSection } from '../navigation/NavigationSection';
+
 import type { Component, JSX } from 'solid-js';
 import { BridgePanel } from '../bridge/BridgePanel';
 import { Console } from '../console/Console';
@@ -28,6 +30,7 @@ export const PANEL_CONFIGS: PanelConfig[] = [
 	{ id: 'entities', title: 'Entities', component: EntitiesSection },
 	{ id: 'transform', title: 'Transform', component: TransformSection },
 	{ id: 'level', title: 'Level', component: LevelSection },
+	{ id: 'navigation', title: 'Map Navigation', component: NavigationSection },
 	{ id: 'console', title: 'Console', component: Console },
 	{ id: 'bridge', title: 'Bridge', component: BridgePanel },
 ];

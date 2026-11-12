@@ -1,3 +1,4 @@
+import { armNavigationTool, bakeNavigation, navigationStore } from '../navigation/navigation-state';
 import { ToolbarButton } from '@zylem/ui/components';
 import Box from 'lucide-solid/icons/box';
 import BrickWall from 'lucide-solid/icons/brick-wall';
@@ -111,6 +112,36 @@ export const MainToolbar: Component<MainToolbarProps> = (props) => {
 
 const ContextActionButton: Component<{ action: HarnessContextAction }> = (props) => {
 	if (isHarnessSlot(props.action)) {
+		if (props.action === 'navmesh')
+			return (
+				<ToolbarButton
+					label="Bake navmesh"
+					disabled={navigationStore.state === 'building'}
+					onClick={bakeNavigation}
+				>
+					<MapIcon class="zylem-icon" />
+				</ToolbarButton>
+			);
+		if (props.action === 'directional-vector')
+			return (
+				<ToolbarButton
+					label="Traversal link"
+					selected={navigationStore.tool === 'link'}
+					onClick={() => armNavigationTool('link')}
+				>
+					<MoveRight class="zylem-icon" />
+				</ToolbarButton>
+			);
+		if (props.action === 'obstacle-brush')
+			return (
+				<ToolbarButton
+					label="Obstacle volume"
+					selected={navigationStore.tool === 'obstacle'}
+					onClick={() => armNavigationTool('obstacle')}
+				>
+					<BrickWall class="zylem-icon" />
+				</ToolbarButton>
+			);
 		return <HarnessSlotButton slot={props.action} />;
 	}
 	switch (props.action) {

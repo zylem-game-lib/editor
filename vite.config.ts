@@ -35,16 +35,18 @@ export default defineConfig({
 		dedupe: ['solid-js', 'three', '@zylem/bridge', '@zylem/game-lib'],
 	},
 	optimizeDeps: {
+		include: ['@zylem/game-lib > howler', '@zylem/game-lib > typescript-fsm'],
 		exclude: [
 			// Keep `@zylem/ui` out of esbuild prebundling so vite-plugin-solid
 			// compiles its TSX components instead of the React JSX transform.
 			'@zylem/ui',
+			// Preserve the navigation worker URL relative to game-lib's dist.
+			// Moving it into .vite/deps would detach it from its sibling worker.
+			'@zylem/game-lib',
 			// Prebundling rewrites the runtime into a flat chunk, which moves the
 			// module away from its `.wasm` sibling and breaks the URL above.
-			// game-lib itself stays prebundled (it has CJS deps that need the
-			// optimizer), so its rewritten `@zylem/behaviors/*` imports resolve
-			// from this package root -- hence `@zylem/behaviors` is a devDependency
-			// here even though only game-lib uses it.
+			// game-lib's CommonJS dependencies are explicitly included above;
+			// its ESM and worker assets keep their package-relative locations.
 			'@zylem/behaviors',
 			'@zylem/runtime',
 		],

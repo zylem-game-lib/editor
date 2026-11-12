@@ -91,3 +91,17 @@ zw publish @zylem/editor
 
 Or manually: `pnpm version patch && git push --follow-tags`. The
 `prepublishOnly` script runs the production build and the unit tests.
+
+## Map Navigation
+
+Open **Level Builder → Map Navigation** and expand the **Map Navigation** panel. The toolbar's navigation slots now bake a mesh, author a traversal link, or draw an obstacle volume.
+
+1. Author level solids and set agent radius, height, step height, slope, and voxel resolution.
+2. Click **Bake navmesh**. Toggle **Show navigation** to inspect the overlay.
+3. Click **Test path**, then click two solid surfaces. The panel reports complete, partial, or unreachable routes.
+4. Use **Obstacle** for a two-corner volume, or **Traversal link** for two endpoints. Links can be one-way or two-way. Press Escape to finish a tool, then rebake after editing.
+5. Save through the existing host save action. Navigation authoring and the baked binary are included in the level JSON and participate in undo/redo.
+
+Baking uses level solids, including hidden sectors. Doodads, gameplay markers, and live stage entities are excluded. Use the selected-solid inclusion controls or obstacle volumes to adjust navigation geometry. Changed inputs mark a bake stale and disable path tests until rebaked. Directional vectors are represented by directed traversal links; crowd movement and flow fields are outside this workflow.
+
+This branch requires the matching `feature/recast-navigation` changes in `zylem`. Use `zw link dev` and build the sibling bridge and game-lib packages before building this editor. Published 0.9.9 packages do not expose the new navigation protocol. Before release, publish bridge/game-lib first and update this repo's registry ranges and lockfile to those releases. See [runtime navigation documentation](https://github.com/zylem-game-lib/zylem/blob/feature/recast-navigation/packages/game-lib/NAVIGATION.md) for API and bake limits.

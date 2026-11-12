@@ -6,6 +6,16 @@
  * shows current config/entities immediately.
  */
 
+import {
+	applyNavigationStatus,
+	applyNavigationBake,
+	applyNavigationEdit,
+	applyNavigationPath,
+	resetNavigationState,
+	resetNavigationTool,
+	setNavigationVisible,
+} from '../components/navigation/navigation-state';
+
 import { applyLevelSelect } from '../components/level/level-state';
 import { channel } from './channel';
 
@@ -56,6 +66,10 @@ export function connectEditorBridge(): () => void {
 	connected = true;
 
 	unsubscribes = [
+		channel.on('navigation:status', applyNavigationStatus),
+		channel.on('navigation:baked', applyNavigationBake),
+		channel.on('navigation:edit', applyNavigationEdit),
+		channel.on('navigation:path', applyNavigationPath),
 		channel.on('game:config', applyGameConfig),
 		channel.on('game:variable', applyGameVariable),
 		channel.on('game:status', applyGameStatus),
@@ -80,6 +94,8 @@ export function connectEditorBridge(): () => void {
 	if (config) applyGameConfig(config);
 	const snapshot = channel.getState('stage:snapshot');
 	if (snapshot) applyStageSnapshot(snapshot);
+	const navigation = channel.getState('navigation:status');
+	if (navigation) applyNavigationStatus(navigation);
 	const upserts = channel.getState('entity:upsert');
 	if (upserts) applyEntityUpsert(upserts);
 	const thumbnails = channel.getState('entity:thumbnail');
@@ -98,6 +114,9 @@ export function connectEditorBridge(): () => void {
 export function disconnectEditorBridge(): void {
 	for (const unsubscribe of unsubscribes) unsubscribe();
 	unsubscribes = [];
+	resetNavigationTool();
+	setNavigationVisible(false);
 	connected = false;
 	connectionCount = 0;
+	resetNavigationState();
 }

@@ -37,6 +37,7 @@ const DEFAULT_PANEL_ORDER = [
 	'entities',
 	'transform',
 	'level',
+	'navigation',
 	'console',
 	'bridge',
 ];

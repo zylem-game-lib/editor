@@ -153,3 +153,10 @@ export {
 	type HarnessModeId,
 	HARNESS_MODES,
 } from './dev/harness-modes';
+
+export {
+	bakeNavigation,
+	armNavigationTool,
+	setNavigationSetting,
+	setNavigationVisible,
+} from './components/navigation/navigation-state';
