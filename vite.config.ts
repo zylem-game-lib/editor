@@ -3,6 +3,7 @@
 // node_modules. A relative path is bundled by Vite's config loader instead,
 // so Node never has to execute that TypeScript.
 
+import { existsSync, readdirSync, readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { defineConfig } from 'vite';
@@ -11,6 +12,39 @@ import { zylemVersionsPlugin } from './node_modules/@zylem/ui/vite/index.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const devPort = 3333;
+
+/**
+ * Every package specifier the installed @zylem/game-lib imports, as
+ * `optimizeDeps.include` entries.
+ *
+ * Vite does not look inside a dependency it was told not to prebundle, so it
+ * meets these imports only when the browser asks for them. From a registry
+ * install, a CommonJS one (stats.js, howler) then fails to load at all. An ES
+ * module one that game-lib loads late (Recast on the first navmesh bake, a
+ * model loader, Tone) makes Vite prebundle again and reload the page, which
+ * throws away the level being edited. Reading the list from the package keeps
+ * it right across upgrades, and for a `zw link dev` checkout as well.
+ */
+function gameLibImports(): string[] {
+	const dist = path.resolve(__dirname, 'node_modules/@zylem/game-lib/dist');
+	if (!existsSync(dist)) return [];
+	const specifiers = new Set<string>();
+	const bareImport = /(?:\bfrom\s*|\bimport\s*\(?\s*)["']([^"'./][^"']*)["']/g;
+	for (const name of readdirSync(dist)) {
+		// The worker is one self-contained file.
+		if (!name.endsWith('.js') || name === 'navigation-worker.js') continue;
+		for (const match of readFileSync(path.join(dist, name), 'utf8').matchAll(bareImport)) {
+			if (match[1]) specifiers.add(match[1]);
+		}
+	}
+	return (
+		[...specifiers]
+			// The other @zylem packages are deliberately not prebundled.
+			.filter((specifier) => !specifier.startsWith('@zylem/'))
+			.sort()
+			.map((specifier) => `@zylem/game-lib > ${specifier}`)
+	);
+}
 
 // `@zylem/ui/styles.css` is resolved via the package's `exports` map
 // (`"./styles.css": "./dist/styles.css"`), so no explicit alias is needed
@@ -36,15 +70,9 @@ export default defineConfig({
 		dedupe: ['solid-js', 'three', '@zylem/bridge', '@zylem/game-lib'],
 	},
 	optimizeDeps: {
-		include: [
-			'@zylem/game-lib > howler',
-			'@zylem/game-lib > typescript-fsm',
-			// game-lib imports Recast lazily, on the first bake or asset load.
-			// Found that late, Vite re-optimizes and reloads the page, which
-			// throws away the level being edited.
-			'@zylem/game-lib > recast-navigation',
-			'@zylem/game-lib > @recast-navigation/three',
-		],
+		// game-lib is served as it ships (see `exclude`), so everything it
+		// imports is prebundled by name instead.
+		include: gameLibImports(),
 		exclude: [
 			// Keep `@zylem/ui` out of esbuild prebundling so vite-plugin-solid
 			// compiles its TSX components instead of the React JSX transform.
@@ -54,8 +82,6 @@ export default defineConfig({
 			'@zylem/game-lib',
 			// Prebundling rewrites the runtime into a flat chunk, which moves the
 			// module away from its `.wasm` sibling and breaks the URL above.
-			// game-lib's CommonJS dependencies are explicitly included above;
-			// its ESM and worker assets keep their package-relative locations.
 			'@zylem/behaviors',
 			'@zylem/runtime',
 		],
