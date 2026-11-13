@@ -24,6 +24,7 @@ import {
 	applyNavigationStatus,
 	armNavigationTool,
 	bakeNavigation,
+	navigationDisplayState,
 	navigationState,
 	resetNavigationState,
 	setNavigationSetting,
@@ -99,6 +100,37 @@ describe('navigation authoring', () => {
 		expect(levelState.document.navigation?.links[0].bidirectional).toBe(false);
 		expect(levelState.document.navigation?.baked).toEqual(baked);
 		expect(levelHasUnsavedChanges()).toBe(false);
+	});
+	it('reports the bake the document holds, not just the navmesh the game holds', () => {
+		// Undoing a bake takes the asset out of the document without changing the
+		// sources, so the game keeps its navmesh and keeps reporting `ready`. Save
+		// writes the document, so that is what the panel has to describe.
+		const display = () => navigationDisplayState(navigationState, levelState.document);
+		bakeNavigation();
+		const first = asset();
+		applyNavigationStatus({ stageId: 'stage', state: 'ready', sourceHash: first.sourceHash });
+		applyNavigationBake({ stageId: 'stage', requestId: navigationState.requestId, asset: first });
+		expect(display()).toBe('ready');
+
+		undoLevel();
+		expect(navigationState.state).toBe('ready');
+		expect(display()).toBe('empty');
+		redoLevel();
+		expect(display()).toBe('ready');
+
+		// An asset baked for other sources is stale even while the game is ready.
+		setNavigationSetting('agentRadius', 0.8);
+		applyNavigationStatus({
+			stageId: 'stage',
+			state: 'ready',
+			sourceHash: navigationSourceHash(levelState.document),
+		});
+		expect(levelState.document.navigation?.baked).toEqual(first);
+		expect(display()).toBe('stale');
+
+		// The game's own status wins whenever it is anything other than ready.
+		applyNavigationStatus({ stageId: 'stage', state: 'building', sourceHash: first.sourceHash });
+		expect(display()).toBe('building');
 	});
 	it('rejects bake responses for old inputs, requests, and stages', () => {
 		bakeNavigation();

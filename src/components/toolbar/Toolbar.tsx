@@ -1,5 +1,4 @@
-import { armNavigationTool, bakeNavigation, navigationStore } from '../navigation/navigation-state';
-import { ToolbarButton } from '@zylem/ui/components';
+import { Toolbar as CommandStrip, Separator, ToolbarButton } from '@zylem/ui/components';
 import Box from 'lucide-solid/icons/box';
 import BrickWall from 'lucide-solid/icons/brick-wall';
 import Image from 'lucide-solid/icons/image';
@@ -10,7 +9,7 @@ import Paintbrush from 'lucide-solid/icons/paintbrush';
 import RectangleHorizontal from 'lucide-solid/icons/rectangle-horizontal';
 import Shield from 'lucide-solid/icons/shield';
 import SprayCan from 'lucide-solid/icons/spray-can';
-import { type Component, For, Show } from 'solid-js';
+import { type Component, createContext, For, Show, useContext } from 'solid-js';
 import {
 	HARNESS_SLOT_LABELS,
 	type HarnessContextAction,
@@ -22,6 +21,7 @@ import {
 } from '../../dev/harness-modes';
 import { debugStore } from '../editor-store';
 import { levelStore } from '../level/level-state';
+import { armNavigationTool, bakeNavigation, navigationStore } from '../navigation/navigation-state';
 import { saveStore } from '../save/save-state';
 import { AddButton } from './AddButton';
 import { BuildButton } from './BuildButton';
@@ -49,6 +49,7 @@ import { PlayPauseButton } from './PlayPauseButton';
 import { SaveButton } from './SaveButton';
 import { SelectButton } from './SelectButton';
 import { RotateButton, ScaleButton, TranslateButton } from './TransformButtons';
+import { toolbarModeFor } from './toolbar-mode';
 import {
 	FreeViewButton,
 	GameViewButton,
@@ -66,14 +67,21 @@ const mainActions = (): readonly HarnessMainAction[] => {
 	return harnessModeProfile(id).main ?? DEFAULT_MAIN;
 };
 
+/** Whether the strip runs down the screen. A rule between groups turns with it. */
+const StripIsVertical = createContext<() => boolean>(() => false);
+
+/** The rule between two groups of tools, across the strip's direction. */
+const Rule: Component = () => {
+	const vertical = useContext(StripIsVertical);
+	return <Separator orientation={vertical() ? 'horizontal' : 'vertical'} />;
+};
+
 /** First in every mode except Game Preview, which hides Save. */
 const SaveGroup: Component = () => (
 	<Show when={saveStore.enabled && harnessModeStore.id !== 'game-preview'}>
-		<div class="zylem-toolbar-group">
-			<SaveButton />
-		</div>
+		<SaveButton />
 		<Show when={mainActions().length > 0}>
-			<span class="zylem-toolbar-divider" />
+			<Rule />
 		</Show>
 	</Show>
 );
@@ -101,12 +109,12 @@ export interface MainToolbarProps {
 /** Exclusive editing stays Select. The other main buttons are layers or session toggles. */
 export const MainToolbar: Component<MainToolbarProps> = (props) => {
 	return (
-		<div class="zylem-toolbar-group">
+		<>
 			<For each={mainActions()}>{(action) => <MainActionButton action={action} />}</For>
 			<Show when={mainActions().length > 0}>
 				<PanelsButton open={props.panelsOpen} onToggle={props.onTogglePanels} />
 			</Show>
-		</div>
+		</>
 	);
 };
 
@@ -262,12 +270,12 @@ export const ContextToolbar: Component = () => {
 
 	return (
 		<Show when={actions().length > 0}>
-			<span class="zylem-toolbar-divider" />
+			<Rule />
 			<For each={actions()}>
 				{(action, index) => (
 					<>
 						<Show when={index() > 0 && actionStartsGroup(action)}>
-							<span class="zylem-toolbar-divider" />
+							<Rule />
 						</Show>
 						<ContextActionButton action={action} />
 					</>
@@ -286,16 +294,17 @@ export const Toolbar: Component<
 		orientation?: 'row' | 'column';
 	}
 > = (props) => {
+	const vertical = () => props.orientation === 'column';
 	return (
-		<div
-			class="zylem-toolbar"
-			classList={{
-				'zylem-toolbar--vertical': (props.orientation ?? 'row') === 'column',
-			}}
-		>
-			<SaveGroup />
-			<MainToolbar panelsOpen={props.panelsOpen} onTogglePanels={props.onTogglePanels} />
-			<ContextToolbar />
-		</div>
+		<StripIsVertical.Provider value={vertical}>
+			<CommandStrip
+				orientation={vertical() ? 'vertical' : 'horizontal'}
+				mode={toolbarModeFor(harnessModeStore.id)}
+			>
+				<SaveGroup />
+				<MainToolbar panelsOpen={props.panelsOpen} onTogglePanels={props.onTogglePanels} />
+				<ContextToolbar />
+			</CommandStrip>
+		</StripIsVertical.Provider>
 	);
 };

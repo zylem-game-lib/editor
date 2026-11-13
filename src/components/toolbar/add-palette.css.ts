@@ -16,20 +16,20 @@ export const addPaletteCSS = `
 	max-width: 100%;
 }
 
-.zylem-toolbar--vertical .zylem-toolbar-group {
-	flex-direction: column;
+/*
+ * Rules between tool groups are Separator from @zylem/ui. On the strip they
+ * take the mode's own separator colour and sit closer to the buttons.
+ */
+.zylem-toolbar .zylem-separator {
+	flex-shrink: 0;
+	background: var(--zylem-toolbar-separator);
 }
 
-.zylem-toolbar-divider {
-	width: 1px;
-	align-self: stretch;
+.zylem-toolbar .zylem-separator[data-orientation="vertical"] {
 	margin: 0 2px;
-	background: rgba(255, 255, 255, 0.18);
 }
 
-.zylem-toolbar--vertical .zylem-toolbar-divider {
-	width: auto;
-	height: 1px;
+.zylem-toolbar .zylem-separator[data-orientation="horizontal"] {
 	margin: 2px 0;
 }
 
@@ -99,19 +99,8 @@ export const addPaletteCSS = `
 	justify-content: center;
 }
 
-.zylem-chrome-inline--column .zylem-toolbar-group {
-	display: contents;
-}
-
-.zylem-chrome-inline--column .zylem-toolbar-divider {
+.zylem-chrome-inline--column .zylem-toolbar .zylem-separator {
 	grid-column: 1 / -1;
-}
-
-/* Keeps a group's buttons together when the toolbar wraps. */
-.zylem-toolbar-group {
-	display: inline-flex;
-	align-items: center;
-	gap: inherit;
 }
 
 /* Keeps the gizmo buttons together when the toolbar wraps. */
@@ -218,6 +207,25 @@ export const addPaletteCSS = `
 
 .zylem-level-settings {
 	margin-bottom: 10px;
+}
+
+/* Map Navigation: one column of @zylem/ui blocks with even spacing. */
+.zylem-navigation {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+/* The panel is narrow, so a tool group's caption sits above its buttons. */
+.zylem-navigation .zylem-tool-group {
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 4px;
+}
+
+/* The dashed card is sized for a page. In the panel it hugs its two lines. */
+.zylem-navigation .zylem-empty-state {
+	padding: 12px;
 }
 
 /* A field fills its value cell, and the cell must not clip the steppers. */

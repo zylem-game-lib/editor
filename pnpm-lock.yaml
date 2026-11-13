@@ -7,7 +7,7 @@ settings:
 overrides:
   '@types/three': 0.187.0
   three: 0.187.0
-  '@zylem/bridge': ^0.9.9
+  '@zylem/bridge': ^0.9.10
 
 importers:
 
@@ -20,11 +20,11 @@ importers:
         specifier: ^0.14.0
         version: 0.14.10(solid-js@1.9.15)
       '@zylem/bridge':
-        specifier: ^0.9.9
-        version: 0.9.9
-      '@zylem/ui':
         specifier: ^0.9.10
-        version: 0.9.10(solid-js@1.9.15)
+        version: 0.9.10
+      '@zylem/ui':
+        specifier: ^0.9.11
+        version: 0.9.11(solid-js@1.9.15)
       lucide-solid:
         specifier: ^1.48.0
         version: 1.48.0(solid-js@1.9.15)
@@ -48,8 +48,8 @@ importers:
         specifier: ^0.8.13
         version: 0.8.13(three@0.187.0)
       '@zylem/game-lib':
-        specifier: ^0.9.10
-        version: 0.9.10(howler@2.2.4)(nanoid@3.3.18)(playcanvas@2.23.3)(three@0.187.0)(valtio@2.3.2)
+        specifier: ^0.9.11
+        version: 0.9.11(@types/three@0.187.0)(howler@2.2.4)(nanoid@3.3.18)(playcanvas@2.23.3)(three@0.187.0)(valtio@2.3.2)
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -693,6 +693,21 @@ packages:
     peerDependencies:
       playcanvas: ^2.0.0
 
+  '@recast-navigation/core@0.44.0':
+    resolution: {integrity: sha512-N4YO9JBXrGFf3LkrhXmABa7pEwLHvq/gq6o7pLKKu5A4JAp+A5y/9424ps3cVpO1m7ibh3zlXmeewTut9LeXQw==}
+
+  '@recast-navigation/generators@0.44.0':
+    resolution: {integrity: sha512-i2N/sCfuq7IJcSuMmHuX2Uer6oonr9PzFZTrPpwS/e2t+ZpVLHb3DHFY9evKrL2X8diO7sDUDBOpTfW/4Nwucw==}
+
+  '@recast-navigation/three@0.44.0':
+    resolution: {integrity: sha512-7PYy9sAJMK66+0g87xJ4x+jUL9Lv4DrtOwXrJYo1W5YB29f6HjSTVGXw5LooPgqqQcf+RUpoeQaSSul0cvVw/A==}
+    peerDependencies:
+      '@types/three': 0.187.0
+      three: 0.187.0
+
+  '@recast-navigation/wasm@0.44.0':
+    resolution: {integrity: sha512-VNv7xv50cFCdsGd2LdQWZqtLcWXB7nyi4Ilq9t5GMn3GEfCmJEbbeZWSXX5Mgdc4yj71QueTv15V7hPDAQ9gaw==}
+
   '@rollup/rollup-android-arm-eabi@4.63.1':
     resolution: {integrity: sha512-UZ8sUxPTiHWYX9QNdJedb1kDZSpS1t/VPWBWGSgqHNi9w3Cu6IXvu2mzbhiTiPvtrqgTQJ+zqiAq2iPIPilpaQ==}
     cpu: [arm]
@@ -1120,11 +1135,11 @@ packages:
     peerDependencies:
       three: 0.187.0
 
-  '@zylem/bridge@0.9.9':
-    resolution: {integrity: sha512-ox66i3uXnxu34kpPQbbHxmV2QJhrOlyfagyLlU9SZTlVSo5sia70XkJF7WwCAm3B54N9KzLZlAHV3qYY3uXftw==}
+  '@zylem/bridge@0.9.10':
+    resolution: {integrity: sha512-7QTzNug2Fed+lmVPeNPQgcZaU93ucykXwtfIrGYWUHNTh0C6p2RGuOGq883Mp64Br5OIDSpXDrwN6aNPf3cJKA==}
 
-  '@zylem/game-lib@0.9.10':
-    resolution: {integrity: sha512-+WQIUAjOatj5xEO8ollXDdYUCqj986rKiTGHoh8JAc7NkxM34cxWLBqASa4l6wUs929RV7d5XaP5BPrwueYdlA==}
+  '@zylem/game-lib@0.9.11':
+    resolution: {integrity: sha512-KTkEVt+U5vfflAFLW/BJ3bIIPZb7tlU4RFCmVWdbB6VtUJEKgV8EZe+0Qeu5jwBNCgkbA06pChsIYwBMe9EnjA==}
     peerDependencies:
       howler: ^2.2.4
       nanoid: ^5.1.5
@@ -1135,8 +1150,8 @@ packages:
     resolution: {integrity: sha512-sJHfMkdpejRoU/zSvqRYNBkbtIJirqTX3lcu4Qkp27xYnsbNN8Bi0Wm99peCG8OtcSNSDuJfgFuq8pBDU4ZgDQ==}
     engines: {node: '>=20.10.0'}
 
-  '@zylem/ui@0.9.10':
-    resolution: {integrity: sha512-EaQSHQLSJsyZCyw4ERp8wcJYynhIGYbpw/H2netk71lPgslE4L2hU5JlP6afuKUmeKB6XdZzfRVR62jEux7N5Q==}
+  '@zylem/ui@0.9.11':
+    resolution: {integrity: sha512-B9stZSfCguJLoK3UG4AOT9p4b2z9aSy3H4XEaU13B073od7/mNOlNlOPjxrhOeprRqmCL97xPEm4rDr1bqm3dA==}
     engines: {node: '>=22.12.0', pnpm: '>=10.32.1'}
     peerDependencies:
       solid-js: ^1.9.9
@@ -1500,6 +1515,9 @@ packages:
   readdirp@4.1.2:
     resolution: {integrity: sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg==}
     engines: {node: '>= 14.18.0'}
+
+  recast-navigation@0.44.0:
+    resolution: {integrity: sha512-Qu5ETIZZo69uk3lvjJpdgopPUFp95dTmKljckjpSdL1IbdX26837R8j4nC2oHT6tEKViVwkIvy9Zbzyxr27GiQ==}
 
   resolve-from@5.0.0:
     resolution: {integrity: sha512-qYg9KP24dD5qka9J47d0aVky0N+b4fTU89LN9iDnjB5waksiC49rvMB0PrUJQGoTmH50XPiqOvAjDfaijGxYZw==}
@@ -2286,6 +2304,24 @@ snapshots:
       - supports-color
     optional: true
 
+  '@recast-navigation/core@0.44.0':
+    dependencies:
+      '@recast-navigation/wasm': 0.44.0
+
+  '@recast-navigation/generators@0.44.0':
+    dependencies:
+      '@recast-navigation/core': 0.44.0
+      '@recast-navigation/wasm': 0.44.0
+
+  '@recast-navigation/three@0.44.0(@types/three@0.187.0)(three@0.187.0)':
+    dependencies:
+      '@recast-navigation/core': 0.44.0
+      '@recast-navigation/generators': 0.44.0
+      '@types/three': 0.187.0
+      three: 0.187.0
+
+  '@recast-navigation/wasm@0.44.0': {}
+
   '@rollup/rollup-android-arm-eabi@4.63.1':
     optional: true
 
@@ -2631,20 +2667,22 @@ snapshots:
       - '@types/react'
       - react
 
-  '@zylem/bridge@0.9.9': {}
+  '@zylem/bridge@0.9.10': {}
 
-  '@zylem/game-lib@0.9.10(howler@2.2.4)(nanoid@3.3.18)(playcanvas@2.23.3)(three@0.187.0)(valtio@2.3.2)':
+  '@zylem/game-lib@0.9.11(@types/three@0.187.0)(howler@2.2.4)(nanoid@3.3.18)(playcanvas@2.23.3)(three@0.187.0)(valtio@2.3.2)':
     dependencies:
       '@dgreenheck/three-pinata': 2.0.1(three@0.187.0)
+      '@recast-navigation/three': 0.44.0(@types/three@0.187.0)(three@0.187.0)
       '@sinclair/typebox': 0.34.52
       '@types/howler': 2.2.13
       '@zylem/behaviors': 0.8.13(three@0.187.0)
-      '@zylem/bridge': 0.9.9
+      '@zylem/bridge': 0.9.10
       comlink: 4.4.2
       howler: 2.2.4
       idb-keyval: 6.3.0
       msgpackr: 1.12.1
       nanoid: 3.3.18
+      recast-navigation: 0.44.0
       stats.js: 0.17.0
       three: 0.187.0
       tone: 15.5.66
@@ -2654,13 +2692,14 @@ snapshots:
       '@playcanvas/splat-transform': 3.10.3(playcanvas@2.23.3)
     transitivePeerDependencies:
       - '@types/react'
+      - '@types/three'
       - playcanvas
       - react
       - supports-color
 
   '@zylem/runtime@0.8.15': {}
 
-  '@zylem/ui@0.9.10(solid-js@1.9.15)':
+  '@zylem/ui@0.9.11(solid-js@1.9.15)':
     dependencies:
       '@kobalte/core': 0.13.13(solid-js@1.9.15)
       '@vanilla-extract/css': 1.21.3
@@ -3006,6 +3045,11 @@ snapshots:
   proxy-compare@3.0.1: {}
 
   readdirp@4.1.2: {}
+
+  recast-navigation@0.44.0:
+    dependencies:
+      '@recast-navigation/core': 0.44.0
+      '@recast-navigation/generators': 0.44.0
 
   resolve-from@5.0.0: {}
 

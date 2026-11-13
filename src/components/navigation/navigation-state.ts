@@ -1,6 +1,7 @@
 import {
 	type BridgeMessages,
 	createLevelNavigation,
+	type LevelDocument,
 	type LevelNavigation,
 	type NavigationEdit,
 	type NavigationSettings,
@@ -37,6 +38,23 @@ export const navigationState = proxy({
 	pathPoints: 0,
 });
 export const navigationStore = mirrorProxy(navigationState);
+/**
+ * The state the panel reports. The game describes the navmesh it holds; Save
+ * writes the document. The two part when a bake is undone: the sources are
+ * unchanged, so the game keeps its navmesh and stays `ready`, while the
+ * document has lost the asset or gone back to one baked for older sources.
+ */
+export function navigationDisplayState(
+	status: Pick<NavigationStatus, 'state' | 'sourceHash'>,
+	document: LevelDocument
+): NavigationStatus['state'] {
+	if (status.state !== 'ready') return status.state;
+	const hash = navigationSourceHash(document);
+	if (status.sourceHash !== hash) return 'stale';
+	const baked = document.navigation?.baked;
+	if (!baked) return 'empty';
+	return baked.sourceHash === hash ? 'ready' : 'stale';
+}
 let sequence = 0;
 export function currentNavigation(): LevelNavigation {
 	return JSON.parse(JSON.stringify(levelState.document.navigation ?? createLevelNavigation()));

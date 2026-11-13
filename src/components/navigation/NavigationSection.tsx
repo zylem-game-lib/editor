@@ -1,9 +1,21 @@
 import {
 	DEFAULT_NAVIGATION_SETTINGS,
+	type NavigationPath,
 	type NavigationSettings,
-	navigationSourceHash,
+	type NavigationStatus,
 } from '@zylem/bridge';
-import { Button, Checkbox, NumberField, PropertyList } from '@zylem/ui/components';
+import {
+	Badge,
+	type BadgeTone,
+	Button,
+	Callout,
+	type CalloutTone,
+	Checkbox,
+	EmptyState,
+	NumberField,
+	PropertyList,
+	ToolGroup,
+} from '@zylem/ui/components';
 import { type Component, For, Show } from 'solid-js';
 import { PropertyRow } from '../common/PropertyRow';
 import { levelStore } from '../level/level-state';
@@ -11,6 +23,7 @@ import {
 	armNavigationTool,
 	bakeNavigation,
 	excludeSelectedSolids,
+	navigationDisplayState,
 	navigationState,
 	navigationStore,
 	removeNavigationItem,
@@ -33,19 +46,58 @@ const FIELDS: {
 	{ key: 'cellSize', label: 'Cell size', min: 0.01, step: 0.05 },
 	{ key: 'cellHeight', label: 'Cell height', min: 0.01, step: 0.05 },
 ];
+
+interface Tag {
+	label: string;
+	tone: BadgeTone;
+}
+
+interface PathResult {
+	tone: CalloutTone;
+	text(points: number): string;
+}
+
+const BAKE: Record<NavigationStatus['state'], Tag> = {
+	empty: { label: 'Not baked', tone: 'neutral' },
+	building: { label: 'Baking…', tone: 'info' },
+	ready: { label: 'Ready', tone: 'success' },
+	stale: { label: 'Out of date', tone: 'warning' },
+	error: { label: 'Failed', tone: 'error' },
+};
+
+const PATH: Record<NavigationPath['status'], PathResult> = {
+	complete: { tone: 'success', text: (points) => `Complete path, ${points} points.` },
+	partial: {
+		tone: 'warning',
+		text: (points) => `Partial path, ${points} points. It stops short of the end point.`,
+	},
+	unreachable: { tone: 'error', text: () => 'No path between these points.' },
+};
+
 export const NavigationSection: Component = () => {
 	const settings = () => levelStore.document.navigation?.settings ?? DEFAULT_NAVIGATION_SETTINGS;
-	const stale = () =>
-		navigationStore.state === 'ready' &&
-		navigationStore.sourceHash !== navigationSourceHash(levelStore.document);
-	const state = () => (stale() ? 'stale' : navigationStore.state);
+	const state = () => navigationDisplayState(navigationStore, levelStore.document);
+	const path = () => PATH[navigationStore.pathStatus as NavigationPath['status']];
 	const selectedSolids = () =>
 		levelStore.document.solids.some((s) => levelStore.selectedIds.includes(s.id));
+	const obstacles = () => levelStore.document.navigation?.obstacles ?? [];
+	const links = () => levelStore.document.navigation?.links ?? [];
 	return (
-		<div class="panel-content">
-			<p role="status">Navigation: {state()}</p>
+		<div class="panel-content zylem-navigation">
+			<PropertyList labelWidth="72px">
+				<PropertyRow label="Navmesh">
+					<span role="status" aria-label={`Navigation: ${BAKE[state()].label}`}>
+						<Badge tone={BAKE[state()].tone}>{BAKE[state()].label}</Badge>
+					</span>
+				</PropertyRow>
+			</PropertyList>
 			<Show when={navigationStore.message}>
-				<p role="alert">{navigationStore.message}</p>
+				<Callout tone="error">{navigationStore.message}</Callout>
+			</Show>
+			<Show when={state() === 'stale'}>
+				<Callout tone="warning">
+					The level changed after this navmesh was baked. Bake again before saving.
+				</Callout>
 			</Show>
 			<PropertyList labelWidth="112px">
 				<For each={FIELDS}>
@@ -70,39 +122,52 @@ export const NavigationSection: Component = () => {
 					/>
 				</PropertyRow>
 			</PropertyList>
-			<div style={{ display: 'flex', 'flex-wrap': 'wrap', gap: '6px', margin: '8px 0' }}>
-				<Button disabled={state() === 'building'} onClick={bakeNavigation}>
+			<ToolGroup label="Navmesh">
+				<Button
+					size="sm"
+					variant="primary"
+					disabled={state() === 'building'}
+					onClick={bakeNavigation}
+				>
 					{state() === 'building' ? 'Baking…' : 'Bake navmesh'}
 				</Button>
 				<Button
+					size="sm"
 					on={navigationStore.tool === 'path'}
 					disabled={state() !== 'ready'}
 					onClick={() => armNavigationTool('path')}
 				>
 					Test path
 				</Button>
+			</ToolGroup>
+			<ToolGroup label="Annotate">
 				<Button
+					size="sm"
 					on={navigationStore.tool === 'obstacle'}
 					onClick={() => armNavigationTool('obstacle')}
 				>
 					Obstacle
 				</Button>
-				<Button on={navigationStore.tool === 'link'} onClick={() => armNavigationTool('link')}>
+				<Button
+					size="sm"
+					on={navigationStore.tool === 'link'}
+					onClick={() => armNavigationTool('link')}
+				>
 					Traversal link
 				</Button>
-			</div>
+			</ToolGroup>
 			<Show when={navigationStore.tool !== 'none'}>
-				<p>
+				<Callout>
 					{navigationStore.tool === 'obstacle'
 						? 'Click two opposite corners on the floor.'
 						: 'Click a start point, then an end point on the level.'}{' '}
 					Press Escape to finish.
-				</p>
+				</Callout>
 			</Show>
-			<Show when={navigationStore.pathStatus}>
-				<p role="status">
-					Path: {navigationStore.pathStatus} ({navigationStore.pathPoints} points)
-				</p>
+			<Show when={path()}>
+				{(result) => (
+					<Callout tone={result().tone}>{result().text(navigationStore.pathPoints)}</Callout>
+				)}
 			</Show>
 			<PropertyList labelWidth="112px">
 				<PropertyRow label="Obstacle height">
@@ -128,41 +193,59 @@ export const NavigationSection: Component = () => {
 					/>
 				</PropertyRow>
 			</PropertyList>
-			<div style={{ display: 'flex', gap: '6px', margin: '8px 0' }}>
+			<ToolGroup label="Selected solids">
 				<Button size="sm" disabled={!selectedSolids()} onClick={() => excludeSelectedSolids(true)}>
-					Exclude selected
+					Exclude
 				</Button>
 				<Button size="sm" disabled={!selectedSolids()} onClick={() => excludeSelectedSolids(false)}>
-					Include selected
+					Include
 				</Button>
-			</div>
-			<p>
-				Sources: level solids. Doodads and gameplay markers are excluded. Hidden sectors still bake.
-			</p>
-			<For each={levelStore.document.navigation?.obstacles ?? []}>
-				{(o, i) => (
-					<div>
-						Obstacle {i() + 1}{' '}
-						<Button
-							size="sm"
-							variant="ghost"
-							onClick={() => removeNavigationItem('obstacles', o.id)}
-						>
-							Remove
-						</Button>
-					</div>
-				)}
-			</For>
-			<For each={levelStore.document.navigation?.links ?? []}>
-				{(l, i) => (
-					<div>
-						Link {i() + 1} ({l.bidirectional ? 'two-way' : 'one-way'}){' '}
-						<Button size="sm" variant="ghost" onClick={() => removeNavigationItem('links', l.id)}>
-							Remove
-						</Button>
-					</div>
-				)}
-			</For>
+			</ToolGroup>
+			<Callout>
+				The navmesh is baked from level solids. Doodads and gameplay markers are left out. Hidden
+				sectors still bake.
+			</Callout>
+			<Show
+				when={obstacles().length + links().length > 0}
+				fallback={
+					<EmptyState title="No obstacles or links">
+						Arm Obstacle or Traversal link, then click two points on the level.
+					</EmptyState>
+				}
+			>
+				<PropertyList labelWidth="112px">
+					<For each={obstacles()}>
+						{(obstacle, index) => (
+							<PropertyRow label={`Obstacle ${index() + 1}`}>
+								<Button
+									size="sm"
+									variant="ghost"
+									aria-label={`Remove obstacle ${index() + 1}`}
+									onClick={() => removeNavigationItem('obstacles', obstacle.id)}
+								>
+									Remove
+								</Button>
+							</PropertyRow>
+						)}
+					</For>
+					<For each={links()}>
+						{(link, index) => (
+							<PropertyRow
+								label={`Link ${index() + 1} · ${link.bidirectional ? 'two-way' : 'one-way'}`}
+							>
+								<Button
+									size="sm"
+									variant="ghost"
+									aria-label={`Remove link ${index() + 1}`}
+									onClick={() => removeNavigationItem('links', link.id)}
+								>
+									Remove
+								</Button>
+							</PropertyRow>
+						)}
+					</For>
+				</PropertyList>
+			</Show>
 		</div>
 	);
 };

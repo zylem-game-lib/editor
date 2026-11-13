@@ -2,11 +2,12 @@
 // type-strips config imports and refuses to strip anything under
 // node_modules. A relative path is bundled by Vite's config loader instead,
 // so Node never has to execute that TypeScript.
-import { zylemVersionsPlugin } from './node_modules/@zylem/ui/vite/index.ts';
+
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { defineConfig } from 'vite';
 import solid from 'vite-plugin-solid';
+import { zylemVersionsPlugin } from './node_modules/@zylem/ui/vite/index.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const devPort = 3333;
@@ -35,7 +36,15 @@ export default defineConfig({
 		dedupe: ['solid-js', 'three', '@zylem/bridge', '@zylem/game-lib'],
 	},
 	optimizeDeps: {
-		include: ['@zylem/game-lib > howler', '@zylem/game-lib > typescript-fsm'],
+		include: [
+			'@zylem/game-lib > howler',
+			'@zylem/game-lib > typescript-fsm',
+			// game-lib imports Recast lazily, on the first bake or asset load.
+			// Found that late, Vite re-optimizes and reloads the page, which
+			// throws away the level being edited.
+			'@zylem/game-lib > recast-navigation',
+			'@zylem/game-lib > @recast-navigation/three',
+		],
 		exclude: [
 			// Keep `@zylem/ui` out of esbuild prebundling so vite-plugin-solid
 			// compiles its TSX components instead of the React JSX transform.
