@@ -50,13 +50,15 @@ function gameLibImports(): string[] {
 // (`"./styles.css": "./dist/styles.css"`), so no explicit alias is needed
 // here — Vite, Rollup, and esbuild all honor the subpath export.
 //
-// Publish builds use `tsup` (`pnpm build`); this config is for `vite` serve
-// (the dev harness, which boots a real game against `@zylem/game-lib`) and
-// `vite preview` only.
+// Publish builds use `tsup` (`pnpm build`). This config serves the dev
+// harness and builds the showcase (`pnpm showcase:build`) into `site`,
+// which Wrangler publishes. `outDir` is `site` so the published package
+// stays in `dist`.
 export default defineConfig({
 	plugins: [zylemVersionsPlugin(__dirname), solid()],
 	build: {
 		target: 'esnext',
+		outDir: 'site',
 	},
 	// The physics runtime resolves its binary with
 	// `new URL('./zylem_runtime.wasm', import.meta.url)`.
