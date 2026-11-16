@@ -157,6 +157,7 @@ export const FloatingPanel: Component<FloatingPanelProps> = (props) => {
 				isCollapsed={isCollapsed}
 				onCollapse={props.collapsible ? toggleCollapse : undefined}
 				onClose={props.onClose}
+				onSettings={props.onSettings}
 				onRestoreSibling={props.onRestoreSibling}
 				restoreSiblingLabel={props.restoreSiblingLabel}
 				restoreSiblingIcon={props.restoreSiblingIcon}

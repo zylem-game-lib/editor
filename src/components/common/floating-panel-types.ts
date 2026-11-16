@@ -52,6 +52,8 @@ export interface FloatingPanelProps {
 	collapsed?: boolean;
 	onCollapsedChange?: (collapsed: boolean) => void;
 	onClose?: () => void;
+	/** Opens panel settings. Renders the gear in the window controls. */
+	onSettings?: () => void;
 	/** Brings the other editor window back. Shown only when that window is closed. */
 	onRestoreSibling?: (() => void) | undefined;
 	restoreSiblingLabel?: string | undefined;

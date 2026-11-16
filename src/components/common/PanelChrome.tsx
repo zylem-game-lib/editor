@@ -11,6 +11,7 @@ export interface PanelChromeProps {
 	isCollapsed: Accessor<boolean>;
 	onCollapse?: (() => void) | undefined;
 	onClose?: (() => void) | undefined;
+	onSettings?: (() => void) | undefined;
 	onRestoreSibling?: (() => void) | undefined;
 	restoreSiblingLabel?: string | undefined;
 	restoreSiblingIcon?: JSX.Element | undefined;
@@ -62,6 +63,7 @@ export const PanelChrome: Component<PanelChromeProps> = (props) => {
 				}}
 				collapsed={props.isCollapsed()}
 				onCollapse={props.onCollapse}
+				onSettings={props.onSettings}
 				onClose={props.onClose}
 				closeTestId="floating-panel-close"
 			/>

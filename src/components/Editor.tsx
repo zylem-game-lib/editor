@@ -39,6 +39,7 @@ import { viewportSize } from './common/viewport';
 import { EditorToggleButton } from './EditorToggleButton';
 import { DetachedPanel } from './editor-panel/DetachedPanel';
 import { Menu } from './editor-panel/Menu';
+import { PanelSettingsDialog } from './editor-panel/PanelSettingsDialog';
 import { currentPanelVisibility, isPanelVisible } from './editor-panel/panel-visibility';
 import { levelStore } from './level/level-state';
 import { Toolbar } from './toolbar/Toolbar';
@@ -148,6 +149,7 @@ const getInitialPanelPosition = () => {
 export const Editor: Component<EditorProps> = (props) => {
 	const [toolbarOpen, setToolbarOpen] = createSignal(false);
 	const [panelOpen, setPanelOpen] = createSignal(false);
+	const [settingsOpen, setSettingsOpen] = createSignal(false);
 	const [toolbarDockRequest, setToolbarDockRequest] = createSignal<DockRequest | null>(null);
 	const [panelDockRequest, setPanelDockRequest] = createSignal<DockRequest | null>(null);
 	const launcherMode = () => props.launcherMode ?? 'floating';
@@ -189,7 +191,9 @@ export const Editor: Component<EditorProps> = (props) => {
 	// Get list of detached panel IDs
 	const getDetachedPanelIds = () => {
 		const visibility = currentPanelVisibility();
-		return Object.keys(debugStore.detachedPanels).filter((id) => isPanelVisible(id, visibility));
+		return Object.keys(debugStore.detachedPanels).filter((id) =>
+			isPanelVisible(id, visibility, debugStore.panelOverrides)
+		);
 	};
 
 	const shouldViewportFitPanel = () => {
@@ -368,6 +372,7 @@ export const Editor: Component<EditorProps> = (props) => {
 						collapsed={debugStore.mainCollapsed}
 						onCollapsedChange={setMainCollapsed}
 						onClose={() => setPanelOpen(false)}
+						onSettings={() => setSettingsOpen(true)}
 						onRestoreSibling={toolbarOpen() ? undefined : () => setToolbarOpen(true)}
 						restoreSiblingLabel="Show toolbar"
 						restoreSiblingIcon={<PanelTop size={11} strokeWidth={2.5} aria-hidden="true" />}
@@ -378,6 +383,8 @@ export const Editor: Component<EditorProps> = (props) => {
 						{(body) => <Menu isCollapsed={body.isCollapsed} />}
 					</FloatingPanel>
 				</Show>
+
+				<PanelSettingsDialog open={settingsOpen()} onOpenChange={setSettingsOpen} />
 
 				{/* Render detached panels */}
 				<For each={getDetachedPanelIds()}>{(panelId) => <DetachedPanel panelId={panelId} />}</For>

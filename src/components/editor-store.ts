@@ -4,7 +4,7 @@
  * Persists layout state to localStorage.
  */
 
-import { createStore } from 'solid-js/store';
+import { createStore, reconcile } from 'solid-js/store';
 import { subscribe } from 'valtio/vanilla';
 import {
 	createEmptyDockRegistry,
@@ -76,7 +76,21 @@ interface PersistedState {
 	toolbarSeeded: boolean;
 	toolbarCollapsed: boolean;
 	mainCollapsed: boolean;
+	/** Manual show or hide. A missing id follows the current mode. */
+	panelOverrides: Record<string, PanelOverride>;
 }
+
+/** A checkbox choice that wins over the mode. Absent means follow the mode. */
+export type PanelOverride = 'show' | 'hide';
+
+const sanitizePanelOverrides = (value: unknown): Record<string, PanelOverride> => {
+	if (!value || typeof value !== 'object') return {};
+	const overrides: Record<string, PanelOverride> = {};
+	for (const [id, choice] of Object.entries(value)) {
+		if (choice === 'show' || choice === 'hide') overrides[id] = choice;
+	}
+	return overrides;
+};
 
 // Load persisted state from localStorage
 const loadPersistedState = (): Partial<PersistedState> => {
@@ -129,6 +143,7 @@ export const [debugStore, setDebugStore] = createStore({
 	toolbarSeeded: persisted.toolbarSeeded ?? false,
 	toolbarCollapsed: persisted.toolbarCollapsed ?? false,
 	mainCollapsed: persisted.mainCollapsed ?? false,
+	panelOverrides: sanitizePanelOverrides(persisted.panelOverrides),
 	// Drag-to-reattach state (not persisted)
 	draggingPanelId: null as string | null,
 	dropTargetIndex: null as number | null,
@@ -149,6 +164,7 @@ const persistState = () => {
 		toolbarSeeded: debugStore.toolbarSeeded,
 		toolbarCollapsed: debugStore.toolbarCollapsed,
 		mainCollapsed: debugStore.mainCollapsed,
+		panelOverrides: debugStore.panelOverrides,
 	});
 };
 
@@ -247,6 +263,29 @@ export const setToolbarCollapsed = (collapsed: boolean) => {
 
 export const setMainCollapsed = (collapsed: boolean) => {
 	setDebugStore('mainCollapsed', collapsed);
+	persistState();
+};
+
+/** Store a manual choice, or drop it so the section follows the mode again. */
+export const setPanelOverride = (id: string, override: PanelOverride | null) => {
+	if (override === null) {
+		if (debugStore.panelOverrides[id] === undefined) return;
+		const next = { ...debugStore.panelOverrides };
+		delete next[id];
+		// A plain object merges, which would leave the deleted id in place.
+		setDebugStore('panelOverrides', reconcile(next));
+	} else if (debugStore.panelOverrides[id] === override) {
+		return;
+	} else {
+		setDebugStore('panelOverrides', id, override);
+	}
+	persistState();
+};
+
+/** Drop every manual choice. Sections follow the mode again. */
+export const resetPanelOverrides = () => {
+	if (Object.keys(debugStore.panelOverrides).length === 0) return;
+	setDebugStore('panelOverrides', reconcile({}));
 	persistState();
 };
 
