@@ -23,8 +23,8 @@ importers:
         specifier: ^0.9.12
         version: 0.9.12
       '@zylem/ui':
-        specifier: ^0.9.11
-        version: 0.9.11(solid-js@1.9.15)
+        specifier: ^0.9.12
+        version: 0.9.12(solid-js@1.9.15)
       lucide-solid:
         specifier: ^1.48.0
         version: 1.48.0(solid-js@1.9.15)
@@ -1555,8 +1555,8 @@ packages:
     resolution: {integrity: sha512-8WVVSXmJGn4dTFCbJfAbqDpWDHX57nosWK3Vgev7GdXWhh2iBuQjZHTIxapG2Si23y53DV7/MZ7zZ6/m3kdcPg==}
     engines: {node: '>=20.10.0'}
 
-  '@zylem/ui@0.9.11':
-    resolution: {integrity: sha512-B9stZSfCguJLoK3UG4AOT9p4b2z9aSy3H4XEaU13B073od7/mNOlNlOPjxrhOeprRqmCL97xPEm4rDr1bqm3dA==}
+  '@zylem/ui@0.9.12':
+    resolution: {integrity: sha512-h5ip+/El+PZ4ePwnmmOVFBp1nLO8NalwEt/WuqTRzogkwoll8lffQclcDrNuEAJXG1mOZqx17EZ3WQ+lY4SfOQ==}
     engines: {node: '>=22.12.0', pnpm: '>=10.32.1'}
     peerDependencies:
       solid-js: ^1.9.9
@@ -3437,7 +3437,7 @@ snapshots:
 
   '@zylem/runtime@0.8.16': {}
 
-  '@zylem/ui@0.9.11(solid-js@1.9.15)':
+  '@zylem/ui@0.9.12(solid-js@1.9.15)':
     dependencies:
       '@kobalte/core': 0.13.13(solid-js@1.9.15)
       '@vanilla-extract/css': 1.21.3
