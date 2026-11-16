@@ -22,6 +22,8 @@ export interface BaseEntityInterface {
 	 * stays small enough to diff cheaply.
 	 */
 	bounds?: { width: number; height: number; depth: number } | undefined;
+	/** Pinned to the viewport (text, rect, cooldown icon) rather than placed in the world. */
+	hud?: boolean | undefined;
 }
 
 export interface StageConfigState {

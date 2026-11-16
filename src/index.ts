@@ -142,9 +142,10 @@ export {
 	onSceneOperation,
 	type SceneOperationListener,
 } from './host/scene-operation-hook';
-export type { ZylemEditorConfig } from './web-components/zylem-editor';
+export type { EditorModeEventDetail, ZylemEditorConfig } from './web-components/zylem-editor';
 export {
 	EDITOR_DISMISS_EVENT,
+	EDITOR_MODE_EVENT,
 	registerZylemEditor,
 	ZylemEditorElement,
 } from './web-components/zylem-editor';

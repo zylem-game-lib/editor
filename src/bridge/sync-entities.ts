@@ -32,6 +32,9 @@ function toEntityInterface(payload: EntitySummaryPayload): BaseEntityInterface {
 	if (payload.bounds) {
 		entity.bounds = payload.bounds;
 	}
+	if (payload.hud) {
+		entity.hud = true;
+	}
 	return entity;
 }
 
@@ -54,6 +57,8 @@ function updateEntityInPlace(
 	if (payload.bounds && !isSameBounds(target.bounds, payload.bounds)) {
 		target.bounds = payload.bounds;
 	}
+	const hud = payload.hud === true;
+	if ((target.hud === true) !== hud) target.hud = hud ? true : undefined;
 }
 
 function isSameVec3(

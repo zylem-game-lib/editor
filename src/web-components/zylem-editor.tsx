@@ -28,10 +28,23 @@ import {
 	type HarnessModeApplyOptions,
 	type HarnessModeId,
 	harnessCapturesKeys,
+	onHarnessModeChange,
 } from '../dev/harness-modes';
 
 /** Fired on `<zylem-editor>` when Game Preview's toolbar close dismisses the editor. */
 export const EDITOR_DISMISS_EVENT = 'zylem-editor-dismiss';
+
+/**
+ * Fired on `<zylem-editor>` when the mode changes, with the new mode in
+ * `detail.mode`. A pick in the scene changes the mode as well as `setMode`,
+ * so a host that shows which mode is on listens for this.
+ */
+export const EDITOR_MODE_EVENT = 'zylem-editor-mode';
+
+/** `detail` of {@link EDITOR_MODE_EVENT}. */
+export interface EditorModeEventDetail {
+	mode: HarnessModeId;
+}
 
 /**
  * Configuration options for the ZylemEditorElement
@@ -278,6 +291,15 @@ export class ZylemEditorElement extends HTMLElement {
 			// be released with it or it becomes unreachable.
 			installTransformToolGuard(),
 			this.connectSaving(),
+			onHarnessModeChange((mode) => {
+				this.dispatchEvent(
+					new CustomEvent<EditorModeEventDetail>(EDITOR_MODE_EVENT, {
+						bubbles: true,
+						composed: true,
+						detail: { mode },
+					})
+				);
+			}),
 		];
 
 		// Add bundled styles unless explicitly disabled
@@ -375,7 +397,8 @@ export class ZylemEditorElement extends HTMLElement {
 	 * Apply a harness mode: level editing and the toolbar profile. The camera
 	 * and the debug flag stay as they are after the first mode, unless
 	 * `resetView` is set. The gear and the creator toolbox that choose the mode
-	 * live outside this element.
+	 * live outside this element; `zylem-editor-mode` (`EDITOR_MODE_EVENT`) tells
+	 * them when a pick in the scene chose another.
 	 */
 	setMode(mode: HarnessModeId, options?: HarnessModeApplyOptions) {
 		applyHarnessMode(mode, options);

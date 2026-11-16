@@ -8,8 +8,6 @@
  * that do not exist yet are slots: they render with a label and do nothing.
  */
 
-import { resetNavigationTool } from '../components/navigation/navigation-state';
-
 import type { LevelLayerId } from '@zylem/bridge';
 import { proxy } from 'valtio/vanilla';
 import { sendDebugEnabled, sendTool } from '../bridge/commands';
@@ -21,7 +19,10 @@ import {
 	setActiveLayer,
 	setLevelEditorActive,
 	setLevelPlacement,
+	setLevelPlaying,
+	setLevelShown,
 } from '../components/level/level-state';
+import { resetNavigationTool } from '../components/navigation/navigation-state';
 import type { ContextAction } from '../components/toolbar/context-actions';
 import { resetLevelTools } from '../components/toolbar/toolbar-actions';
 import { setViewPreset, type ViewPreset, viewState } from '../components/toolbar/view-state';
@@ -225,6 +226,29 @@ export interface HarnessModeApplyOptions {
 	 * Preview does not.
 	 */
 	resetView?: boolean;
+	/**
+	 * Leave the armed tool and the level selection as they are. A pick that
+	 * changes the mode uses this: the mode follows what Select just chose, and
+	 * resetting the tools would drop both the tool and the choice.
+	 */
+	keepTool?: boolean;
+}
+
+type HarnessModeListener = (id: HarnessModeId) => void;
+
+const modeListeners = new Set<HarnessModeListener>();
+
+/**
+ * Hear about every change of mode, whoever made it: the host, or a pick in
+ * the scene (see `selection-mode.ts`).
+ *
+ * @returns An unsubscribe function.
+ */
+export function onHarnessModeChange(listener: HarnessModeListener): () => void {
+	modeListeners.add(listener);
+	return () => {
+		modeListeners.delete(listener);
+	};
 }
 
 /**
@@ -234,11 +258,15 @@ export interface HarnessModeApplyOptions {
  * leaves both where they are, so a view and a debug choice survive the
  * switch, unless `resetView` is set. A level-builder mode opens with nothing
  * armed. Any other mode releases the armed tool when it has no button for it.
+ *
+ * The level document is in the game in every mode. The level-builder modes
+ * edit it, Game Preview plays it, and the rest show it for Select to pick.
  */
 export function applyHarnessMode(id: HarnessModeId, options?: HarnessModeApplyOptions): void {
 	resetNavigationTool();
 	const profile = harnessModeProfile(id);
-	const opening = harnessModeState.id === null;
+	const previous = harnessModeState.id;
+	const opening = previous === null;
 	harnessModeState.id = id;
 	harnessModeState.captureKeys = profile.captureKeys;
 
@@ -249,13 +277,24 @@ export function applyHarnessMode(id: HarnessModeId, options?: HarnessModeApplyOp
 		setViewPreset(profile.camera);
 	}
 
-	if (profile.level) resetLevelTools();
-	else releaseArmedToolOutside(profile.context);
+	if (!options?.keepTool) {
+		if (profile.level) resetLevelTools();
+		else releaseArmedToolOutside(profile.context);
+	}
 	if (profile.level && profile.layer) {
 		if (levelState.active) setActiveLayer(profile.layer);
 		else levelState.activeLayer = profile.layer;
 	}
-	setLevelEditorActive(profile.level);
+	// Level mode first when entering it, last when leaving, so the game is
+	// sent the document once, in the state the mode ends on.
+	if (profile.level) setLevelEditorActive(true);
+	setLevelPlaying(id === 'game-preview');
+	setLevelShown(true);
+	if (!profile.level) setLevelEditorActive(false);
+
+	if (previous !== id) {
+		for (const listener of [...modeListeners]) listener(id);
+	}
 }
 
 /**

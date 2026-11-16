@@ -21,7 +21,10 @@ import {
 	setLevelDrawTurn,
 	setLevelEditorActive,
 	setLevelElementMode,
+	setLevelPlaying,
 	setLevelSectorTint,
+	setLevelShown,
+	toggleLevelLayerHidden,
 	toggleLevelSectorHidden,
 	turnLevelDrawShape,
 } from '../../src/components/level/level-state';
@@ -328,5 +331,112 @@ describe('level editing grid', () => {
 		setLevelEditorActive(false);
 		setLevelEditorActive(true);
 		expect(transformState.gridVisible).toBe(true);
+	});
+});
+
+describe('level tools and the kept preview', () => {
+	it('marks every sync in level mode as having the tools on', () => {
+		setLevelSectorTint(true);
+		expect(lastSync()?.tools).toBe(true);
+	});
+
+	it('removes the preview when level mode ends and nothing keeps it shown', () => {
+		const { channel } = getZylemBridge();
+		let closes = 0;
+		const stop = channel.on('level:close', () => {
+			closes += 1;
+		});
+		levelState.selectedIds = ['a'];
+		setLevelEditorActive(false);
+		stop();
+
+		expect(closes).toBe(1);
+		expect(syncs).toEqual([]);
+		// Without modes the selection waits for level mode to come back, as before.
+		expect(levelState.selectedIds).toEqual(['a']);
+	});
+
+	it('keeps the preview with the tools off when it is kept shown', () => {
+		const { channel } = getZylemBridge();
+		let closes = 0;
+		const stop = channel.on('level:close', () => {
+			closes += 1;
+		});
+		setLevelShown(true);
+		setLevelElementMode('face');
+		applyLevelSelect({ id: 'a', elements: [face('a', 2)] });
+		levelState.placement = { kind: 'spawn' };
+		syncs = [];
+
+		setLevelEditorActive(false);
+		expect(closes).toBe(0);
+		expect(syncs).toHaveLength(1);
+		expect(lastSync()).toMatchObject({
+			tools: false,
+			selectedIds: [],
+			elements: [],
+			elementMode: 'object',
+			placement: null,
+		});
+
+		// Edits that reach the document still show.
+		applyLevelSelect({ id: 'a' });
+		expect(lastSync()).toMatchObject({ tools: false, selectedIds: ['a'] });
+		expect(clearLevelSelection()).toBe(true);
+
+		setLevelShown(false);
+		stop();
+		expect(closes).toBe(1);
+	});
+
+	it('shows the whole level, untinted, while the tools are off', () => {
+		setLevelShown(true);
+		toggleLevelLayerHidden('doodad');
+		toggleLevelSectorHidden('0:0');
+		setLevelSectorTint(true);
+		expect(lastSync()).toMatchObject({
+			hiddenLayers: ['doodad'],
+			hiddenSectors: ['0:0'],
+			showSectorTint: true,
+		});
+
+		setLevelEditorActive(false);
+		expect(lastSync()).toMatchObject({
+			hiddenLayers: [],
+			hiddenSectors: [],
+			showSectorTint: false,
+		});
+
+		// The choices are kept for when the tools come back.
+		setLevelEditorActive(true);
+		expect(lastSync()).toMatchObject({
+			hiddenLayers: ['doodad'],
+			hiddenSectors: ['0:0'],
+			showSectorTint: true,
+		});
+	});
+
+	it('plays the document outside level mode when asked, and never inside it', () => {
+		const { channel } = getZylemBridge();
+		const plays: number[] = [];
+		const stop = channel.on('level:play', ({ document }) => plays.push(document.solids.length));
+
+		setLevelShown(true);
+		setLevelPlaying(true);
+		expect(plays).toEqual([]);
+		setLevelSectorTint(true);
+		expect(lastSync()?.tools).toBe(true);
+
+		syncs = [];
+		setLevelEditorActive(false);
+		expect(plays).toEqual([3]);
+		expect(syncs).toEqual([]);
+
+		loadLevelDocument({ ...scene(), solids: [] });
+		expect(plays).toEqual([3, 0]);
+
+		setLevelPlaying(false);
+		stop();
+		expect(lastSync()).toMatchObject({ tools: false });
 	});
 });

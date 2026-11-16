@@ -8,6 +8,7 @@ import type {
 	EntitySelectionPayload,
 	EntityTypeDescriptor,
 	LevelGesture,
+	LevelSelectPayload,
 	SceneOperationPayload,
 } from '@zylem/bridge';
 import {
@@ -15,19 +16,40 @@ import {
 	noteTouchedEntity,
 } from '../components/entities/entities-state';
 import { pushOperation } from '../components/history/history-store';
-import { applyIncomingGesture } from '../components/level/level-state';
+import {
+	applyIncomingGesture,
+	applyLevelSelect as applyLevelSelection,
+} from '../components/level/level-state';
+import { followEntityPick, followLevelPick } from '../components/selection/selection-mode';
 import { setEntityCatalog } from '../components/toolbar/catalog-state';
 import { endToolAfterUse } from '../components/toolbar/toolbar-actions';
 import { notifySceneOperation } from '../host/scene-operation-hook';
 
 export function applyEntitySelection(selection: EntitySelectionPayload): void {
+	const selected =
+		selection.selectedUuids ?? (selection.selectedUuid ? [selection.selectedUuid] : []);
+	// The game reports hover through this message too, and echoes a selection
+	// the editor made. Only a selection the editor does not already hold was
+	// picked in the scene.
+	const picked = !sameIds(editorDebugState.selectedEntityIds, selected);
+
 	editorDebugState.selectedEntityId = selection.selectedUuid;
 	editorDebugState.hoveredEntityId = selection.hoveredUuid;
-	editorDebugState.selectedEntityIds =
-		selection.selectedUuids ?? (selection.selectedUuid ? [selection.selectedUuid] : []);
+	editorDebugState.selectedEntityIds = selected;
 	// Written field by field rather than through `setSelectedEntityId`, so the
 	// in-scene Select tool's picks have to be recorded here too.
 	noteTouchedEntity(selection.selectedUuid);
+	if (picked) followEntityPick();
+}
+
+function sameIds(a: readonly string[], b: readonly string[]): boolean {
+	return a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
+/** Apply a click in the game's level preview, and show the mode that edits what it picked. */
+export function applyLevelSelect(payload: LevelSelectPayload): void {
+	applyLevelSelection(payload);
+	followLevelPick(payload);
 }
 
 export function applyCatalog(payload: { entities: EntityTypeDescriptor[] }): void {

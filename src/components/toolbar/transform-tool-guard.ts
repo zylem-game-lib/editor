@@ -2,7 +2,9 @@
  * Keeps the active tool in step with the selection.
  *
  * Select is spent by one pick: a pick hands off to Move, and a click that
- * clears the selection leaves no tool. A gizmo mode is dropped once nothing is
+ * clears the selection leaves no tool. A pick of HUD elements is the
+ * exception: nothing moves those with a gizmo, so Select stays for the next
+ * one. A gizmo mode is dropped once nothing is
  * left for it to act on, because the game keeps the simulation paused for the
  * whole time a transform tool is held (see `StageTransformTool.setMode`).
  * Escape already offers a manual way out via `disarmTools`; this is the
@@ -13,6 +15,7 @@ import { subscribe } from 'valtio/vanilla';
 import { sendTool } from '../../bridge/editor-bridge';
 import { type DebugTools, debugState, setDebugTool } from '../entities/entities-state';
 import { hasLevelSelection, levelState } from '../level/level-state';
+import { isHudSelection } from '../selection/selection-mode';
 import { selectTransformTool } from './toolbar-actions';
 
 const TRANSFORM_TOOLS = new Set<DebugTools>(['translate', 'rotate', 'scale']);
@@ -32,13 +35,15 @@ function hasSelection(): boolean {
  *
  * Select is for choosing. With one or more entities chosen, Move is the tool,
  * so the transform controls are the ones that read as active. Level objects
- * and elements count too, since the gizmo drags the level selection.
+ * and elements count too, since the gizmo drags the level selection. HUD
+ * elements are pinned to the viewport and have no gizmo, so Select is kept.
  *
  * @returns `true` when the tool changed.
  */
 export function promoteSelectToTransform(): boolean {
 	if (debugState.tool !== 'select') return false;
 	if (!hasSelection()) return false;
+	if (isHudSelection() && !hasLevelSelection()) return false;
 	return selectTransformTool('translate');
 }
 

@@ -16,13 +16,13 @@ import {
 	setNavigationVisible,
 } from '../components/navigation/navigation-state';
 
-import { applyLevelSelect } from '../components/level/level-state';
 import { channel } from './channel';
 
 import {
 	applyCatalog,
 	applyEntitySelection,
 	applyLevelGesture,
+	applyLevelSelect,
 	applySceneOperation,
 } from './sync-editing';
 import {

@@ -1,15 +1,18 @@
 /**
  * Level mode.
  *
- * The document is the file. Turning the mode on shows it in the game; turning
- * it off removes that preview and leaves the stage's own entities alone.
- * Stage updates are not written back. Undo while the mode is on rewinds the
- * document, not the live scene.
+ * The document is the file. Turning the mode on shows it in the game with the
+ * level tools; turning it off removes that preview and leaves the stage's own
+ * entities alone. Stage updates are not written back. Undo while the mode is
+ * on rewinds the document, not the live scene.
+ *
+ * A host with editor modes keeps the document in the game outside level mode
+ * too (see {@link setLevelShown}). There the level tools are off: the preview
+ * is on screen and Select can pick it, and nothing else edits it.
  */
 
 import {
 	type BridgeVec3,
-	type LevelNavigation,
 	type BrushShape,
 	DEFAULT_DRAW_SHAPE,
 	type LevelDocument,
@@ -18,6 +21,7 @@ import {
 	type LevelElementRef,
 	type LevelGesture,
 	type LevelLayerId,
+	type LevelNavigation,
 	type LevelPlacementArm,
 	type LevelSelectPayload,
 } from '@zylem/bridge';
@@ -58,7 +62,12 @@ const MAX_LEVEL_HISTORY = 100;
 export const DEFAULT_SUBDIVIDE_TILE = 4;
 
 export interface LevelState {
+	/** Level mode: the level tools are on, and undo, shortcuts, and panels follow the document. */
 	active: boolean;
+	/** The document stays in the game while level mode is off. See {@link setLevelShown}. */
+	shown: boolean;
+	/** Outside level mode, the game plays the document instead of previewing it. */
+	playing: boolean;
 	document: LevelDocument;
 	/** Layers left out of the edit preview. Play streams every layer. */
 	hiddenLayers: LevelLayerId[];
@@ -98,6 +107,8 @@ interface LevelHistoryEntry {
 
 export const levelState = proxy<LevelState>({
 	active: false,
+	shown: false,
+	playing: false,
 	document: createLevelDocument(),
 	hiddenLayers: [],
 	hiddenSectors: [],
@@ -120,6 +131,9 @@ export const levelStore = mirrorProxy(levelState);
 
 const undoStack: LevelHistoryEntry[] = [];
 const redoStack: LevelHistoryEntry[] = [];
+
+/** Whether a sync or a play has gone out since the last close, so the game holds this document. */
+let mirrored = false;
 
 /** Every edit replaces the document object, so its JSON only changes when the object does. */
 let fingerprintedDocument: LevelDocument | null = null;
@@ -200,16 +214,27 @@ export function levelRedoLabel(): string | null {
 /**
  * Enter or leave level mode. Entering shows the current document and turns
  * the construction grid on; it does not reseed from the stage.
+ *
+ * Leaving removes the preview, unless the document is kept shown: then the
+ * preview stays with the level tools off, and the level selection, which only
+ * those tools act on, is dropped.
  */
 export function setLevelEditorActive(active: boolean): void {
 	if (levelState.active === active) return;
 	levelState.active = active;
-	if (!active) {
-		levelState.placement = null;
-		sendLevelClose();
+	if (active) {
+		setGridVisible(true);
+		syncLevelDocument();
 		return;
 	}
-	setGridVisible(true);
+	levelState.placement = null;
+	if (!levelState.shown) {
+		closeLevelPreview();
+		return;
+	}
+	levelState.selectedIds = [];
+	levelState.selectedElements = [];
+	levelState.elementMode = 'object';
 	syncLevelDocument();
 }
 
@@ -217,20 +242,70 @@ export function toggleLevelEditor(): void {
 	setLevelEditorActive(!levelState.active);
 }
 
-/** Push the edit preview. No-op while level mode is off. */
+/**
+ * Keep the document in the game while level mode is off, or stop keeping it.
+ * Editor modes turn this on, so the level is on screen in every one of them.
+ */
+export function setLevelShown(shown: boolean): void {
+	if (levelState.shown === shown) return;
+	levelState.shown = shown;
+	if (levelState.active) return;
+	if (shown) syncLevelDocument();
+	else closeLevelPreview();
+}
+
+/**
+ * Outside level mode, have the game play the document (merged mesh, collision,
+ * live triggers) rather than preview it. Level mode has its own Play.
+ */
+export function setLevelPlaying(playing: boolean): void {
+	if (levelState.playing === playing) return;
+	levelState.playing = playing;
+	if (!levelState.active) syncLevelDocument();
+}
+
+function closeLevelPreview(): void {
+	mirrored = false;
+	sendLevelClose();
+}
+
+function isEmptyLevel(document: LevelDocument): boolean {
+	return (
+		document.solids.length === 0 && document.doodads.length === 0 && document.entities.length === 0
+	);
+}
+
+/**
+ * Push the document to the game: the edit preview, or the played level where
+ * {@link setLevelPlaying} asked for that. No-op while the document is neither
+ * being edited nor kept shown.
+ */
 export function syncLevelDocument(): void {
-	if (!levelState.active) return;
+	if (!levelState.active && !levelState.shown) return;
+	// An empty document has nothing to show, and sending one would replace a
+	// level the game is playing from its own code. Level mode still sends it:
+	// there the user asked to work on this document.
+	if (!levelState.active && !mirrored && isEmptyLevel(levelState.document)) return;
+	mirrored = true;
+	if (levelState.playing && !levelState.active) {
+		sendLevelPlay(cloneLevelDocument(levelState.document));
+		return;
+	}
+	// Hidden layers, hidden sectors, and the sector tint are aids of the level
+	// tools. Without the tools the whole level is shown, as it plays.
+	const tools = levelState.active;
 	sendLevelSync({
 		document: cloneLevelDocument(levelState.document),
-		hiddenLayers: [...levelState.hiddenLayers],
-		hiddenSectors: [...levelState.hiddenSectors],
-		showSectorTint: levelState.showSectorTint,
+		hiddenLayers: tools ? [...levelState.hiddenLayers] : [],
+		hiddenSectors: tools ? [...levelState.hiddenSectors] : [],
+		showSectorTint: tools && levelState.showSectorTint,
 		selectedIds: [...levelState.selectedIds],
 		elementMode: levelState.elementMode,
 		elements: cloneElements(levelState.selectedElements),
 		activeLayer: levelState.activeLayer,
 		placement: levelState.placement ? clonePlacement(levelState.placement) : null,
 		drawShape: { ...levelState.drawShape },
+		tools,
 	});
 }
 
@@ -345,7 +420,7 @@ export function selectLevelObject(id: string | null): void {
 		const layer = layerOf(levelState.document, id);
 		if (layer) levelState.activeLayer = layer;
 	}
-	if (levelState.active) syncLevelDocument();
+	syncLevelDocument();
 }
 
 /**
@@ -379,12 +454,12 @@ export function applyLevelSelect(payload: LevelSelectPayload): void {
 }
 
 /**
- * Drop the selection, objects and elements, while level mode is on.
+ * Drop the selection, objects and elements, while the document is in the game.
  *
  * @returns Whether anything was selected.
  */
 export function clearLevelSelection(): boolean {
-	if (!levelState.active) return false;
+	if (!levelState.active && !levelState.shown) return false;
 	if (levelState.selectedIds.length === 0 && levelState.selectedElements.length === 0) return false;
 	levelState.selectedIds = [];
 	levelState.selectedElements = [];
@@ -581,7 +656,7 @@ export function levelHasUnsavedChanges(): boolean {
 	return levelDocumentFingerprint() !== savedFingerprint;
 }
 
-/** Replace the document. Drops undo. Syncs when level mode is on. The loaded document counts as saved. */
+/** Replace the document. Drops undo. Syncs when the document is in the game. The loaded document counts as saved. */
 export function loadLevelDocument(document: LevelDocument): void {
 	if (document.version !== 2) return;
 	levelState.document = cloneLevelDocument(document);
@@ -591,12 +666,15 @@ export function loadLevelDocument(document: LevelDocument): void {
 	redoStack.length = 0;
 	markLevelSaved();
 	publishHistory();
-	if (levelState.active) syncLevelDocument();
+	syncLevelDocument();
 }
 
 /** Test hook. Does not talk to the game. */
 export function resetLevelEditor(): void {
 	levelState.active = false;
+	levelState.shown = false;
+	levelState.playing = false;
+	mirrored = false;
 	levelState.document = createLevelDocument();
 	levelState.hiddenLayers = [];
 	levelState.hiddenSectors = [];

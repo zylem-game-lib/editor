@@ -1,10 +1,16 @@
 // @vitest-environment happy-dom
 
-import { getZylemBridge } from '@zylem/bridge';
+import { boxBrush, getZylemBridge, type LevelDocument } from '@zylem/bridge';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { debugStore, setDebugStore } from '../../src/components/editor-store';
 import { getDebugTool, setDebugTool } from '../../src/components/entities/entities-state';
-import { levelState, resetLevelEditor } from '../../src/components/level/level-state';
+import {
+	deleteLevelSelection,
+	levelState,
+	loadLevelDocument,
+	resetLevelEditor,
+	selectLevelObject,
+} from '../../src/components/level/level-state';
 import {
 	catalogState,
 	setArmedType,
@@ -17,6 +23,7 @@ import {
 	harnessModeProfile,
 	harnessModeState,
 	isHarnessSlot,
+	onHarnessModeChange,
 } from '../../src/dev/harness-modes';
 
 const LEVEL_MODES = [
@@ -305,5 +312,177 @@ describe('applyHarnessMode', () => {
 		applyHarnessMode('entity-editor');
 		expect(getDebugTool()).toBe('rotate');
 		expect(toolMessages).toEqual([]);
+	});
+});
+
+describe('the level document across modes', () => {
+	/** What the game was last told to do with the level. */
+	type LevelMessage =
+		| { kind: 'sync'; tools: boolean | undefined; selectedIds: string[] }
+		| { kind: 'play'; solids: number }
+		| { kind: 'close' };
+
+	let messages: LevelMessage[];
+	let stopCapture: Array<() => void> = [];
+
+	function oneSolid(): LevelDocument {
+		return {
+			version: 2,
+			solids: [{ id: 'wall', planes: boxBrush({ x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 1 }) }],
+			doodads: [],
+			entities: [],
+		};
+	}
+
+	beforeEach(() => {
+		const { channel } = getZylemBridge();
+		channel.reset();
+		resetLevelEditor();
+		harnessModeState.id = null;
+		setDebugTool('none');
+		messages = [];
+		stopCapture = [
+			channel.on('level:sync', ({ tools, selectedIds }) =>
+				messages.push({ kind: 'sync', tools, selectedIds })
+			),
+			channel.on('level:play', ({ document }) =>
+				messages.push({ kind: 'play', solids: document.solids.length })
+			),
+			channel.on('level:close', () => messages.push({ kind: 'close' })),
+		];
+	});
+
+	afterEach(() => {
+		for (const stop of stopCapture) stop();
+		stopCapture = [];
+		harnessModeState.id = null;
+	});
+
+	it('is shown by the first mode, with the level tools off outside the level builders', () => {
+		loadLevelDocument(oneSolid());
+		expect(messages).toEqual([]);
+
+		applyHarnessMode('stage-editor');
+		expect(messages).toEqual([{ kind: 'sync', tools: false, selectedIds: [] }]);
+	});
+
+	it('stays in the game through every mode', () => {
+		loadLevelDocument(oneSolid());
+		for (const { id } of HARNESS_MODES) {
+			applyHarnessMode(id);
+			const expected: LevelMessage =
+				id === 'game-preview'
+					? { kind: 'play', solids: 1 }
+					: { kind: 'sync', tools: harnessModeProfile(id).level, selectedIds: [] };
+			// What the game was last told still holds when a change of mode sends nothing new.
+			expect(messages.at(-1), id).toEqual(expected);
+		}
+		expect(messages.map((message) => message.kind)).not.toContain('close');
+	});
+
+	it('is sent once when a mode outside the level builders is entered', () => {
+		loadLevelDocument(oneSolid());
+		for (const from of ['game-preview', 'level-builder-mesh'] as const) {
+			applyHarnessMode(from);
+			messages = [];
+			applyHarnessMode('stage-editor');
+			expect(messages, from).toEqual([{ kind: 'sync', tools: false, selectedIds: [] }]);
+		}
+		harnessModeState.id = null;
+		resetLevelEditor();
+		loadLevelDocument(oneSolid());
+		messages = [];
+		applyHarnessMode('game-preview');
+		expect(messages).toEqual([{ kind: 'play', solids: 1 }]);
+	});
+
+	it('keeps the preview when a level builder is left, and drops what its tools had selected', () => {
+		loadLevelDocument(oneSolid());
+		applyHarnessMode('level-builder-mesh');
+		selectLevelObject('wall');
+		levelState.elementMode = 'face';
+		messages = [];
+
+		applyHarnessMode('entity-editor');
+		expect(levelState.active).toBe(false);
+		expect(levelState.shown).toBe(true);
+		expect(levelState.selectedIds).toEqual([]);
+		expect(levelState.elementMode).toBe('object');
+		expect(messages).toEqual([{ kind: 'sync', tools: false, selectedIds: [] }]);
+	});
+
+	it('is played in Game Preview and previewed again on the way out', () => {
+		loadLevelDocument(oneSolid());
+		applyHarnessMode('stage-editor');
+		messages = [];
+
+		applyHarnessMode('game-preview');
+		expect(messages).toEqual([{ kind: 'play', solids: 1 }]);
+
+		applyHarnessMode('hud-view');
+		expect(messages.at(-1)).toEqual({ kind: 'sync', tools: false, selectedIds: [] });
+	});
+
+	it('follows a document loaded after the mode was applied', () => {
+		applyHarnessMode('game-preview');
+		loadLevelDocument(oneSolid());
+		expect(messages).toEqual([{ kind: 'play', solids: 1 }]);
+
+		applyHarnessMode('stage-editor');
+		messages = [];
+		loadLevelDocument({
+			...oneSolid(),
+			solids: [],
+			doodads: [
+				{ id: 'crate', typeId: 'box', pose: { position: { x: 0, y: 0, z: 0 } }, props: {} },
+			],
+		});
+		expect(messages).toEqual([{ kind: 'sync', tools: false, selectedIds: [] }]);
+	});
+
+	it('is not sent while empty, so a level the game plays itself is left alone', () => {
+		applyHarnessMode('stage-editor');
+		applyHarnessMode('game-preview');
+		applyHarnessMode('entity-editor');
+		expect(messages).toEqual([]);
+
+		// A level builder is where an empty document gets its first solid.
+		applyHarnessMode('level-builder-mesh');
+		expect(messages).toEqual([{ kind: 'sync', tools: true, selectedIds: [] }]);
+	});
+
+	it('is sent empty once the game holds it, so deleting the last solid shows', () => {
+		loadLevelDocument(oneSolid());
+		applyHarnessMode('level-builder-mesh');
+		selectLevelObject('wall');
+		deleteLevelSelection();
+		messages = [];
+
+		applyHarnessMode('stage-editor');
+		expect(messages).toEqual([{ kind: 'sync', tools: false, selectedIds: [] }]);
+	});
+
+	it('keeps the tool and the level selection when asked to', () => {
+		loadLevelDocument(oneSolid());
+		applyHarnessMode('stage-editor');
+		setDebugTool('select');
+		levelState.selectedIds = ['wall'];
+		messages = [];
+
+		applyHarnessMode('level-builder-mesh', { keepTool: true });
+		expect(getDebugTool()).toBe('select');
+		expect(levelState.selectedIds).toEqual(['wall']);
+		expect(messages).toEqual([{ kind: 'sync', tools: true, selectedIds: ['wall'] }]);
+	});
+
+	it('announces a change of mode, and not the same mode again', () => {
+		const seen: string[] = [];
+		const stop = onHarnessModeChange((id) => seen.push(id));
+		applyHarnessMode('stage-editor');
+		applyHarnessMode('stage-editor');
+		applyHarnessMode('hud-view');
+		stop();
+		applyHarnessMode('entity-editor');
+		expect(seen).toEqual(['stage-editor', 'hud-view']);
 	});
 });

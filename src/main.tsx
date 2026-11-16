@@ -5,7 +5,11 @@ import { printToConsole } from './components/console/console-state';
 import { EDITOR_SAVE_EVENT, type EditorSaveEventDetail } from './components/save/save-state';
 import { mountHarnessGear } from './dev/harness-chrome';
 import { bootstrapHarnessGame, createHarnessGameElement } from './dev/harness-game';
-import type { ZylemEditorElement } from './web-components/zylem-editor';
+import {
+	EDITOR_MODE_EVENT,
+	type EditorModeEventDetail,
+	type ZylemEditorElement,
+} from './web-components/zylem-editor';
 
 const root = document.getElementById('root');
 
@@ -52,10 +56,14 @@ const buildTitle = Object.entries(ZYLEM_PACKAGE_VERSIONS)
 	.map(([name, version]) => `${name} ${version}`)
 	.join('\n');
 
-mountHarnessGear(root, {
+const gear = mountHarnessGear(root, {
 	initial: 'stage-editor',
 	apply: (mode) => editor.setMode(mode),
 	build: buildLabel ? { label: buildLabel, title: buildTitle || undefined } : undefined,
+});
+// A pick in the scene changes the mode too, and the gear shows whichever is on.
+editor.addEventListener(EDITOR_MODE_EVENT, (event) => {
+	gear.setMode((event as CustomEvent<EditorModeEventDetail>).detail.mode);
 });
 
 // Started after both elements are mounted: the game element sizes the renderer
