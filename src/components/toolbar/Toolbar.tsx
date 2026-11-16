@@ -49,6 +49,7 @@ import { PlayPauseButton } from './PlayPauseButton';
 import { SaveButton } from './SaveButton';
 import { SelectButton } from './SelectButton';
 import { RotateButton, ScaleButton, TranslateButton } from './TransformButtons';
+import { togglePaintTool } from './toolbar-actions';
 import { toolbarModeFor } from './toolbar-mode';
 import {
 	FreeViewButton,
@@ -148,6 +149,16 @@ const ContextActionButton: Component<{ action: HarnessContextAction }> = (props)
 					onClick={() => armNavigationTool('obstacle')}
 				>
 					<BrickWall class="zylem-icon" />
+				</ToolbarButton>
+			);
+		if (props.action === 'uv-brush')
+			return (
+				<ToolbarButton
+					label="UV brush"
+					selected={debugStore.tool === 'paint'}
+					onClick={() => togglePaintTool()}
+				>
+					<Paintbrush class="zylem-icon" />
 				</ToolbarButton>
 			);
 		return <HarnessSlotButton slot={props.action} />;

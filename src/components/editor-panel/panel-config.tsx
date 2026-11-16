@@ -3,15 +3,15 @@
  * Defines all available panels and their components.
  */
 
-import { NavigationSection } from '../navigation/NavigationSection';
-
 import type { Component, JSX } from 'solid-js';
 import { BridgePanel } from '../bridge/BridgePanel';
 import { Console } from '../console/Console';
 import { EntitiesSection } from '../entities/EntitiesSection';
 import { GameSection } from '../game/GameSection';
 import { LevelSection } from '../level/LevelSection';
+import { NavigationSection } from '../navigation/NavigationSection';
 import { StageSection } from '../stages/StageSection';
+import { TexturingSection } from '../texturing/TexturingSection';
 import { TransformSection } from '../transform/TransformSection';
 
 export interface PanelConfig {
@@ -31,6 +31,7 @@ export const PANEL_CONFIGS: PanelConfig[] = [
 	{ id: 'transform', title: 'Transform', component: TransformSection },
 	{ id: 'level', title: 'Level', component: LevelSection },
 	{ id: 'navigation', title: 'Map Navigation', component: NavigationSection },
+	{ id: 'texturing', title: 'Level Texture', component: TexturingSection },
 	{ id: 'console', title: 'Console', component: Console },
 	{ id: 'bridge', title: 'Bridge', component: BridgePanel },
 ];

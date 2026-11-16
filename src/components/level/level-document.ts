@@ -14,7 +14,9 @@ import {
 	type BridgeVec3,
 	type BrushPlane,
 	type BrushSolid,
+	type BrushSurface,
 	clipBrush,
+	copySurface,
 	deleteBrushElements,
 	type EntityPlacement,
 	extrudeFace,
@@ -22,12 +24,14 @@ import {
 	type LevelElementRef,
 	type LevelGesture,
 	type LevelLayerId,
+	type LevelTexture,
 	type LevelTransform,
 	MAX_SUBDIVIDE_PIECES,
 	moveElements,
 	moveFaces,
 	primitiveBrushes,
 	rotateBrush,
+	sameSurface,
 	scaleBrush,
 	sectorSizeOf,
 	shearFaces,
@@ -46,8 +50,22 @@ export function createLevelDocument(): LevelDocument {
 	return { version: 2, solids: [], doodads: [], entities: [] };
 }
 
+/**
+ * A copy that shares nothing with `document` but its texture images. Those are
+ * strings, which cannot be edited in place, and can run to megabytes each:
+ * every sync and every undo step copies the document. Keys keep their order,
+ * so the copy reads the same as JSON.
+ */
 export function cloneLevelDocument(document: LevelDocument): LevelDocument {
-	return JSON.parse(JSON.stringify(document)) as LevelDocument;
+	const copy: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(document)) {
+		if (value === undefined) continue;
+		copy[key] =
+			key === 'textures'
+				? (value as LevelTexture[]).map((texture) => ({ ...texture }))
+				: JSON.parse(JSON.stringify(value));
+	}
+	return copy as unknown as LevelDocument;
 }
 
 export function layerOf(document: LevelDocument, id: string): LevelLayerId | null {
@@ -201,7 +219,8 @@ export function applyLevelGesture(
 	document: LevelDocument,
 	gesture: LevelGesture,
 	nextId: () => string = createLevelId,
-	selectedIds: readonly string[] = []
+	selectedIds: readonly string[] = [],
+	selectedElements: readonly LevelElementRef[] = []
 ): LevelEdit | null {
 	switch (gesture.kind) {
 		case 'primitive':
@@ -228,6 +247,8 @@ export function applyLevelGesture(
 			return deleteItem(document, gesture.id, selectedIds);
 		case 'element-delete':
 			return deleteSolidElements(document, gesture.elements);
+		case 'paint':
+			return paintFaces(document, gesture.faces, gesture.surface, selectedIds, selectedElements);
 		default:
 			return null;
 	}
@@ -597,6 +618,86 @@ function deleteSolidElements(
 		document: withPlanes(document, next),
 		selectIds: [...byBrush.keys()],
 		selectElements: [],
+	};
+}
+
+/**
+ * Give faces a texture, or take it off with `null`. The shape is untouched and
+ * the selection passes through. `null` when every face already looks that way.
+ */
+export function paintFaces(
+	document: LevelDocument,
+	faces: readonly LevelElementRef[],
+	surface: BrushSurface | null,
+	selectedIds: readonly string[] = [],
+	selectedElements: readonly LevelElementRef[] = []
+): LevelEdit | null {
+	const next = new Map<string, BrushPlane[]>();
+	for (const [brushId, refs] of refsByBrush(faces, 'face')) {
+		const solid = solidById(document, brushId);
+		if (!solid) continue;
+		const painted = new Set(refs.map((ref) => ref.planes[0] ?? -1));
+		let changed = false;
+		const planes = solid.planes.map((plane, index) => {
+			if (!painted.has(index) || sameSurface(plane.surface, surface ?? undefined)) return plane;
+			changed = true;
+			const { surface: _old, ...bare } = plane;
+			return surface ? { ...bare, surface: copySurface(surface) } : bare;
+		});
+		if (changed) next.set(brushId, planes);
+	}
+	if (next.size === 0) return null;
+	return {
+		document: withPlanes(document, next),
+		selectIds: [...selectedIds],
+		selectElements: selectedElements.map(copyRef),
+	};
+}
+
+/** Every face of each listed solid, for painting whole solids. */
+export function facesOfSolids(document: LevelDocument, ids: readonly string[]): LevelElementRef[] {
+	const wanted = new Set(ids);
+	return document.solids
+		.filter((solid) => wanted.has(solid.id))
+		.flatMap((solid) =>
+			solid.planes.map(
+				(_, index): LevelElementRef => ({
+					brushId: solid.id,
+					kind: 'face',
+					planes: [index],
+				})
+			)
+		);
+}
+
+/** Add an image to the level's texture library. A texture with the same id is replaced. */
+export function addLevelTexture(document: LevelDocument, texture: LevelTexture): LevelDocument {
+	const others = (document.textures ?? []).filter((entry) => entry.id !== texture.id);
+	return { ...document, textures: [...others, { ...texture }] };
+}
+
+/**
+ * Drop an image from the library and take it off every face that shows it.
+ *
+ * @returns `null` when the level has no such texture.
+ */
+export function removeLevelTexture(document: LevelDocument, id: string): LevelDocument | null {
+	const textures = document.textures ?? [];
+	if (!textures.some((texture) => texture.id === id)) return null;
+	return {
+		...document,
+		textures: textures.filter((texture) => texture.id !== id),
+		solids: document.solids.map((solid) => {
+			if (!solid.planes.some((plane) => plane.surface?.textureId === id)) return solid;
+			return {
+				...solid,
+				planes: solid.planes.map((plane) => {
+					if (plane.surface?.textureId !== id) return plane;
+					const { surface: _old, ...bare } = plane;
+					return bare;
+				}),
+			};
+		}),
 	};
 }
 

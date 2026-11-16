@@ -1,5 +1,6 @@
 import {
 	boxBrush,
+	createSurface,
 	DEFAULT_DRAW_SHAPE,
 	getZylemBridge,
 	type LevelDocument,
@@ -8,8 +9,10 @@ import {
 } from '@zylem/bridge';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+	addLevelTextureEntry,
 	applyLevelSelect,
 	clearLevelSelection,
+	levelHasTexture,
 	levelState,
 	loadLevelDocument,
 	resetLevelEditor,
@@ -21,12 +24,14 @@ import {
 	setLevelDrawTurn,
 	setLevelEditorActive,
 	setLevelElementMode,
+	setLevelPaintSurface,
 	setLevelPlaying,
 	setLevelSectorTint,
 	setLevelShown,
 	toggleLevelLayerHidden,
 	toggleLevelSectorHidden,
 	turnLevelDrawShape,
+	undoLevel,
 } from '../../src/components/level/level-state';
 import { setGridVisible, transformState } from '../../src/components/transform/transform-state';
 
@@ -300,6 +305,46 @@ describe('draw shape', () => {
 		setLevelDrawShape('wedge');
 		turnLevelDrawShape();
 		expect(levelState.undoDepth).toBe(0);
+	});
+});
+
+describe('paint surface', () => {
+	const BRICK = { ...createSurface('builtin:brick'), rotation: 0.5 };
+
+	it('starts erasing, and rides on the sync once set, without an undo step', () => {
+		toggleLevelLayerHidden('doodad');
+		expect(lastSync()?.paintSurface).toBeNull();
+
+		setLevelPaintSurface(BRICK);
+		expect(lastSync()?.paintSurface).toEqual(BRICK);
+		expect(levelState.paintSurface).not.toBe(BRICK);
+		expect(levelState.undoDepth).toBe(0);
+
+		setLevelPaintSurface(null);
+		expect(lastSync()?.paintSurface).toBeNull();
+	});
+
+	it('knows the built-ins and the images in the library', () => {
+		expect(levelHasTexture(levelState.document, 'builtin:grid')).toBe(true);
+		expect(levelHasTexture(levelState.document, 'builtin:lava')).toBe(false);
+		expect(levelHasTexture(levelState.document, 'tex-1')).toBe(false);
+	});
+
+	it('erases while the brush holds an image the library has lost', () => {
+		addLevelTextureEntry({ id: 'tex-1', name: 'Moss', dataUrl: 'data:,', width: 1, height: 1 });
+		setLevelPaintSurface(createSurface('tex-1'));
+		expect(lastSync()?.paintSurface?.textureId).toBe('tex-1');
+
+		undoLevel();
+		expect(lastSync()?.paintSurface).toBeNull();
+	});
+
+	it('is left out while the level tools are off', () => {
+		setLevelPaintSurface(BRICK);
+		setLevelShown(true);
+		setLevelEditorActive(false);
+		expect(lastSync()?.tools).toBe(false);
+		expect(lastSync()?.paintSurface).toBeNull();
 	});
 });
 

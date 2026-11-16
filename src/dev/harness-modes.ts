@@ -39,7 +39,10 @@ export type HarnessModeId =
 /** Buttons that already live on the main toolbar group. */
 export type HarnessMainAction = 'select' | 'build' | 'camera' | 'debug' | 'play';
 
-/** Labeled toolbar slots. Pressing one does not change the scene. */
+/**
+ * Mode tools named apart from the shared context actions. The toolbar wires
+ * up the ones that exist; the rest are labeled and do not change the scene.
+ */
 export type HarnessSlotId =
 	| 'navmesh'
 	| 'decal'
@@ -313,6 +316,8 @@ function armedContextAction(): HarnessContextAction | null {
 			return 'clip-brush';
 		case 'shear':
 			return 'shear-brush';
+		case 'paint':
+			return 'uv-brush';
 		case 'translate':
 		case 'rotate':
 		case 'scale':

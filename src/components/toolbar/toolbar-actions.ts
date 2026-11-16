@@ -12,8 +12,6 @@
  * click — and the mirrors lag the proxies by a microtask.
  */
 
-import { resetNavigationTool } from '../navigation/navigation-state';
-
 import type { BrushShape, LevelElementMode } from '@zylem/bridge';
 import { snapshot } from 'valtio/vanilla';
 import {
@@ -42,7 +40,9 @@ import {
 	syncLevelDocument,
 	toggleLevelEditor as toggleLevelMode,
 } from '../level/level-state';
+import { resetNavigationTool } from '../navigation/navigation-state';
 import { stageState } from '../stages/stage-state';
+import { openTexturing, publishBrush } from '../texturing/texturing-state';
 import { setGridVisible, setSnapEnabled, transformState } from '../transform/transform-state';
 import { resolvePlacementTarget } from './add-button-state';
 import { catalogState, getEntityDescriptor, setArmedType } from './catalog-state';
@@ -319,6 +319,25 @@ export function toggleShearTool(): boolean {
 }
 
 /**
+ * Pick up the UV brush, or put it down. It stays armed from one stroke to the
+ * next: Escape or a second press ends it. Picking it up shows the Level
+ * Texture panel, where the brush is set.
+ */
+export function togglePaintTool(): void {
+	if (debugState.tool === 'paint') {
+		activateTool('none');
+		return;
+	}
+	if (catalogState.armedTypeId !== null) {
+		setArmedType(null);
+		sendAddType(null);
+	}
+	openTexturing();
+	publishBrush();
+	activateTool('paint');
+}
+
+/**
  * Switch what a click on a solid picks. With nothing armed, an element mode
  * arms Select so the next click picks. Shear only works on faces, so leaving
  * face mode drops it.
@@ -405,7 +424,13 @@ export function toggleLevelEditor(): void {
 	}
 	toggleLevelMode();
 	const tool = debugState.tool;
-	if (tool === 'add' || tool === 'brush' || tool === 'clip' || tool === 'shear') {
+	if (
+		tool === 'add' ||
+		tool === 'brush' ||
+		tool === 'clip' ||
+		tool === 'shear' ||
+		tool === 'paint'
+	) {
 		activateTool('select');
 	}
 }

@@ -228,6 +228,48 @@ export const addPaletteCSS = `
 	padding: 12px;
 }
 
+/* Level Texture: the brush preview, the library, then the UV fields. */
+.zylem-texturing {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.zylem-texturing-preview {
+	display: block;
+	width: 100%;
+	max-width: 256px;
+	aspect-ratio: 1 / 1;
+	align-self: center;
+	border: 1px solid rgba(150, 210, 255, 0.4);
+	border-radius: 6px;
+	background: rgba(6, 14, 26, 0.55);
+}
+
+.zylem-texturing-caption {
+	margin: 0;
+	font-size: 11px;
+	text-align: center;
+	opacity: 0.7;
+}
+
+/* The panel is narrow, so the library wraps instead of scrolling sideways. */
+.zylem-texturing .zylem-frame-strip-row {
+	flex-wrap: wrap;
+	overflow: visible;
+}
+
+/* Thumbnails are scaled-down photos as often as pixel art. */
+.zylem-texturing .zylem-frame-thumb-surface > img {
+	image-rendering: auto;
+}
+
+.zylem-texturing .zylem-tool-group {
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 4px;
+}
+
 /* A field fills its value cell, and the cell must not clip the steppers. */
 .zylem-property-value.zylem-level-field {
 	overflow: visible;

@@ -16,6 +16,7 @@ export type DebugTools =
 	| 'brush'
 	| 'clip'
 	| 'shear'
+	| 'paint'
 	| 'none';
 
 export interface DebugState {

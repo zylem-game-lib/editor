@@ -38,6 +38,7 @@ const DEFAULT_PANEL_ORDER = [
 	'transform',
 	'level',
 	'navigation',
+	'texturing',
 	'console',
 	'bridge',
 ];

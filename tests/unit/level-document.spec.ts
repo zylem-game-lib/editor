@@ -1,7 +1,9 @@
 import {
+	type BrushSurface,
 	boxBrush,
 	brushBounds,
 	compileBrush,
+	createSurface,
 	DEFAULT_DRAW_SHAPE,
 	DEFAULT_SECTOR_SIZE,
 	frameForPlane,
@@ -9,23 +11,34 @@ import {
 	type LevelDrawShape,
 	type LevelElementRef,
 	type LevelGesture,
+	type LevelTexture,
 } from '@zylem/bridge';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
+	addLevelTexture,
 	applyLevelGesture,
+	cloneLevelDocument,
 	deleteObjects,
 	duplicateObjects,
+	facesOfSolids,
+	paintFaces,
+	removeLevelTexture,
 	resetLevelIds,
 	resizeSectors,
 	subdivideSolids,
 } from '../../src/components/level/level-document';
 import {
+	addLevelTextureEntry,
 	applyIncomingGesture,
 	deleteLevelSelection,
 	duplicateLevelSelection,
+	levelHasUnsavedChanges,
 	levelState,
 	loadLevelDocument,
+	paintLevelSelection,
+	redoLevel,
+	removeLevelTextureEntry,
 	resetLevelEditor,
 	setLevelEditorActive,
 	setLevelElementMode,
@@ -706,5 +719,267 @@ describe('level document undo', () => {
 		setLevelEditorActive(true);
 		expect(levelState.document.entities).toHaveLength(1);
 		expect(levelState.document.entities[0]?.pose.position).toEqual({ x: 2, y: 0, z: 0 });
+	});
+});
+
+const BRICK: BrushSurface = { ...createSurface('builtin:brick'), scale: { u: 2, v: 2 } };
+const PHOTO: LevelTexture = {
+	id: 'tex-1',
+	name: 'Moss',
+	dataUrl: 'data:image/png;base64,AAAA',
+	width: 64,
+	height: 32,
+};
+
+function faceOf(brushId: string, plane: number): LevelElementRef {
+	return { brushId, kind: 'face', planes: [plane] };
+}
+
+function surfacesOf(document: LevelDocument, id: string): Array<string | null> {
+	const solid = document.solids.find((entry) => entry.id === id);
+	return (solid?.planes ?? []).map((plane) => plane.surface?.textureId ?? null);
+}
+
+describe('applyLevelGesture: paint', () => {
+	it('lays the surface on the named faces and leaves the shape and the selection alone', () => {
+		const selected = [faceOf('b', RIGHT)];
+		const edit = applyLevelGesture(
+			scene(),
+			{ kind: 'paint', faces: [faceOf('a', TOP), faceOf('b', TOP)], surface: BRICK },
+			counter(),
+			['b'],
+			selected
+		);
+		expect(surfacesOf(edit?.document ?? scene(), 'a')).toEqual([
+			null,
+			null,
+			'builtin:brick',
+			null,
+			null,
+			null,
+		]);
+		expect(edit?.document.solids[1]?.planes[TOP]?.surface).toEqual(BRICK);
+		expect(surfacesOf(edit?.document ?? scene(), 'c')).toEqual(Array(6).fill(null));
+		expect(boundsOf(edit?.document ?? scene(), 'a')).toEqual(boundsOf(scene(), 'a'));
+		expect(edit?.selectIds).toEqual(['b']);
+		expect(edit?.selectElements).toEqual(selected);
+	});
+
+	it('gives every face its own copy of the surface', () => {
+		const edit = paintFaces(scene(), [faceOf('a', TOP), faceOf('a', RIGHT)], BRICK);
+		const [right, , top] = edit?.document.solids[0]?.planes ?? [];
+		expect(top?.surface).toEqual(BRICK);
+		expect(top?.surface).not.toBe(BRICK);
+		expect(top?.surface).not.toBe(right?.surface);
+	});
+
+	it('takes a texture off with no surface', () => {
+		const painted = paintFaces(scene(), facesOfSolids(scene(), ['a']), BRICK)?.document;
+		if (!painted) throw new Error('nothing was painted');
+		const cleared = paintFaces(painted, [faceOf('a', TOP)], null);
+		expect(surfacesOf(cleared?.document ?? painted, 'a')).toEqual([
+			'builtin:brick',
+			'builtin:brick',
+			null,
+			'builtin:brick',
+			'builtin:brick',
+			'builtin:brick',
+		]);
+		expect(cleared?.document.solids[0]?.planes[TOP]).not.toHaveProperty('surface');
+	});
+
+	it('changes nothing when every face already looks that way', () => {
+		const painted = paintFaces(scene(), [faceOf('a', TOP)], BRICK)?.document;
+		if (!painted) throw new Error('nothing was painted');
+		expect(paintFaces(painted, [faceOf('a', TOP)], { ...BRICK })).toBeNull();
+		expect(paintFaces(scene(), [faceOf('a', TOP)], null)).toBeNull();
+		expect(paintFaces(scene(), [faceOf('gone', TOP)], BRICK)).toBeNull();
+		expect(paintFaces(scene(), [{ brushId: 'a', kind: 'edge', planes: [0, 2] }], BRICK)).toBeNull();
+		expect(paintFaces(scene(), [], BRICK)).toBeNull();
+	});
+
+	it('repaints a face whose tiling differs', () => {
+		const painted = paintFaces(scene(), [faceOf('a', TOP)], BRICK)?.document;
+		if (!painted) throw new Error('nothing was painted');
+		const turned = paintFaces(painted, [faceOf('a', TOP)], { ...BRICK, rotation: 1 });
+		expect(turned?.document.solids[0]?.planes[TOP]?.surface?.rotation).toBe(1);
+	});
+
+	it('keeps a painted face through a move and a duplicate', () => {
+		const painted = paintFaces(scene(), [faceOf('a', TOP)], BRICK)?.document;
+		if (!painted) throw new Error('nothing was painted');
+		const moved = applyLevelGesture(painted, {
+			kind: 'transform',
+			ids: ['a'],
+			transform: { kind: 'translate', delta: { x: 3, y: 0, z: 0 } },
+		});
+		expect(moved?.document.solids[0]?.planes[TOP]?.surface).toEqual(BRICK);
+		const copied = duplicateObjects(painted, ['a'], { x: 1, y: 0, z: 0 }, counter());
+		expect(surfacesOf(copied?.document ?? painted, 'new-1')[TOP]).toBe('builtin:brick');
+	});
+});
+
+describe('facesOfSolids', () => {
+	it('names every face of the listed solids', () => {
+		expect(facesOfSolids(scene(), ['a', 'd', 'gone'])).toEqual(
+			[0, 1, 2, 3, 4, 5].map((plane) => faceOf('a', plane))
+		);
+	});
+});
+
+describe('level textures', () => {
+	it('adds an image to the library, replacing one with the same id', () => {
+		const added = addLevelTexture(scene(), PHOTO);
+		expect(added.textures).toEqual([PHOTO]);
+		expect(scene().textures).toBeUndefined();
+		const replaced = addLevelTexture(added, { ...PHOTO, name: 'Lichen' });
+		expect(replaced.textures?.map((texture) => texture.name)).toEqual(['Lichen']);
+	});
+
+	it('removes an image and takes it off every face showing it', () => {
+		const withPhoto = addLevelTexture(scene(), PHOTO);
+		const photo = createSurface(PHOTO.id);
+		const painted = paintFaces(
+			paintFaces(withPhoto, [faceOf('a', TOP), faceOf('b', RIGHT)], photo)?.document ?? withPhoto,
+			[faceOf('a', RIGHT)],
+			BRICK
+		)?.document;
+		if (!painted) throw new Error('nothing was painted');
+
+		const removed = removeLevelTexture(painted, PHOTO.id);
+		expect(removed?.textures).toEqual([]);
+		expect(surfacesOf(removed ?? painted, 'a')).toEqual([
+			'builtin:brick',
+			null,
+			null,
+			null,
+			null,
+			null,
+		]);
+		expect(surfacesOf(removed ?? painted, 'b')).toEqual(Array(6).fill(null));
+		// A solid nothing was taken off is the same object.
+		expect(removed?.solids[2]).toBe(painted.solids[2]);
+	});
+
+	it('changes nothing for an image the level does not have', () => {
+		expect(removeLevelTexture(scene(), 'tex-9')).toBeNull();
+		expect(removeLevelTexture(addLevelTexture(scene(), PHOTO), 'builtin:brick')).toBeNull();
+	});
+});
+
+describe('cloneLevelDocument', () => {
+	it('copies everything but shares nothing that can be edited', () => {
+		const document = addLevelTexture(
+			paintFaces(scene(), [faceOf('a', TOP)], BRICK)?.document ?? scene(),
+			PHOTO
+		);
+		const copy = cloneLevelDocument(document);
+		expect(JSON.stringify(copy)).toBe(JSON.stringify(document));
+		expect(copy.textures).toEqual([PHOTO]);
+		expect(copy.solids[0]?.planes[TOP]?.surface).not.toBe(document.solids[0]?.planes[TOP]?.surface);
+		expect(copy.textures?.[0]).not.toBe(document.textures?.[0]);
+	});
+
+	it('keeps the keys in order, so a copy reads the same as JSON', () => {
+		const document: LevelDocument = { ...scene(), textures: [PHOTO], sectors: { size: 8 } };
+		expect(Object.keys(cloneLevelDocument(document))).toEqual(Object.keys(document));
+	});
+});
+
+describe('painting with undo', () => {
+	beforeEach(() => {
+		loadLevelDocument(scene());
+		setLevelEditorActive(true);
+	});
+
+	it('paints from a gesture as one step and keeps the selection', () => {
+		levelState.selectedIds = ['b', 'c'];
+		expect(
+			applyIncomingGesture({
+				kind: 'paint',
+				faces: [faceOf('a', TOP), faceOf('a', RIGHT), faceOf('b', TOP)],
+				surface: BRICK,
+			})
+		).toBe(true);
+		expect(surfacesOf(levelState.document, 'a')[TOP]).toBe('builtin:brick');
+		expect(levelState.undoLabel).toBe('Paint texture');
+		expect(levelState.undoDepth).toBe(1);
+		expect(levelState.selectedIds).toEqual(['b', 'c']);
+
+		expect(undoLevel()).toBe(true);
+		expect(surfacesOf(levelState.document, 'a')).toEqual(Array(6).fill(null));
+		expect(surfacesOf(levelState.document, 'b')).toEqual(Array(6).fill(null));
+		expect(redoLevel()).toBe(true);
+		expect(surfacesOf(levelState.document, 'b')[TOP]).toBe('builtin:brick');
+	});
+
+	it('labels an erasing stroke, and records nothing for a stroke that changes nothing', () => {
+		applyIncomingGesture({ kind: 'paint', faces: [faceOf('a', TOP)], surface: BRICK });
+		expect(applyIncomingGesture({ kind: 'paint', faces: [faceOf('a', TOP)], surface: BRICK })).toBe(
+			false
+		);
+		expect(levelState.undoDepth).toBe(1);
+
+		expect(applyIncomingGesture({ kind: 'paint', faces: [faceOf('a', TOP)], surface: null })).toBe(
+			true
+		);
+		expect(levelState.undoLabel).toBe('Clear texture');
+	});
+
+	it('paints the selected solids whole, or only the selected faces in face mode', () => {
+		levelState.selectedIds = ['a'];
+		expect(paintLevelSelection(BRICK)).toBe(true);
+		expect(surfacesOf(levelState.document, 'a')).toEqual(Array(6).fill('builtin:brick'));
+		expect(levelState.selectedIds).toEqual(['a']);
+
+		setLevelElementMode('face');
+		levelState.selectedIds = ['b'];
+		levelState.selectedElements = [faceOf('b', TOP)];
+		expect(paintLevelSelection(BRICK)).toBe(true);
+		expect(surfacesOf(levelState.document, 'b')).toEqual([
+			null,
+			null,
+			'builtin:brick',
+			null,
+			null,
+			null,
+		]);
+		expect(levelState.selectedElements).toEqual([faceOf('b', TOP)]);
+
+		expect(paintLevelSelection(null)).toBe(true);
+		expect(levelState.undoLabel).toBe('Clear texture');
+		expect(surfacesOf(levelState.document, 'b')).toEqual(Array(6).fill(null));
+	});
+
+	it('paints nothing with nothing selected', () => {
+		expect(paintLevelSelection(BRICK)).toBe(false);
+		levelState.selectedIds = ['d'];
+		expect(paintLevelSelection(BRICK)).toBe(false);
+		expect(levelState.undoDepth).toBe(0);
+	});
+
+	it('adds and removes a library image as undo steps', () => {
+		addLevelTextureEntry(PHOTO);
+		expect(levelState.document.textures).toEqual([PHOTO]);
+		expect(levelState.undoLabel).toBe('Add texture');
+		expect(levelHasUnsavedChanges()).toBe(true);
+
+		levelState.selectedIds = ['a'];
+		paintLevelSelection(createSurface(PHOTO.id));
+		expect(removeLevelTextureEntry(PHOTO.id)).toBe(true);
+		expect(levelState.undoLabel).toBe('Remove texture');
+		expect(levelState.document.textures).toEqual([]);
+		expect(surfacesOf(levelState.document, 'a')).toEqual(Array(6).fill(null));
+		expect(levelState.selectedIds).toEqual(['a']);
+		expect(removeLevelTextureEntry(PHOTO.id)).toBe(false);
+
+		expect(undoLevel()).toBe(true);
+		expect(levelState.document.textures).toEqual([PHOTO]);
+		expect(surfacesOf(levelState.document, 'a')).toEqual(Array(6).fill(PHOTO.id));
+
+		undoLevel();
+		undoLevel();
+		expect(levelState.document.textures).toBeUndefined();
+		expect(levelHasUnsavedChanges()).toBe(false);
 	});
 });

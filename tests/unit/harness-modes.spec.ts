@@ -16,6 +16,7 @@ import {
 	setArmedType,
 	setEntityCatalog,
 } from '../../src/components/toolbar/catalog-state';
+import { togglePaintTool } from '../../src/components/toolbar/toolbar-actions';
 import { setViewPreset, viewState } from '../../src/components/toolbar/view-state';
 import {
 	applyHarnessMode,
@@ -241,6 +242,22 @@ describe('applyHarnessMode', () => {
 		applyHarnessMode('level-builder-decoration');
 		expect(getDebugTool()).toBe('none');
 		expect(levelState.activeLayer).toBe('doodad');
+	});
+
+	it('puts the UV brush down on the way out of Decorations', () => {
+		applyHarnessMode('level-builder-decoration');
+		togglePaintTool();
+		expect(getDebugTool()).toBe('paint');
+
+		applyHarnessMode('level-builder-mesh');
+		expect(getDebugTool()).toBe('none');
+
+		applyHarnessMode('level-builder-decoration');
+		togglePaintTool();
+		toolMessages = [];
+		applyHarnessMode('stage-editor');
+		expect(getDebugTool()).toBe('none');
+		expect(toolMessages).toEqual(['none']);
 	});
 
 	it('releases a tool the next mode has no button for to no tool', () => {

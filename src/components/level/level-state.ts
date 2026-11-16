@@ -14,6 +14,9 @@
 import {
 	type BridgeVec3,
 	type BrushShape,
+	type BrushSurface,
+	builtinTextureKey,
+	copySurface,
 	DEFAULT_DRAW_SHAPE,
 	type LevelDocument,
 	type LevelDrawShape,
@@ -24,12 +27,14 @@ import {
 	type LevelNavigation,
 	type LevelPlacementArm,
 	type LevelSelectPayload,
+	type LevelTexture,
 } from '@zylem/bridge';
 import { proxy } from 'valtio/vanilla';
 import { sendLevelClose, sendLevelPlay, sendLevelSync } from '../../bridge/commands';
 import { mirrorProxy } from '../common/proxy-mirror';
 import { setGridVisible } from '../transform/transform-state';
 import {
+	addLevelTexture,
 	applyLevelGesture,
 	cloneLevelDocument,
 	createLevelDocument,
@@ -37,8 +42,11 @@ import {
 	deleteObjects,
 	duplicateObjects,
 	type EntityFieldPatch,
+	facesOfSolids,
 	type LevelEdit,
 	layerOf,
+	paintFaces,
+	removeLevelTexture,
 	resetLevelIds,
 	resizeSectors,
 	subdivideSolids,
@@ -87,6 +95,8 @@ export interface LevelState {
 	drawShape: LevelDrawShape;
 	/** World units between the grid lines Subdivide cuts on. */
 	subdivideTile: number;
+	/** What the UV brush lays on a face. `null` takes the texture off. */
+	paintSurface: BrushSurface | null;
 	undoDepth: number;
 	redoDepth: number;
 	undoLabel: string | null;
@@ -120,6 +130,7 @@ export const levelState = proxy<LevelState>({
 	placement: null,
 	drawShape: { ...DEFAULT_DRAW_SHAPE },
 	subdivideTile: DEFAULT_SUBDIVIDE_TILE,
+	paintSurface: null,
 	undoDepth: 0,
 	redoDepth: 0,
 	undoLabel: null,
@@ -305,8 +316,31 @@ export function syncLevelDocument(): void {
 		activeLayer: levelState.activeLayer,
 		placement: levelState.placement ? clonePlacement(levelState.placement) : null,
 		drawShape: { ...levelState.drawShape },
+		paintSurface: tools ? levelPaintSurface() : null,
 		tools,
 	});
+}
+
+/** Whether the level can draw this texture: a built-in, or an image in its library. */
+export function levelHasTexture(document: LevelDocument, textureId: string): boolean {
+	if (builtinTextureKey(textureId)) return true;
+	return (document.textures ?? []).some((texture) => texture.id === textureId);
+}
+
+/**
+ * What the UV brush paints right now. A brush whose image has left the
+ * library (removed, or its upload undone) erases instead.
+ */
+export function levelPaintSurface(): BrushSurface | null {
+	const surface = levelState.paintSurface;
+	if (!surface || !levelHasTexture(levelState.document, surface.textureId)) return null;
+	return copySurface(surface);
+}
+
+/** Set what the UV brush paints. Not an undo step. */
+export function setLevelPaintSurface(surface: BrushSurface | null): void {
+	levelState.paintSurface = surface ? copySurface(surface) : null;
+	if (levelState.active) syncLevelDocument();
 }
 
 /** Switch what a click on a solid picks. Leaving an element mode drops the element selection. */
@@ -468,7 +502,10 @@ export function clearLevelSelection(): boolean {
 }
 
 const GESTURE_LABELS: Record<
-	Exclude<LevelGesture['kind'], 'primitive' | 'element-move' | 'element-delete' | 'transform'>,
+	Exclude<
+		LevelGesture['kind'],
+		'primitive' | 'element-move' | 'element-delete' | 'transform' | 'paint'
+	>,
 	string
 > = {
 	clip: 'Clip brush',
@@ -508,6 +545,8 @@ export function levelGestureLabel(gesture: LevelGesture): string {
 		}
 		case 'transform':
 			return TRANSFORM_LABELS[gesture.transform.kind];
+		case 'paint':
+			return gesture.surface ? 'Paint texture' : 'Clear texture';
 		default:
 			return GESTURE_LABELS[gesture.kind];
 	}
@@ -534,7 +573,8 @@ export function applyIncomingGesture(gesture: LevelGesture): boolean {
 		levelState.document,
 		gesture,
 		createLevelId,
-		levelState.selectedIds
+		levelState.selectedIds,
+		levelState.selectedElements
 	);
 	if (!edit) {
 		syncLevelDocument();
@@ -576,6 +616,57 @@ export function deleteLevelSelection(): boolean {
 	const edit = deleteObjects(levelState.document, levelState.selectedIds);
 	if (!edit) return false;
 	commitEdit('Delete', edit);
+	return true;
+}
+
+/** The selected faces in face mode, else every face of the selected solids. */
+function paintTargets(): LevelElementRef[] {
+	const faces = levelState.selectedElements.filter((element) => element.kind === 'face');
+	if (levelState.elementMode === 'face' && faces.length > 0) return cloneElements(faces);
+	return facesOfSolids(levelState.document, levelState.selectedIds);
+}
+
+/**
+ * Paint the selection with `surface`, or take its textures off with `null`.
+ *
+ * @returns `false` when nothing changed.
+ */
+export function paintLevelSelection(surface: BrushSurface | null): boolean {
+	const edit = paintFaces(
+		levelState.document,
+		paintTargets(),
+		surface,
+		levelState.selectedIds,
+		levelState.selectedElements
+	);
+	if (!edit) return false;
+	commitEdit(surface ? 'Paint texture' : 'Clear texture', edit);
+	return true;
+}
+
+/** Add an image to the level's texture library, as an undo step. */
+export function addLevelTextureEntry(texture: LevelTexture): void {
+	commitEdit('Add texture', {
+		document: addLevelTexture(levelState.document, texture),
+		selectIds: [...levelState.selectedIds],
+		selectElements: cloneElements(levelState.selectedElements),
+	});
+}
+
+/**
+ * Remove an image from the library and from every face that shows it, as one
+ * undo step.
+ *
+ * @returns `false` when the level has no such texture.
+ */
+export function removeLevelTextureEntry(id: string): boolean {
+	const document = removeLevelTexture(levelState.document, id);
+	if (!document) return false;
+	commitEdit('Remove texture', {
+		document,
+		selectIds: [...levelState.selectedIds],
+		selectElements: cloneElements(levelState.selectedElements),
+	});
 	return true;
 }
 
@@ -686,6 +777,7 @@ export function resetLevelEditor(): void {
 	levelState.placement = null;
 	levelState.drawShape = { ...DEFAULT_DRAW_SHAPE };
 	levelState.subdivideTile = DEFAULT_SUBDIVIDE_TILE;
+	levelState.paintSurface = null;
 	undoStack.length = 0;
 	redoStack.length = 0;
 	markLevelSaved();
